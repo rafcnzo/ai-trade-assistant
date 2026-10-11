@@ -27,9 +27,11 @@ Folder Startup user (login, tanpa jendela)
 
 ## Yang harus dilakukan user
 
-1. Uji dari Telegram (bot sudah hidup): kirim "posisi dan order", lalu "pasang tiket BTC LONG limit <harga> 100x TP <harga>",
-   lalu "jalankan perintah shell dir" (harus ditolak: tidak punya tool). Laporkan hasilnya.
-2. Opsional: pasang spend limit di workspace Console Anthropic; `hermes doctor --fix` untuk saran `custom_providers → providers`.
+1. Uji Telegram pertama **lolos** (posisi/order benar, shell ditolak, `/cek SOL LONG` → SKIP beralasan + jurnal).
+   Berikutnya: tutup-buka chat bot, cek menu `/` berisi 14 perintah proyek, coba `/posisi`, `/budget`, `/status`;
+   laporkan apakah tebal/daftar sudah dirender.
+2. Opsional: pasang spend limit di workspace Console Anthropic; `hermes doctor --fix` untuk saran `custom_providers → providers`;
+   sembunyikan skill bundel Hermes yang tidak dipakai dengan mengganti nama folder di `%LOCALAPPDATA%\hermes\skills\` menjadi `_nama`.
 
 ## Yang sedang berjalan
 

@@ -3,6 +3,23 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (malam) — laptop Windows — menu Telegram ringkas, pesan kaya, skill pintas
+
+**Apa:** skill pintas `posisi`, `budget`, `laporan`, `cek <SIMBOL> <ARAH>`, `batal`, `status` (tiap skill = perintah
+`/nama` di Telegram); `merge_config.py` menambah blok `platforms.telegram.extra` (`rich_messages: true`,
+`command_menu` mode `replace`, maks 14, prioritas skill kita + help/new/usage/commands/whoami/model);
+SOUL.md: aturan format markdown Telegram + daftar perintah pintas; `tests/test_merge_config.py`.
+
+**Kenapa:** uji Telegram pertama oleh user lolos secara perilaku (daftar order, tolak shell, SKIP SOL dengan alasan),
+tapi tampilannya polos dan menu `/` berisi 60 perintah bawaan/skill bundel Hermes sehingga `/tiket` tersembunyi
+("61 hidden" di gateway.log).
+
+**Catatan:** skill bundel Hermes (apple, productivity, dst.) tidak bisa dimatikan lewat config; direktori yang
+diawali `_` diabaikan, itu opsi bila ingin mengurangi token prompt sistem (±3k, di-cache).
+
+**File:** `hermes/skills/{posisi,budget,laporan,cek,batal,status}/SKILL.md`, `hermes/SOUL.md`, `hermes/merge_config.py`,
+`tests/test_merge_config.py`, `docs/OPERASI.md`, `docs/STATUS.md`.
+
 ## 2026-10-11 (sore, lanjutan) — laptop Windows — Hermes terpasang dan terverifikasi end-to-end
 
 **Apa:** Hermes Agent v0.21.6 terpasang oleh user (wizard: provider custom → proxy, `api_mode: anthropic_messages`,

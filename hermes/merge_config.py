@@ -80,6 +80,32 @@ def ensure_mcp_block(lines: list[str], block: str, changes: list[str]) -> None:
     changes.append("tambah mcp_servers.paper ke blok yang sudah ada")
 
 
+PLATFORMS_BLOCK = """platforms:  # crypto-analyst: menu perintah Telegram ringkas + pesan kaya
+  telegram:
+    extra:
+      rich_messages: true
+      rich_drafts: false
+      command_menu:
+        max_commands: 14
+        priority_mode: replace
+        priority: [posisi, budget, laporan, cek, tiket, batal, status, evaluasi-harian, help, new, usage, commands, whoami, model]
+"""
+
+
+def ensure_platforms_block(lines: list[str], changes: list[str]) -> None:
+    """Tambahkan blok top-level `platforms:` (menu Telegram + rich messages) bila belum ada yang aktif."""
+    if section_bounds(lines, "platforms") is not None:
+        start, end = section_bounds(lines, "platforms")
+        if any("command_menu" in ln for ln in lines[start:end]):
+            return
+        changes.append("platforms: sudah ada tanpa command_menu; tidak diubah (tambahkan manual, lihat hermes/merge_config.py)")
+        return
+    if lines and lines[-1].strip():
+        lines.append("")
+    lines.extend(PLATFORMS_BLOCK.rstrip("\n").splitlines())
+    changes.append("tambah platforms.telegram.extra (rich_messages, command_menu)")
+
+
 def mcp_block(project_root: Path, home: Path) -> str:
     ph = sync.placeholders(project_root, home)
     snippet = sync.render((Path(__file__).resolve().parent / "config.snippet.yaml").read_text(encoding="utf-8"), ph)
@@ -102,6 +128,7 @@ def merge(text: str, project_root: Path, home: Path) -> tuple[str, list[str]]:
     set_in_section(lines, "platform_toolsets", "telegram", TOOLSETS_AGENT, changes)
     set_in_section(lines, "platform_toolsets", "cron", TOOLSETS_CRON, changes)
     ensure_mcp_block(lines, mcp_block(project_root, home), changes)
+    ensure_platforms_block(lines, changes)
     return "\n".join(lines) + "\n", changes
 
 

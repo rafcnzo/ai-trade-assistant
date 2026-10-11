@@ -220,6 +220,24 @@ tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat) dan `e
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
 + `base_url` tetap berfungsi, jadi ini opsional.
 
+### 5b. Perintah di Telegram
+Menu `/` dibatasi 14 perintah (`platforms.telegram.extra.command_menu`, mode `replace`), supaya perintah proyek tidak
+tenggelam di antara ±120 perintah bawaan Hermes. Pesan kaya (`rich_messages: true`) merender tabel/daftar asli.
+
+| Perintah | Fungsi |
+|---|---|
+| `/posisi` | Posisi terbuka + order menunggu |
+| `/budget` | Sisa budget tiket, swing, biaya API vs cap |
+| `/laporan [YYYY-MM-DD]` | Laporan paper harian + ringkasan keputusan agent |
+| `/cek <SIMBOL> <LONG\|SHORT> [entry] [tp]` | Nilai setup tiket, pasang order paper atau SKIP |
+| `/batal <id>` · `/batal semua` · `/batal posisi <id>` | Batalkan order / minta tutup posisi |
+| `/status` | Kesehatan collector, proxy, pemindai, kill switch |
+| `/tiket`, `/evaluasi-harian` | Skill inti (dipakai cron; bisa dipanggil manual) |
+| `/help`, `/new`, `/usage`, `/commands`, `/whoami`, `/model` | Bawaan Hermes |
+
+Setiap perintah adalah satu sesi agent (≈ $0,02–0,10 lewat proxy). Chat bebas juga bisa; agent memilih skill sendiri.
+Jika menu tidak terlihat: tutup dan buka lagi chat bot (klien Telegram men-cache menu), atau ketik `/commands`.
+
 ### 6. Uji cepat
 - `hermes -z "jam dan budget tiket sekarang?"` → jawaban memuat umur tick collector.
 - Telegram: "posisi dan order" → sama dengan `paper_engine.py posisi` / `orders`.
