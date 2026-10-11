@@ -1,0 +1,33 @@
+# CHANGELOG
+
+Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
+Perubahan kode dan entri changelog masuk dalam commit yang sama.
+
+## 2026-10-11 — laptop Windows — Milestone 1 selesai
+
+**Apa:** mesin paper trading lengkap: `scripts/common.py`, `scripts/collector.py`, `scripts/paper_engine.py`,
+`scripts/budget_guard.py`, skema `scripts/schema_{pasar,paper,budget}.sql`, 43 unit test di `tests/`,
+`docs/OPERASI.md`, `run_collector.cmd`, `CLAUDE.md`, `.claude/settings.json`, venv + `requirements.txt`.
+
+**Kenapa:** milestone 1 rencana v1.3 (§19.9 langkah 1, 2, 4): data pasar mulai terkumpul sekarang;
+agent menyusul di milestone 3.
+
+**Keputusan dan temuan saat implementasi:**
+- Wi-Fi rumah (ISP Centrin) memblokir `binance.com` di level DNS (halaman Kominfo). Koneksi ke IP asli
+  dengan SNI lolos. Dipilih resolver DoH di dalam skrip (patch `socket.getaddrinfo` hanya untuk host Binance);
+  DNS Windows tidak diubah. Deteksi halaman blokir → `BlockedError`, data tidak disimpan.
+- Endpoint publik yang dipakai diverifikasi: `time`, `klines` (1500 bar), `markPriceKlines`, `premiumIndex`,
+  `fundingRate`, `fundingInfo`, `ticker/24hr`, `exchangeInfo`, dan `www.binance.com/bapi/.../common/brackets`
+  (leverage maks + MMR + cum untuk 1.061 simbol, tidak terdokumentasi).
+- Bug ditemukan oleh tes T15 dan diperbaiki: funding terhitung dua kali karena jendela event dibuka dari
+  `open_time` bar sebelumnya, bukan dari close-nya.
+- Budget tiket mencakup fee masuk (`margin + fee ≤ $1`), karena wallet $1 nyata tidak bisa membuka margin $1.
+- Satu proses `collector.py run` memiliki data dan jam mesin; CLI/agent hanya menyisipkan order.
+
+**Verifikasi:** 43/43 tes hijau; collector live 20 simbol × 48 jam dalam 19 s (weight 856); 3 order paper
+diterima, 3 ditolak dengan kode benar. Soak 24 jam dan uji tidur laptop masih berjalan (lihat `STATUS.md`).
+
+## 2026-10-08 → 2026-10-11 — perencanaan
+
+Rencana v1.0 → v1.3 (`docs/rencana-asisten-crypto.md`): review, uji sumber data, gaya trading tiket $1 dan
+swing $10, komunitas, memori pasar, referensi buku, agent paper trading dengan budget API $10/hari.
