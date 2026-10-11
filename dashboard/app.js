@@ -216,7 +216,6 @@ async function loadPsikologi() {
   const ai = await api("/api/teks?jenis=harian"); let aiTxt = ai.isi || "";
   if (!aiTxt) { const kemarin = new Date(Date.now() - 86400000).toISOString().slice(0, 10); aiTxt = (await api(`/api/teks?jenis=harian&hari=${kemarin}`)).isi || ""; }
   $("#ps-ai").textContent = aiTxt ? stripFm(aiTxt) : "Belum ada catatan harian dari AI (ditulis tiap 23:55 WIB).";
-*/, "").trim() : "Belum ada catatan harian dari AI (ditulis tiap 23:55 WIB).";
   const f = (ind, v) => v === null ? "—" : ["funding", "premium_coinbase", "premium_idr"].includes(ind) ? (v * 100).toFixed(4) + "%" : ["oi_24h", "harga_24h", "stablecoin_7d"].includes(ind) ? pct(v) : ind.startsWith("liq") ? v : ind === "fng" ? v.toFixed(0) : v.toFixed(2);
   const zona = (z) => z === "takut_ekstrem" ? '<span class="tag takut">sangat takut</span>' : z === "serakah_ekstrem" ? '<span class="tag serakah">sangat serakah</span>' : z === "netral" ? '<span class="tag">biasa</span>' : '<span class="tag na">tidak tersedia</span>';
   table($("#tbl-panel"), [["Indikator", r => `<b>${r.label}</b><div class="s dim">${ARTI[r.indikator] || ""}</div>`], ["Nilai", r => f(r.indikator, r.nilai), "num"], ["Vs 24 jam lalu", r => p.perubahan_24j[r.indikator] !== undefined ? f(r.indikator, p.perubahan_24j[r.indikator]) : "—", "num"], ["Suasana", r => zona(r.zona)], ["Catatan", r => `<span class="dim">${esc(r.catatan)}</span>`]], p.indikator || []);
