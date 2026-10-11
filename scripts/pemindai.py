@@ -5,7 +5,7 @@ dan paper.sqlite (hanya metode baca PaperEngine), menulis data/kandidat.sqlite (
 ringkasan untuk agent dan baris gate terakhir: {"wakeAgent": true} bila ada kandidat, {"wakeAgent": false} bila tidak.
 Hermes hanya membangunkan agent (biaya LLM) saat gate true.
 
-Aturan: spesifikasi §16.3 (jejak), §17.3 (leverage, jarak likuidasi ≥ 2×ATR 5m), §19.3–19.5 (gate, budget).
+Aturan: spesifikasi §16.3 (jejak), §17.3 (leverage, jarak likuidasi ≥ 2×ATR 5m), §19.3–19.5 (gate, budget), playbook P-09 (gate G9).
 """
 from __future__ import annotations
 
@@ -57,6 +57,7 @@ class PemindaiConfig:
     max_wake_per_day: int = 12
     cooldown_min: int = 30
     max_live_tiket: int = 2
+    max_hangus_beruntun: int = 2   # playbook P-09: setelah 2 tiket HANGUS beruntun, tidak ada tiket baru hari itu
     retention_days: int = 30
 
 
@@ -330,6 +331,9 @@ class Pemindai:
             return f"budget tiket habis (sisa ${budget_sisa:.2f})"
         if live_tiket >= cfg.max_live_tiket:
             return f"sudah {live_tiket} order tiket hidup"
+        hb = self.engine.hangus_beruntun(day)
+        if hb >= cfg.max_hangus_beruntun:
+            return f"{hb} tiket HANGUS beruntun hari ini (playbook P-09): berhenti sampai besok"
         w = self.wake_hari_ini(day)
         if w >= cfg.max_wake_per_day:
             return f"cap {cfg.max_wake_per_day} wake/hari tercapai"

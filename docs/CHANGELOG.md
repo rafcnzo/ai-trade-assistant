@@ -3,6 +3,10 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (malam, 18:50) — laptop Windows — P-09 jadi gate mekanis pemindai (G9)
+
+**Apa:** `PaperEngine.hangus_beruntun(day)` (jumlah posisi tiket HANGUS/FUNDING_LIQ berturut-turut di akhir hari) dan gate G9 di `pemindai.gate_awal` (`max_hangus_beruntun=2`) → setelah 2 likuidasi beruntun, agent tidak dibangunkan sampai hari berikutnya. Tes S11. Playbook P-09 sumber = mesin + skill. **Kenapa:** permintaan pemilik: aturan psikologi ini lebih aman ditegakkan mesin daripada diingat agent. **File:** `scripts/paper_engine.py`, `scripts/pemindai.py`, `tests/test_pemindai.py`, `referensi/playbook.md`, docs.
+
 ## 2026-10-11 (malam, 18:40) — laptop Windows — playbook: P-09, P-11, P-15 diaktifkan pemilik
 
 **Apa:** status `uji` → `aktif` untuk P-09 (stop setelah 2 HANGUS beruntun), P-11 (R:R eksplisit sebelum entry, tidak bisa = SKIP), P-15 (pola chart hanya setelah close breakout + volume). Aturan aktif: 11. **Kenapa:** keputusan pemilik setelah membaca usulan dari buku (§15.6). **File:** `referensi/playbook.md`.

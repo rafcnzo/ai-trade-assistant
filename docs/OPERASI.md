@@ -309,6 +309,7 @@ Gate (yang pertama gagal menang; alasan ada di baris pertama stdout dan `peminda
 | G6 | simbol dengan order/posisi → `Ditahan: … (ada order/posisi)` |
 | G7 | `cooldown` 30 menit per simbol, kecuali skor naik |
 | G8 | `tidak ada kandidat (N simbol dipindai)` |
+| G9 | `N tiket HANGUS beruntun hari ini (playbook P-09)` — 2 likuidasi beruntun → berhenti sampai hari berikutnya (dicek sebelum pemindaian, `max_hangus_beruntun`) |
 
 Membaca baris kandidat: `K7 UNIUSDT SHORT skor 4 | mark 7.5635 | level 7.563 (5 sentuhan 5m, 0.03×ATR5m di bawah; wick atas
 menolak level) | jejak BREAKOUT_GAGAL_LAMA, WICK | ATR5m 0.0203 (0.27%) | 24j +1.5% | funding +0.0042% | tren15m turun |

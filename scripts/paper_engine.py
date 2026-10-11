@@ -428,6 +428,19 @@ class PaperEngine:
             out.append(d)
         return out
 
+    def hangus_beruntun(self, day: Optional[str] = None, account: str = TIKET) -> int:
+        """Jumlah posisi akun yang ditutup HANGUS/FUNDING_LIQ berturut-turut di akhir hari WIB `day` (playbook P-09)."""
+        day = day or day_wib(self.clock())
+        rows = self.conn.execute("SELECT close_reason FROM positions WHERE account=? AND day_wib=? AND status='CLOSED' ORDER BY closed_ts DESC, id DESC",
+                                 (account, day)).fetchall()
+        n = 0
+        for r in rows:
+            if r[0] in ("HANGUS", "FUNDING_LIQ"):
+                n += 1
+            else:
+                break
+        return n
+
     def budget_status(self, account: str = TIKET, day: Optional[str] = None) -> dict:
         day = day or day_wib(self.clock())
         if account in DAILY_ACCOUNTS:

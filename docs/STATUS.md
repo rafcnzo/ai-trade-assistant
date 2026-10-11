@@ -109,6 +109,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 - Pemindai: jadwal `1-59/5` (bar 1m tersimpan detik :05), `data_until` dari bar tersimpan (bukan jam dinding), gate G1–G8,
   skor ≥ 3, jarak liq ≥ 2×ATR 5m, cooldown 30 menit per simbol, maks 12 wake/hari, jam 07:00–22:30 WIB. Knob: `PemindaiConfig`.
   Watchlist = **top 30 volume 24 jam** (bukan daftar tetap); maks 5 kandidat skor tertinggi per wake (`top_k`).
+  Gate G9 (playbook P-09): 2 tiket HANGUS beruntun di hari yang sama → pemindai tidak membangunkan agent sampai besok.
 - Panel psikologi: tanpa skor gabungan; zona awal §16.2 lalu persentil 10/90 setelah 90 hari; likuidasi dari OKX (Binance
   `allForceOrders` diblokir ISP); premium IDR via USDT/IDR Indodax. Host Coinbase/OKX lewat DoH.
 - Referensi: tanpa vector DB; Hermes mencari lewat tool MCP (bukan `@path`/Grep seperti spesifikasi lama). Isi buku tidak

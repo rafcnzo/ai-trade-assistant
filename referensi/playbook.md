@@ -28,7 +28,7 @@ Kategori: risiko · psikologi · price action · proses · fundamental. Sumber `
 | P-06 | Tidak entry bila flag SUDAH_LARI (perubahan 24 jam > 20%) atau FUNDING_EKSTREM melawan arah; tidak mengejar harga yang sudah lewat level (`LIMIT_CROSSES` = SKIP) | price action | skill tiket; mastering-trading-psychology bab 10 hal. 305 ("Chasing stocks is a deadly unforgivable sin") | aktif | 2026-10-11 |
 | P-07 | Setiap keputusan (termasuk SKIP) ditulis di jurnal dengan rencana, alasan, dan `aturan_dilanggar`; hasil hanya ditulis mesin | proses | skill tiket; mastering-trading-psychology bab 11 hal. 350–351 (recap trade rugi) | aktif | 2026-10-11 |
 | P-08 | Tidak pernah menambah posisi yang sedang rugi (averaging down); tidak mengubah tiket menjadi swing | risiko | mastering-trading-psychology bab 08 hal. 158, bab 13 hal. 379 ("They never add to a losing trade... EVER."), bab 14 hal. 404 | aktif | 2026-10-11 |
-| P-09 | Setelah 2 tiket HANGUS beruntun di hari yang sama, tidak ada tiket baru sampai hari berikutnya | psikologi | mastering-trading-psychology bab 05 hal. 16–17, bab 07 hal. 140 ("no trade or 1 trade challenge tomorrow") | aktif | 2026-10-11 |
+| P-09 | Setelah 2 tiket HANGUS beruntun di hari yang sama, tidak ada tiket baru sampai hari berikutnya | psikologi | mesin (pemindai gate G9) + skill tiket; mastering-trading-psychology bab 05 hal. 16–17, bab 07 hal. 140 ("no trade or 1 trade challenge tomorrow") | aktif | 2026-10-11 |
 | P-10 | Hari setelah hari dengan net tiket ≤ −$0,80: maksimal 1 tiket | psikologi | mastering-trading-psychology bab 07 hal. 140 | uji | 2026-10-11 |
 | P-11 | Sebelum entry, tulis R:R eksplisit (untung bersih vs rugi hangus); tidak bisa ditentukan = FOMO = SKIP | proses | mastering-trading-psychology bab 08 hal. 213 ("What is my risk to reward in this trade?"), bab 09 hal. 253 | aktif | 2026-10-11 |
 | P-12 | Tidak entry pada 15 menit pertama setelah candle 1h yang bodinya > 2×ATR (impuls); tunggu pullback pertama | price action | mastering-trading-psychology bab 14 hal. 406 ("before a pattern has either formed or been confirmed"); pemindai flag IMPULS | uji | 2026-10-11 |
@@ -49,3 +49,4 @@ Status: `uji` (baru, sedang diuji) · `aktif` (wajib; terbukti membantu / ditega
 ## Catatan perubahan
 - 2026-10-11: versi awal (v1) dari aturan yang sudah ditegakkan mesin/skill + usulan dari 3 buku hasil konversi.
 - 2026-10-11 (malam): pemilik mengaktifkan P-09, P-11, P-15 (uji → aktif).
+- 2026-10-11 (malam): P-09 ditegakkan mekanis oleh pemindai (gate G9) atas permintaan pemilik.

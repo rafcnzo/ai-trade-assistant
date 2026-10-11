@@ -209,6 +209,29 @@ class TestGates(Base):
         self.assertIn("order tiket hidup", self.p.run().alasan)
 
 
+class TestHangus(Base):
+    def test_s11_gate_hangus_beruntun(self):
+        self.seed()
+        def tutup(pid, reason, ts):
+            with C.tx(self.engine.conn):
+                self.engine.conn.execute("INSERT INTO positions(account,symbol,side,qty,entry_price,leverage,status,close_reason,closed_ts,day_wib,opened_ts,net_result) "
+                                         "VALUES('tiket',?,'LONG',0.01,100,100,'CLOSED',?,?,?,?,-0.5)", (f"X{pid}USDT", reason, ts, C.day_wib(ts), ts - 60_000))
+        tutup(1, "HANGUS", t("08:00"))
+        tutup(2, "TP", t("08:30"))
+        self.assertEqual(self.engine.hangus_beruntun(DAY), 0)
+        self.assertTrue(self.p.run().wake)                     # 1 HANGUS lalu TP → masih boleh
+        tutup(3, "HANGUS", t("09:00"))
+        tutup(4, "FUNDING_LIQ", t("09:30"))
+        self.assertEqual(self.engine.hangus_beruntun(DAY), 2)
+        self.fresh(NOW + 5 * MINUTE_MS)
+        res = self.p.run()
+        self.assertFalse(res.wake)
+        self.assertIn("HANGUS beruntun", res.alasan)
+        self.assertIn("P-09", res.alasan)
+        # hari berikutnya bebas lagi
+        self.assertEqual(self.engine.hangus_beruntun(C.day_wib(NOW + C.DAY_MS)), 0)
+
+
 class TestCli(unittest.TestCase):
     def test_s10_main_once_json_and_cron(self):
         tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
