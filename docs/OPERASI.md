@@ -9,10 +9,12 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/collector.py` | Mengambil kline 1m (harga terakhir + mark), kline 1h (120 hari), funding, snapshot mark, peringkat volume; memanggil mesin tiap menit | `data/pasar.sqlite` |
 | `scripts/pemindai.py` | Pemindai kandidat tiket mekanis (tanpa LLM) tiap 5 menit lewat cron Hermes; membangunkan agent hanya bila ada kandidat | `data/kandidat.sqlite` |
 | `scripts/notifikasi.py` | Notifikasi kejadian paper (terisi, TP, STOP, likuidasi, kedaluwarsa, batal) ke Telegram tiap menit lewat cron Hermes `--no-agent` (tanpa LLM) | `data/notif.json` |
+| `scripts/evaluasi.py` | Statistik kelulusan §19.7 (expectancy, stabilitas, kepatuhan, tiket vs akun `acak`); baca saja | — |
+| `scripts/hipotesis.py`, `scripts/uji_hipotesis.py` | Hipotesis terstruktur: skema/penilaian/baseline (murni) dan skrip harian 23:40 yang menilai, menghitung baseline, mengelola pelajaran | `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/pelajaran.{jsonl,md}` |
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
-| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 22 tool (data pasar, order paper, laporan, jurnal, hipotesis) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
+| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 23 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
 | `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
 | `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
@@ -193,11 +195,11 @@ Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
 1. `hermes/sync.py` — menyalin `SOUL.md`, skill `tiket` & `evaluasi-harian`, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`;
 2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
    `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
-   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (22 tool whitelist);
+   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (23 tool whitelist);
 3. menaruh launcher `crypto-analyst_proxy.vbs` dan `crypto-analyst_collector.vbs` di folder **Startup** user
    (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
 4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
-   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 22 tool), `hermes cron list`.
+   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 23 tool), `hermes cron list`.
 
 Log: `logs/hermes_setup.log`. Cek proxy: `curl http://127.0.0.1:8585/healthz` (`key_set` harus `true`).
 Log proxy: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya). Budget habis → Hermes menerima
@@ -221,7 +223,8 @@ apa pun bila sudah sesuai. Setelah mengubah skill/SOUL: `hermes gateway restart`
 Wizard `hermes setup` sudah memasang `Hermes_Gateway.vbs` di folder Startup (fallback karena Task Scheduler butuh admin).
 `hermes gateway start|status|stop|restart`. Cron (baris `hermes cron create` dari `hermes/sync.py --snippet`; `--script` harus relatif terhadap `HERMES_HOME\scripts`): `pemindai-tiket`
 tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `evaluasi-harian` 23:55 WIB, dan `notif-paper`
-tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM).
+tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM), serta `uji-hipotesis`
+23:40 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 23:55).
 `hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
 + `base_url` tetap berfungsi, jadi ini opsional.
@@ -348,8 +351,69 @@ berikutnya; `--reset` melompat ke kejadian terakhir. Log: `logs/notifikasi.log`;
 (pembungkus selalu diam saat gagal supaya Telegram tidak dibanjiri; `--failure-deliver local` menahan notice Hermes).
 Kejadian yang dibuat agent lewat Telegram (order baru) tetap dinotifikasi — itu konfirmasi bahwa mesin menerimanya.
 
+## Baseline acak (akun `acak`)
+
+Setiap order **tiket** yang dipasang agent/CLI (bukan mesin) otomatis mendapat bayangan di akun paper `acak`: simbol, leverage,
+qty, dan jarak TP/SL sama, tetapi **sisi acak** dan **entry market** di open bar berikutnya (± slippage). Sisi =
+`random.Random(f"acak-v1:{order_id}").choice(LONG, SHORT)` — deterministik, bisa diverifikasi ulang. Jarak TP/SL disimpan
+relatif (`orders.tp_pct/sl_pct`) dan diresolusi saat terisi, dibulatkan ke tick menjauh dari untung. Akun acak punya budget
+cermin $1/hari sendiri (`BUDGET_ACAK`, `ACAK_EOD`), ditutup paksa 23:50, dan **tidak pernah** menghalangi order asli: bila
+bayangan gagal, hanya event `ACAK_SKIP` yang dicatat. Membatalkan order tiket ikut membatalkan bayangan yang belum terisi.
+Kejadian akun acak tidak dinotifikasi ke Telegram (hanya satu baris 🎲 saat dibuat).
+
+```bash
+.venv/Scripts/python.exe scripts/paper_engine.py budget
+```
+menampilkan tiket, swing, dan acak; `laporan` memuat blok "Tiket vs acak (hari ini)". Matikan dengan `EngineConfig.acak_enabled=False`
+(hanya untuk uji). Skema paper v2: kolom `tp_pct/sl_pct` ditambah otomatis saat mesin pertama kali jalan dengan kode baru —
+collector **harus dimulai ulang** setelah update agar mesin di dalamnya mengenal kolom itu.
+
+## Statistik kelulusan (`scripts/evaluasi.py`)
+
+```bash
+.venv/Scripts/python.exe scripts/evaluasi.py
+```
+Markdown (atau `--json`, `--sejak YYYY-MM-DD`) per akun tiket/swing/acak: posisi selesai, expectancy per trade setelah fee,
+win rate, TP/HANGUS/STOP/EOD/TIDAK_TERISI, ambigu, stabilitas (tanpa 5% trade terbaik), bulan positif; blok tiket vs acak
+(selisih mean + uji permutasi 2000×, sign test berpasangan atas pasangan `entry_order_id` ↔ `ACAK:<id>`); kepatuhan
+(order tiket setelah 22:30 WIB = pelanggaran agent; percobaan yang ditolak mesin dicatat terpisah); tabel kriteria §19.7 dengan
+status `lulus | belum (…) | tidak tersedia (…)`. Di bawah 10 sampel semua angka ditulis "tidak tersedia" — ini disengaja.
+Agent memakai tool `mcp_paper_statistik_lulus` yang mengembalikan data yang sama.
+
+## Uji hipotesis & pelajaran (`scripts/uji_hipotesis.py`)
+
+Agent menulis hipotesis **terstruktur** lewat `mcp_paper_tulis_hipotesis(pola, symbol, tf, jenis, arah, nilai, batas_hari, kondisi)`
+→ `pasar/hipotesis.jsonl` (append, penulis mcp_server). `jenis`: `sentuh_harga` (nilai = harga target), `gerak_atr`
+(nilai = kelipatan ATR14 tf dari harga saat dibuat), `close_arah` (close bar terakhir horizon di sisi `arah`). `tf` 1h|4h|1d,
+`batas_hari` 1–7, maks 3/hari. Horizon mulai dari bucket **setelah** saat dibuat (tanpa look-back).
+
+Cron Hermes `uji-hipotesis` (`40 23 * * *`, `--no-agent`) menjalankan `uji_hipotesis.py --cron`:
+1. hipotesis yang jatuh tempo (batas + 10 menit) dinilai dengan `kline_1h` (4h/1d di-resample): `benar | salah | ambigu`
+   (ambigu bila bar < 90% dari yang diharapkan);
+2. **baseline** per hipotesis: 200 titik awal acak dalam 120 hari data, prediksi yang sama (jarak relatif/kelipatan ATR) →
+   seberapa sering kebetulan terjadi; `rate` None bila < 30 titik valid;
+3. **pelajaran** per pola (§16.6): sampel ≥ 10 dan hit rate ≥ baseline + 15 poin → `L-NN aktif`; dinilai ulang tiap 30 hari
+   dengan hasil 90 hari terakhir; turun ke ≤ baseline + 5 poin → `pensiun` (alasan dicatat); maks 15 aktif;
+4. menulis `pasar/hipotesis-hasil.jsonl` (append), `pasar/pelajaran.jsonl`, dan view `pasar/hipotesis.md`, `pasar/pelajaran.md`
+   (ditulis ulang; jangan diedit manual). Stdout = pesan Telegram hanya bila ada yang dinilai/berubah.
+
+```bash
+.venv/Scripts/python.exe scripts/uji_hipotesis.py --once
+```
+(`--sekarang 2026-10-14T23:40` untuk uji, `--json`). Log: `logs/uji_hipotesis.log`, pembungkus `logs/uji_cron.log`.
+`mcp_paper_baca_memori("hipotesis")` merender tabel langsung dari jsonl + hasil, jadi agent melihat hipotesis baru tanpa menunggu
+run malam. Usulan pelajaran dari agent (`pasar/pelajaran-usulan.md`, status `uji`) **tidak** otomatis naik: pemilik yang
+memutuskan dengan mengedit file itu; skrip hanya melaporkan jumlahnya.
+
+| Gejala | Tindakan |
+|---|---|
+| Hipotesis lama berstatus `terbuka` terus | `uji_hipotesis.py --once`: cek jatuh tempo (batas + 10 menit) dan `kline_1h` simbolnya (`collector.py status`) |
+| Banyak `ambigu` | Simbol baru/koin dengan `kline_1h` kurang dari horizon; atau bar 1d (UTC) belum lengkap — tunggu run berikutnya |
+| `tulis_hipotesis` ditolak "ATR tidak tersedia" | `kline_1h` simbol itu belum terisi (butuh > 15 bar tf); pakai `sentuh_harga`/`close_arah` |
+
 ## Milestone berikutnya
 
-- **Milestone 3**: baseline acak (order acak dengan budget yang sama) sebagai pembanding, kriteria lulus §19.7,
-  memori pasar lengkap (§16: pelajaran yang dinilai skrip), referensi buku (§15), tuning pemindai dari data nyata
-  (`lookback_h` 96 untuk level 15m, `score_min`, `leverages`).
+- **3b** panel psikologi pasar harian (§16.2: Fear&Greed, OI, L/S ratio, taker, premium Coinbase/IDR, stablecoin) sebagai
+  skrip + tool MCP untuk catatan harian & hipotesis.
+- **3c** referensi buku & playbook (§15): `konversi_buku.py`, `indeks.md`, `playbook.md`, tool `cari_referensi` (butuh ebook).
+- Tuning pemindai dari data nyata (`lookback_h` 96 untuk level 15m, `score_min`, bobot VOL, `leverages`).

@@ -5,8 +5,8 @@ Stdout adalah kanal protokol MCP: TIDAK ADA print(). Log hanya ke logs/mcp_serve
 
 Tool hanya membungkus API publik: PaperEngine (order/posisi/laporan), SqliteMarket (data pasar, baca saja),
 analisis.py (indikator/level/jejak/tabel leverage), BudgetGuard.status (biaya API).
-File yang ditulis server ini hanya catatan agent: jurnal/agent/, pasar/harian/, pasar/hipotesis.md,
-pasar/pelajaran-usulan.md. Nama file berasal dari jam, bukan dari input agent.
+File yang ditulis server ini hanya catatan agent: jurnal/agent/, pasar/harian/, pasar/hipotesis.jsonl (append; dinilai
+uji_hipotesis.py), pasar/pelajaran-usulan.md. Nama file berasal dari jam, bukan dari input agent.
 """
 from __future__ import annotations
 
@@ -25,6 +25,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import analisis as A  # noqa: E402
 import common as C  # noqa: E402
+import evaluasi as E  # noqa: E402
+import hipotesis as H  # noqa: E402
 from budget_guard import BudgetGuard  # noqa: E402
 from paper_engine import LONG, SHORT, SWING, TIKET, OrderRequest, PaperEngine, SqliteMarket  # noqa: E402
 
@@ -33,17 +35,14 @@ PROXY_HEALTH = "http://127.0.0.1:8585/healthz"
 FRESH_OK_S = 90
 MAX_HIPOTESIS_PER_HARI = 3
 MAX_READ_CHARS = 20_000
-POLA = (
-    "penumpukan-leverage", "breakout-gagal", "kapitulasi", "divergensi-funding", "reaksi-berita-terbalik",
-    "kompresi", "pullback-ke-level", "wick-penolakan", "lonjakan-volume", "euforia-komunitas", "panik-komunitas",
-)
+POLA = H.POLA
 MS_FIELDS = {"ts", "open_time", "funding_time", "opened_ts", "closed_ts", "created_ts", "activate_ts", "expire_ts",
              "done_ts", "mark_ts", "opened_bar", "closed_bar", "bar_open_time", "run_ts", "next_funding_time", "onboard_date",
              "bar_terakhir", "bar_1m_ts", "tick_ts", "data_tick_ts", "last_ts"}
 TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
-    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran",
+    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus",
 )
 
 
@@ -404,6 +403,14 @@ class Tools:
                 g.conn.close()
         return self._call("biaya_api", run)
 
+    def statistik_lulus(self, sejak: Optional[str] = None) -> dict:
+        """Statistik kelulusan §19.7 per akun (tiket, swing, acak = bayangan acak yang dibuat mesin sebagai pembanding): sampel, expectancy/trade setelah fee, per bulan, win rate, stabilitas tanpa 5% trade terbaik, kepatuhan aturan tiket, tiket vs acak (uji permutasi + sign test). Nilai 'tidak tersedia' bila sampel < 10 — laporkan apa adanya, jangan menafsirkan."""
+        def run():
+            st = E.compute(self.ctx.engine.conn, self.ctx.clock(), C.parse_iso_ms(sejak) if sejak else None)
+            st["markdown"] = E.render_markdown(st)
+            return st
+        return self._call("statistik_lulus", run)
+
     # ---- catatan agent (file di bawah ROOT, nama dari jam)
     def _append(self, rel: str, text: str) -> Path:
         p = self.ctx.root / rel
@@ -433,6 +440,11 @@ class Tools:
                    "jurnal": f"jurnal/agent/{day}.md", "pelajaran-usulan": "pasar/pelajaran-usulan.md"}.get(jenis)
             if rel is None:
                 raise ValueError("jenis harus pelajaran|hipotesis|harian|jurnal|pelajaran-usulan")
+            jl = self.ctx.root / "pasar" / "hipotesis.jsonl"
+            if jenis == "hipotesis" and jl.exists():   # tabel dirender dari jsonl + hasil penilaian skrip
+                hasil = {h["id"]: h for h in H.load_jsonl(self.ctx.root / "pasar" / "hipotesis-hasil.jsonl")}
+                txt = H.render_hipotesis_md(H.load_jsonl(jl), hasil)
+                return {"path": "pasar/hipotesis.jsonl", "ada": True, "isi": txt[-MAX_READ_CHARS:], "terpotong": len(txt) > MAX_READ_CHARS}
             p = self.ctx.root / rel
             if not p.exists():
                 return {"path": rel, "ada": False, "isi": ""}
@@ -458,26 +470,30 @@ class Tools:
             return {"ok": True, "path": f"pasar/harian/{day}.md"}
         return self._call("tulis_catatan_harian", run)
 
-    def tulis_hipotesis(self, pola: str, kondisi: str, prediksi: str, batas_hari: int = 3, symbol: Optional[str] = None) -> dict:
-        """Tambah hipotesis yang bisa diuji ke pasar/hipotesis.md (maks 3 per hari). pola harus dari daftar tetap; kondisi & prediksi terukur."""
+    def tulis_hipotesis(self, pola: str, symbol: str, tf: str, jenis: str, arah: str, nilai: Optional[float] = None,
+                        batas_hari: int = 3, kondisi: str = "", catatan: str = "") -> dict:
+        """Tambah hipotesis TERUKUR ke pasar/hipotesis.jsonl (maks 3/hari); dinilai skrip uji_hipotesis.py saat jatuh tempo, bukan oleh agent. pola: daftar tetap. tf: 1h|4h|1d. jenis: sentuh_harga (nilai = harga target), gerak_atr (nilai = kelipatan ATR14 tf, mis. 2.0), close_arah (nilai diabaikan). arah: atas|bawah. batas_hari 1–7. kondisi: fakta terukur yang memicu hipotesis (angka, simbol, tf)."""
         def run():
-            if pola not in POLA:
-                raise ValueError(f"pola harus salah satu dari: {', '.join(POLA)}")
             now = self.ctx.clock()
             day = C.day_wib(now)
-            p = self.ctx.root / "pasar" / "hipotesis.md"
-            lines = p.read_text(encoding="utf-8").splitlines() if p.exists() else []
-            rows = [ln for ln in lines if ln.startswith("| H-")]
-            today = [ln for ln in rows if f"| {day} |" in ln]
+            path = self.ctx.root / "pasar" / "hipotesis.jsonl"
+            recs = H.load_jsonl(path)
+            today = [r for r in recs if r.get("hari") == day]
             if len(today) >= MAX_HIPOTESIS_PER_HARI:
                 raise ValueError(f"sudah {MAX_HIPOTESIS_PER_HARI} hipotesis hari ini; tidak boleh menambah lagi")
-            hid = f"H-{len(rows) + 1:04d}"
-            batas = C.day_wib(now + int(batas_hari) * C.DAY_MS)
-            cell = lambda s: str(s).replace("|", "/").replace("\n", " ").strip()  # noqa: E731
-            if not p.exists():
-                self._append("pasar/hipotesis.md", "# Hipotesis\n\n| ID | Dibuat | Pola | Simbol | Kondisi (terukur) | Prediksi | Batas | Status | Hasil |\n|---|---|---|---|---|---|---|---|---|\n")
-            self._append("pasar/hipotesis.md", f"| {hid} | {day} | {pola} | {cell(symbol or '-')} | {cell(kondisi)} | {cell(prediksi)} | {batas} | terbuka | — |\n")
-            return {"ok": True, "id": hid, "batas": batas, "sisa_hari_ini": MAX_HIPOTESIS_PER_HARI - len(today) - 1}
+            sym = symbol.strip()
+            lm = self.ctx.market.last_mark(sym)
+            harga = float(lm[0]) if lm else None
+            atr = None
+            if jenis == "gerak_atr" and tf in H.TF:
+                h1 = A.load_bars_1h(self.ctx.market, sym, 120 if tf == "1d" else 60, now)
+                bars = h1 if tf == "1h" else A.resample(h1, A.TF_MS[tf], now)
+                atr = A.atr(bars, H.ATR_N) if len(bars) > H.ATR_N + 1 else None
+            rec = H.new_record(f"H-{len(recs) + 1:04d}", now, pola, sym, tf, jenis, arah, nilai, int(batas_hari), kondisi, catatan, harga, atr, "hermes")
+            H.append_jsonl(path, rec)
+            return {"ok": True, "id": rec["id"], "batas": rec["batas"], "harga_awal": harga, "atr_awal": atr,
+                    "sisa_hari_ini": MAX_HIPOTESIS_PER_HARI - len(today) - 1,
+                    "catatan": "dinilai skrip (uji_hipotesis.py) setelah batas; hasil terlihat lewat baca_memori('hipotesis')"}
         return self._call("tulis_hipotesis", run)
 
     def usul_pelajaran(self, pola: str, ringkasan: str, bukti: str, sampel: int = 0) -> dict:

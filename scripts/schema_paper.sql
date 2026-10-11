@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS account(
 );
 INSERT OR IGNORE INTO account(name, kind, budget_rule, budget_usdt) VALUES
   ('tiket', 'tiket', 'daily_total', 1.00),
-  ('swing', 'swing', 'per_position', 10.00);
+  ('swing', 'swing', 'per_position', 10.00),
+  ('acak',  'acak',  'daily_total', 1.00);   -- bayangan acak per order tiket agent (pembanding, hanya dibuat mesin)
 
 CREATE TABLE IF NOT EXISTS orders(
   id INTEGER PRIMARY KEY,
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS orders(
   price REAL, stop_price REAL, qty REAL NOT NULL, leverage INTEGER,
   margin_usdt REAL, notional REAL, fee_reserved REAL,
   tp_price REAL, sl_price REAL, post_only INTEGER NOT NULL DEFAULT 1,
+  tp_pct REAL, sl_pct REAL,                                         -- jarak relatif (akun acak), diresolusi saat terisi
   status TEXT NOT NULL,                                             -- NEW|ACTIVE|FILLED|CANCELED|EXPIRED|REJECTED
   reject_code TEXT, reject_reason TEXT,
   position_id INTEGER, oco_group INTEGER,

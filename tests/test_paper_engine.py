@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import os
+import random
 import sys
+from decimal import Decimal
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import common as C  # noqa: E402
-from common import MINUTE_MS, connect  # noqa: E402
+from common import D, MINUTE_MS, connect, is_multiple  # noqa: E402
 from fixtures import BTC, CN, DAY, DAY2, DAY_MS, NOBR, XYZ, FixtureMarket, t  # noqa: E402
 from paper_engine import (  # noqa: E402
     LONG, SHORT, EngineConfig, OrderRequest, PaperEngine, liq_price, limit_fill, pick_bracket, size_for_margin,
@@ -25,7 +27,7 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.market = FixtureMarket().set_mark(BTC, 82800.0, t("10:03"))
         self.clock_ms = [t("10:03", sec=27)]
-        self.eng = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock_ms[0], cfg=EngineConfig())
+        self.eng = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock_ms[0], cfg=EngineConfig(acak_enabled=False))
 
     # --- helper
     def at(self, ms: int):
@@ -449,3 +451,118 @@ class TestConcurrency(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAcak(unittest.TestCase):
+    """T20–T23: bayangan acak per order tiket (§19.7)."""
+
+    def setUp(self):
+        self.market = FixtureMarket().set_mark(BTC, 82800.0, t("10:03"))
+        self.clock_ms = [t("10:03", sec=27)]
+        self.eng = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock_ms[0], cfg=EngineConfig())
+
+    def run_bar(self, ot):
+        self.clock_ms[0] = ot + 2 * MINUTE_MS
+        return self.eng.step()
+
+    def order(self, **kw):
+        return self.eng.place_order(OrderRequest(account="tiket", symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82700.0, tp_price=83000.0, **kw))
+
+    def row(self, table, rid, eng=None):
+        return dict((eng or self.eng).conn.execute(f"SELECT * FROM {table} WHERE id=?", (rid,)).fetchone())
+
+    def events(self):
+        return [e[0] for e in self.eng.conn.execute("SELECT type FROM events ORDER BY id")]
+
+    def test_t20_shadow_created(self):
+        r = self.order()
+        self.assertTrue(r.ok, str(r))
+        self.assertEqual(r.shadow_order_id, 2)
+        s = self.row("orders", 2)
+        self.assertEqual((s["account"], s["type"], s["plan_id"], s["qty"], s["leverage"], s["created_by"], s["post_only"]),
+                         ("acak", "MARKET", "ACAK:1", 0.001, 100, "engine", 0))
+        self.assertAlmostEqual(s["tp_pct"], 300 / 82700, places=9)
+        self.assertIsNone(s["sl_pct"])
+        self.assertIsNone(s["tp_price"])
+        self.assertEqual(s["side"], random.Random("acak-v1:1").choice((LONG, SHORT)))
+        self.assertIn("seed acak-v1", s["note"])
+        bs = self.eng.budget_status("tiket")
+        self.assertAlmostEqual(bs["reserved"], 0.827 + 82.7 * 0.0002, places=6)     # acak tidak ikut dihitung
+        ak = self.eng.budget_status("acak")
+        self.assertEqual(ak["account"], "acak")
+        self.assertAlmostEqual(ak["reserved"], 0.828 + 82.8 * 0.0005, places=6)      # market: ref = mark, fee taker
+        self.assertEqual(self.events(), ["ORDER_NEW", "ORDER_NEW", "ACAK_SHADOW"])
+
+    def test_t21_shadow_fill_tp_resolution_and_eod(self):
+        self.order()
+        side = self.row("orders", 2)["side"]
+        self.market.add_bar(BTC, t("10:04"), 82790, 82800, 82750, 82780)      # limit tiket 82700 tidak tersentuh
+        rep = self.run_bar(t("10:04"))
+        self.assertEqual(rep["fills"], 1)
+        p = self.row("positions", 1)
+        slip = self.eng.slip(BTC)
+        self.assertEqual(p["account"], "acak")
+        self.assertAlmostEqual(p["entry_price"], 82790 * (1 + slip) if side == LONG else 82790 * (1 - slip), places=6)
+        pct = D(300) / D(82700)
+        exp_tp = C.round_step(D(p["entry_price"]) * ((1 + pct) if side == LONG else (1 - pct)), Decimal("0.1"), "down" if side == LONG else "up")
+        self.assertAlmostEqual(p["tp_price"], float(exp_tp), places=6)
+        self.assertTrue(is_multiple(D(str(p["tp_price"])), Decimal("0.1")))
+        self.assertIsNone(p["sl_price"])
+        self.assertEqual(self.eng.conn.execute("SELECT is_maker, rule FROM fills WHERE position_id=1").fetchone()[1], "MARKET_OPEN")
+        self.assertEqual(self.row("orders", 1)["status"], "ACTIVE")
+        # EOD: order tiket kedaluwarsa, posisi acak ditutup paksa
+        self.market.add_bar(BTC, t("23:50"), 82790, 82800, 82750, 82780)
+        self.run_bar(t("23:50"))
+        self.assertEqual(self.row("orders", 1)["status"], "EXPIRED")
+        self.assertEqual(self.row("positions", 1)["close_reason"], "EOD")
+        rows = self.eng.rollover_day(DAY)
+        self.assertEqual([r["account"] for r in rows], ["tiket", "swing", "acak"])
+        self.assertEqual((rows[0]["tidak_terisi_n"], rows[2]["filled_n"], rows[2]["other_close_n"]), (1, 1, 1))
+        rep = self.eng.report(DAY)
+        self.assertIn("Tiket vs acak", rep)
+        self.assertIn("| acak | 1 | 0 | 0 | 1 | 0 |", rep)
+        self.assertIn("Acak (bayangan pembanding", rep)
+
+    def test_t22_shadow_skip_never_breaks_order(self):
+        self.eng.cfg.acak_budget = 0.01
+        r = self.order()
+        self.assertTrue(r.ok, str(r))
+        self.assertIsNone(r.shadow_order_id)
+        s = self.row("orders", 2)
+        self.assertEqual((s["account"], s["status"], s["reject_code"]), ("acak", "REJECTED", "BUDGET_ACAK"))
+        self.assertIn("ACAK_SKIP", self.events())
+        self.eng.cfg.acak_budget = 1.0
+        # swing tidak memicu bayangan
+        r2 = self.eng.place_order(OrderRequest("swing", BTC, LONG, 0.001, 10, price=82600.0, tp_price=83400.0, sl_price=82400.0))
+        self.assertTrue(r2.ok, str(r2))
+        self.assertIsNone(r2.shadow_order_id)
+        # acak_enabled=False tidak memicu
+        self.assertTrue(self.eng.cancel_order(1))
+        self.eng.cfg.acak_enabled = False
+        r3 = self.order()
+        self.assertTrue(r3.ok, str(r3))
+        self.assertIsNone(r3.shadow_order_id)
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM orders WHERE account='acak'").fetchone()[0], 1)
+        # batal: bayangan NEW ikut dibatalkan, reservasi acak dilepas
+        self.eng.cfg.acak_enabled = True
+        self.assertTrue(self.eng.cancel_order(r3.order_id))
+        r4 = self.order()
+        sid = r4.shadow_order_id
+        self.assertIsNotNone(sid)
+        self.assertTrue(self.eng.cancel_order(r4.order_id))
+        self.assertEqual(self.row("orders", sid)["status"], "CANCELED")
+        self.assertIn("ikut order asli", self.row("orders", sid)["note"])
+        self.assertAlmostEqual(self.eng.budget_status("acak")["reserved"], 0.0)
+        # pengguna tidak boleh memasang order acak langsung
+        r5 = self.eng.place_order(OrderRequest("acak", BTC, LONG, 0.001, 100, price=82700.0))
+        self.assertEqual(r5.reject_code, "ACCOUNT")
+
+    def test_t23_deterministic_side_and_eod_code(self):
+        other = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock_ms[0], cfg=EngineConfig())
+        a = self.order()
+        b = other.place_order(OrderRequest(account="tiket", symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82700.0, tp_price=83000.0))
+        self.assertEqual(self.row("orders", a.shadow_order_id)["side"], self.row("orders", b.shadow_order_id, other)["side"])
+        self.clock_ms[0] = t("23:55")
+        r = self.eng.place_order(OrderRequest(account="acak", symbol=BTC, side=LONG, qty=0.001, leverage=100, type="MARKET", post_only=False,
+                                              shadow_of=1, created_by="engine"))
+        self.assertEqual(r.reject_code, "ACAK_EOD")

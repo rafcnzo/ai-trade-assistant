@@ -3,6 +3,18 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.5 (11 Okt 2026, Milestone 3a)
+- **§19.7 baseline acak** = bayangan per order tiket agent di akun paper `acak`: simbol, leverage, qty, jarak TP/SL sama; sisi acak
+  deterministik (`Random("acak-v1:<order_id>")`), entry market di open bar berikutnya, budget cermin $1/hari. Perbandingan:
+  selisih expectancy + uji permutasi dan sign test berpasangan (`scripts/evaluasi.py`, tool `statistik_lulus`).
+- **§16.5 hipotesis terstruktur**: `jenis` sentuh_harga | gerak_atr | close_arah, `tf` 1h|4h|1d, `arah`, `nilai`, `batas_hari` 1–7;
+  disimpan `pasar/hipotesis.jsonl`; dinilai `uji_hipotesis.py` dari `kline_1h` (horizon mulai bucket setelah dibuat); baseline =
+  200 titik awal acak dalam 120 hari dengan prediksi yang sama (jarak relatif / kelipatan ATR).
+- **§16.6 pelajaran** ditulis skrip (`pasar/pelajaran.md`), bukan `/briefing`: naik bila sampel ≥ 10 dan hit rate ≥ baseline + 15 poin,
+  dinilai ulang tiap 30 hari (jendela 90 hari), pensiun bila ≤ baseline + 5 poin, maks 15 aktif. Jadwal: cron Hermes 23:40 WIB.
+- **§16.7 ritme** otomatis harian (23:40 uji hipotesis, 23:55 evaluasi agent), menggantikan pemicu manual `/briefing`.
+- §19.6: usulan pelajaran agent (`pelajaran-usulan.md`) tetap menunggu keputusan pemilik; skrip hanya melaporkan jumlahnya.
+
 ### Perubahan v1.4 (11 Okt 2026)
 - **Otak asisten = Hermes Agent** (Nous Research, native Windows), bukan Claude Code. Claude Code hanya membangun.
   §19.8 pilihan dibuat; §19.3 arsitektur menjadi: Task Scheduler → collector + `budget_proxy.py` + Hermes gateway

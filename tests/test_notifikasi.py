@@ -17,7 +17,7 @@ import common as C  # noqa: E402
 import notifikasi as N  # noqa: E402
 from common import MINUTE_MS, connect  # noqa: E402
 from fixtures import BTC, FixtureMarket, t  # noqa: E402
-from paper_engine import LONG, OrderRequest, PaperEngine  # noqa: E402
+from paper_engine import LONG, EngineConfig, OrderRequest, PaperEngine  # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -28,7 +28,7 @@ class Base(unittest.TestCase):
         self.market = FixtureMarket().set_mark(BTC, 82800.0, t("10:03"))
         self.clock = [t("10:03", sec=27)]
         self.conn = connect(self.root / "paper.sqlite")
-        self.eng = PaperEngine(self.conn, self.market, clock=lambda: self.clock[0])
+        self.eng = PaperEngine(self.conn, self.market, clock=lambda: self.clock[0], cfg=EngineConfig(acak_enabled=False))
 
     def tearDown(self):
         self.conn.close()
@@ -130,3 +130,19 @@ class TestNotifikasi(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAcakNotif(Base):
+    def test_n4_acak_events_skipped(self):
+        self.eng.cfg.acak_enabled = True
+        self.notif()
+        self.order(tp=83000.0)
+        msg = self.notif()
+        self.assertIn("2 kejadian baru", msg)                     # ORDER_NEW tiket + 🎲; ORDER_NEW acak dilewati
+        self.assertNotIn("acak BTCUSDT", msg)
+        self.assertIn("🎲 Bayangan acak: order #2", msg)
+        self.assertEqual(N.read_cursor(self.cur), 3)             # kursor tetap melewati kejadian acak
+        self.market.add_bar(BTC, t("10:04"), 82790, 82800, 82750, 82780)
+        self.run_bar(t("10:04"))                                  # hanya bayangan yang terisi
+        self.assertEqual(self.notif(), "")
+        self.assertEqual(N.read_cursor(self.cur), 4)

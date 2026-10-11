@@ -38,6 +38,7 @@ TUTUP = {"TP": "🎯 TP", "STOP": "🛑 STOP", "MANUAL": "🔚 TUTUP MANUAL", "E
 @dataclass
 class NotifConfig:
     max_events: int = 20     # per pesan; sisanya diringkas sebagai "+n lebih lama"
+    skip_accounts: tuple = ("acak",)   # bayangan acak (pembanding mesin) tidak dinotifikasi
 
 
 # --------------------------------------------------------------------------- format
@@ -77,6 +78,10 @@ def format_event(e: dict) -> str:
         line = f"❌ Order #{oid} {acc} {sym} {side} @ {fmt_px(e['o_price'])} dibatalkan ({msg})"
     elif typ == "ORDER_EXPIRED":
         line = f"⌛ Order #{oid} {acc} {sym} {side} @ {fmt_px(e['o_price'])} kedaluwarsa — tidak terisi"
+    elif typ == "ACAK_SHADOW":
+        line = f"🎲 Bayangan acak: {msg}"
+    elif typ == "ACAK_SKIP":
+        line = f"🎲 Bayangan acak dilewati untuk order #{oid}: {msg}"
     elif typ == "CLOSE_REQUEST":
         line = f"⏳ Posisi #{pid} {sym} {side}: permintaan tutup ({msg}); dieksekusi market di bar berikutnya"
     elif typ == "OPEN":
@@ -160,10 +165,15 @@ def run(conn: sqlite3.Connection, cursor_path: Path, cfg: Optional[NotifConfig] 
     rows = fetch(conn, cur)
     if not rows:
         return ""
+    last_id = rows[-1]["id"]
+    rows = [e for e in rows if (e["p_account"] or e["o_account"]) not in cfg.skip_accounts]
+    if not rows:
+        write_cursor(cursor_path, last_id, now)
+        return ""
     skipped = max(0, len(rows) - cfg.max_events)
     shown = rows[skipped:]
     msg = format_message(shown, skipped)
-    write_cursor(cursor_path, rows[-1]["id"], now)
+    write_cursor(cursor_path, last_id, now)
     log.info("kirim %d kejadian (#%d..#%d)%s", len(shown), shown[0]["id"], shown[-1]["id"], f", lewati {skipped}" if skipped else "")
     return msg
 

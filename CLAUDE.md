@@ -31,11 +31,14 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 - **Tidak ada API key exchange**, termasuk key read-only. Hanya endpoint publik. Jangan pernah menambahkan, meminta, atau menyimpan key.
 - Satu penulis per database/berkas:
   - `data/pasar.sqlite` ← hanya `scripts/collector.py`
-  - `data/paper.sqlite` ← hanya `scripts/paper_engine.py` (dipanggil collector, CLI, atau `mcp_server.py`)
+  - `data/paper.sqlite` ← hanya `scripts/paper_engine.py` (dipanggil collector, CLI, atau `mcp_server.py`); akun `acak`
+    (bayangan acak per order tiket) hanya dibuat mesin, tidak pernah lewat CLI/MCP
   - `data/budget.sqlite` ← hanya `scripts/budget_guard.py` (dipanggil `budget_proxy.py`)
   - `data/kandidat.sqlite` ← hanya `scripts/pemindai.py`
   - `data/notif.json` ← hanya `scripts/notifikasi.py` (kursor kejadian yang sudah dikirim ke Telegram)
-  - `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` ← hanya `scripts/mcp_server.py`
+  - `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.jsonl` (append), `pasar/pelajaran-usulan.md` ← hanya `scripts/mcp_server.py`
+  - `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/pelajaran.jsonl`, `pasar/pelajaran.md` ← hanya `scripts/uji_hipotesis.py`
+    (skrip yang menilai; agent dan manusia tidak mengedit view ini — pemilik memutuskan usulan di `pelajaran-usulan.md`)
   Jangan menulis SQL ke DB ini dari tempat lain. Agent hanya memakai tool MCP (`place_order`/`cancel_order`/…).
 - Agent (Hermes) tidak diberi toolset terminal/file/browser; integritas mesin bergantung pada itu. Jangan melonggarkan
   `platform_toolsets`/`disabled_toolsets` di `hermes/config.snippet.yaml` tanpa alasan tertulis di CHANGELOG.
@@ -49,8 +52,9 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 ## Struktur
 ```
 scripts/   common.py, collector.py, paper_engine.py, budget_guard.py, budget_proxy.py, analisis.py,
-           mcp_server.py, pemindai.py, notifikasi.py, schema_{pasar,paper,budget,kandidat}.sql
-hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron}.py, config.snippet.yaml, cron.cmd, sync.py
+           mcp_server.py, pemindai.py, notifikasi.py, evaluasi.py, hipotesis.py, uji_hipotesis.py,
+           schema_{pasar,paper,budget,kandidat}.sql
+hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron,uji_cron}.py, config.snippet.yaml, cron.cmd, sync.py
 tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)
 data/      sqlite (gitignored)        logs/   log UTF-8 (gitignored)
 docs/      spesifikasi, operasi, STATUS, CHANGELOG      jurnal/ laporan/ pasar/ referensi/ (gitignored sebagian)

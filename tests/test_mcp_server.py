@@ -15,8 +15,9 @@ import common as C  # noqa: E402
 from budget_guard import BudgetGuard  # noqa: E402
 from common import MINUTE_MS, connect  # noqa: E402
 from fixtures import BTC, CN, DAY, DAY_MS, FixtureMarket, t  # noqa: E402
+import hipotesis as H  # noqa: E402
 from mcp_server import TOOL_NAMES, Ctx, Tools, register  # noqa: E402
-from paper_engine import PaperEngine  # noqa: E402
+from paper_engine import EngineConfig, PaperEngine  # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -31,7 +32,10 @@ class Base(unittest.TestCase):
             self.market.add_bar(BTC, start + i * MINUTE_MS, 82800, 82801, 82799, 82800)
         for i in range(60):
             self.market.add_bar(CN, t("09:03") + i * MINUTE_MS, 2.0, 2.01, 1.99, 2.0)
-        self.engine = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock[0])
+        h0 = t("10:03") - t("10:03") % C.HOUR_MS - 60 * C.HOUR_MS
+        for i in range(60):                                   # bar 1h BTC: range 100 → ATR14 = 100
+            self.market.add_bar_1h(BTC, h0 + i * C.HOUR_MS, 82800, 82850, 82750, 82800)
+        self.engine = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock[0], cfg=EngineConfig(acak_enabled=False))
         self.pasar = connect(self.root / "pasar.sqlite")
         C.init_schema(self.pasar, C.SCRIPTS_DIR / "schema_pasar.sql", "1")
         with C.tx(self.pasar):
@@ -157,17 +161,18 @@ class TestNotes(Base):
 
     def test_m7_hipotesis_limit_and_pola(self):
         for i in range(3):
-            r = self.tools.tulis_hipotesis("breakout-gagal", f"kondisi {i}", "prediksi | pipa", batas_hari=3, symbol=BTC)
+            r = self.tools.tulis_hipotesis("breakout-gagal", BTC, "1h", "close_arah", "atas", batas_hari=3, kondisi=f"kondisi {i} | pipa")
             self.assertTrue(r["ok"], r)
             self.assertEqual(r["id"], f"H-{i + 1:04d}")
         self.assertEqual(r["batas"], C.day_wib(t("10:03") + 3 * C.DAY_MS))
-        r4 = self.tools.tulis_hipotesis("breakout-gagal", "k", "p")
+        r4 = self.tools.tulis_hipotesis("breakout-gagal", BTC, "1h", "close_arah", "atas", kondisi="k")
         self.assertFalse(r4["ok"])
         self.assertIn("3 hipotesis", r4["error"])
-        self.assertFalse(self.tools.tulis_hipotesis("pola-ngawur", "k", "p")["ok"])
-        txt = (self.root / "pasar" / "hipotesis.md").read_text(encoding="utf-8")
-        self.assertIn("| H-0003 |", txt)
-        self.assertIn("prediksi / pipa", txt)
+        self.assertFalse(self.tools.tulis_hipotesis("pola-ngawur", BTC, "1h", "close_arah", "atas", kondisi="k")["ok"])
+        m = self.tools.baca_memori("hipotesis")
+        self.assertIn("| H-0003 |", m["isi"])
+        self.assertIn("kondisi 2 / pipa", m["isi"])
+        self.assertFalse((self.root / "pasar" / "hipotesis.md").exists())        # view ditulis uji_hipotesis.py, bukan mcp_server
         u = self.tools.usul_pelajaran("kompresi", "ringkas", "bukti", 12)
         self.assertEqual((u["id"], u["status"]), ("U-001", "uji"))
         c = self.tools.tulis_catatan_harian("kerumunan long", jejak_grafik="WICK di 82650", rezim="range")
@@ -223,12 +228,38 @@ class TestNotes(Base):
         self.assertIn("kline_1h belum cukup", self.tools.ohlcv(CN, "4h")["catatan"])
 
 
+class TestHipotesisStatistik(Base):
+    def test_m11_structured_hipotesis_and_statistik_lulus(self):
+        r = self.tools.tulis_hipotesis("kompresi", BTC, "1h", "gerak_atr", "bawah", nilai=2.0, batas_hari=3, kondisi="range 10 bar 1h < 2×ATR")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual((r["id"], r["harga_awal"]), ("H-0001", 82800.0))
+        self.assertAlmostEqual(r["atr_awal"], 100.0, places=6)
+        recs = H.load_jsonl(self.root / "pasar" / "hipotesis.jsonl")
+        self.assertEqual((recs[0]["jenis"], recs[0]["oleh"], recs[0]["batas_ms"]), ("gerak_atr", "hermes", t("10:03", sec=27) + 3 * C.DAY_MS))
+        self.assertFalse(self.tools.tulis_hipotesis("kompresi", BTC, "1h", "sentuh_harga", "atas", nilai=80000.0, kondisi="k")["ok"])   # sisi salah
+        self.assertFalse(self.tools.tulis_hipotesis("kompresi", BTC, "2h", "close_arah", "atas", kondisi="k")["ok"])
+        self.assertFalse(self.tools.tulis_hipotesis("kompresi", BTC, "1h", "close_arah", "atas", kondisi="k", batas_hari=9)["ok"])
+        self.assertFalse(self.tools.tulis_hipotesis("kompresi", "NOPEUSDT", "1h", "close_arah", "atas", kondisi="k")["ok"])    # tanpa mark
+        self.assertFalse(self.tools.tulis_hipotesis("kompresi", BTC, "1h", "close_arah", "atas", kondisi="")["ok"])
+        m = self.tools.baca_memori("hipotesis")
+        self.assertTrue(m["ada"])
+        self.assertIn("| H-0001 |", m["isi"])
+        self.assertIn("terbuka", m["isi"])
+        self.assertFalse((self.root / "pasar" / "hipotesis.md").exists())
+        s = self.tools.statistik_lulus()
+        self.assertTrue(s["lulus"]["sampel"].startswith("belum"))
+        self.assertTrue(str(s["akun"]["tiket"]["expectancy"]).startswith("tidak tersedia"))
+        self.assertIn("# Statistik kelulusan", s["markdown"])
+        self.assertIn("statistik_lulus", TOOL_NAMES)
+        self.assertEqual(len(TOOL_NAMES), 23)
+
+
 class TestRegistration(unittest.TestCase):
     def test_m9_register_fastmcp(self):
         from mcp.server.fastmcp import FastMCP
         mcp = FastMCP("paper-uji")
         names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
-        self.assertEqual(len(names), 22)
+        self.assertEqual(len(names), 23)
         listed = asyncio.run(mcp.list_tools())
         self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
         po = [x for x in listed if x.name == "pasang_order"][0]

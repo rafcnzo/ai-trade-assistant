@@ -13,6 +13,7 @@ Penulis tunggal data/paper.sqlite. Hasil trade hanya ditulis mesin.
 from __future__ import annotations
 
 import argparse
+import random
 import csv
 import json
 import logging
@@ -44,9 +45,10 @@ from common import (  # noqa: E402
     wib_clock_ms,
 )
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"   # v2: akun acak, orders.tp_pct/sl_pct
 LONG, SHORT = "LONG", "SHORT"
-TIKET, SWING = "tiket", "swing"
+TIKET, SWING, ACAK = "tiket", "swing", "acak"
+DAILY_ACCOUNTS = (TIKET, ACAK)   # budget harian $1, kedaluwarsa & tutup paksa EOD
 ENTRY_TYPES = ("LIMIT", "MARKET")
 
 
@@ -66,6 +68,9 @@ class EngineConfig:
     swing_entry_ttl_h: int = 72
     bar_grace_ms: int = 5_000
     mark_fallback_to_last: bool = True
+    acak_enabled: bool = True              # setiap order tiket (bukan dari mesin) dibuatkan bayangan acak di akun `acak`
+    acak_seed: str = "acak-v1"             # sisi acak = Random(f"{seed}:{order_id}") → deterministik, bisa diverifikasi
+    acak_budget: float = 1.00
 
 
 # --------------------------------------------------------------------------- data pasar
@@ -264,6 +269,9 @@ class OrderRequest:
     pattern: Optional[str] = None
     note: Optional[str] = None
     created_by: str = "cli"
+    shadow_of: Optional[int] = None    # order tiket asal (akun acak)
+    tp_pct: Optional[float] = None     # jarak TP relatif terhadap entry (akun acak; diresolusi saat terisi)
+    sl_pct: Optional[float] = None
 
 
 @dataclass
@@ -280,6 +288,7 @@ class OrderResult:
     leverage_max: Optional[int] = None
     activate_ts: Optional[int] = None
     expire_ts: Optional[int] = None
+    shadow_order_id: Optional[int] = None
 
     def __str__(self) -> str:
         if self.ok:
@@ -306,9 +315,19 @@ class PaperEngine:
         self.cfg = cfg or EngineConfig()
         self.log = log or logging.getLogger("paper_engine")
         init_schema(conn, C.SCRIPTS_DIR / "schema_paper.sql", SCHEMA_VERSION)
+        self._migrate()
         if meta_get(conn, "created_ts") is None:
             with tx(conn):
                 meta_set(conn, "created_ts", self.clock())
+
+    def _migrate(self) -> None:
+        """Kolom baru pada DB lama (CREATE TABLE IF NOT EXISTS tidak menambah kolom)."""
+        cols = {r[1] for r in self.conn.execute("PRAGMA table_info(orders)")}
+        with tx(self.conn):
+            for col in ("tp_pct", "sl_pct"):
+                if col not in cols:
+                    self.conn.execute(f"ALTER TABLE orders ADD COLUMN {col} REAL")
+            self.conn.execute("INSERT OR IGNORE INTO account(name, kind, budget_rule, budget_usdt) VALUES('acak','acak','daily_total',?)", (self.cfg.acak_budget,))
 
     # ---- util
     def event(self, level: str, type_: str, msg: str, position_id=None, order_id=None, ts=None) -> None:
@@ -411,17 +430,17 @@ class PaperEngine:
 
     def budget_status(self, account: str = TIKET, day: Optional[str] = None) -> dict:
         day = day or day_wib(self.clock())
-        if account == TIKET:
+        if account in DAILY_ACCOUNTS:
             used = self.conn.execute(
                 "SELECT COALESCE(SUM(margin_initial + COALESCE((SELECT fee_usdt FROM fills f WHERE f.order_id=p.entry_order_id), 0)), 0) "
-                "FROM positions p WHERE account='tiket' AND day_wib=?", (day,)
+                "FROM positions p WHERE account=? AND day_wib=?", (account, day)
             ).fetchone()[0]
             reserved = self.conn.execute(
                 "SELECT COALESCE(SUM(margin_usdt + COALESCE(fee_reserved,0)), 0) FROM orders "
-                "WHERE account='tiket' AND reduce_only=0 AND status IN ('NEW','ACTIVE') AND day_wib=?", (day,)
+                "WHERE account=? AND reduce_only=0 AND status IN ('NEW','ACTIVE') AND day_wib=?", (account, day)
             ).fetchone()[0]
-            total = self.cfg.tiket_budget
-            return {"account": TIKET, "day": day, "budget": total, "used": float(used), "reserved": float(reserved),
+            total = self.cfg.tiket_budget if account == TIKET else self.cfg.acak_budget
+            return {"account": account, "day": day, "budget": total, "used": float(used), "reserved": float(reserved),
                     "remaining": max(0.0, total - float(used) - float(reserved))}
         n_open = self.conn.execute("SELECT COUNT(*) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
         n_pending = self.conn.execute(
@@ -432,8 +451,14 @@ class PaperEngine:
 
     # ---- validasi
     def _validate(self, req: OrderRequest, now: int) -> dict:
-        if req.account not in (TIKET, SWING):
-            raise Reject("ACCOUNT", f"akun '{req.account}' tidak dikenal (tiket|swing)")
+        if req.account not in (TIKET, SWING, ACAK):
+            raise Reject("ACCOUNT", f"akun '{req.account}' tidak dikenal (tiket|swing|acak)")
+        if req.account == ACAK:
+            if req.shadow_of is None or req.type != "MARKET":
+                raise Reject("ACCOUNT", "akun acak hanya untuk bayangan mesin (MARKET, shadow_of)")
+            for label, pct in (("tp_pct", req.tp_pct), ("sl_pct", req.sl_pct)):
+                if pct is not None and not (0 < pct < 0.5):
+                    raise Reject("BAD_PCT", f"{label} {pct} di luar (0, 0.5)")
         if req.side not in (LONG, SHORT):
             raise Reject("SIDE", "sisi harus LONG atau SHORT")
         if req.type not in ENTRY_TYPES:
@@ -485,13 +510,14 @@ class PaperEngine:
             if (req.side == LONG and est_liq >= req.sl_price) or (req.side == SHORT and est_liq <= req.sl_price):
                 raise Reject("LIQ_INSIDE_STOP", f"likuidasi ≈ {est_liq:.6g} tercapai sebelum SL {req.sl_price}")
         # budget per akun
-        if req.account == TIKET:
+        if req.account in DAILY_ACCOUNTS:
+            tag = "TIKET" if req.account == TIKET else "ACAK"
             if now >= self.eod_ms(now):
-                raise Reject("TIKET_EOD", f"sudah lewat jam tutup tiket {self.cfg.tiket_eod_wib} WIB")
-            bs = self.budget_status(TIKET, day_wib(now))
+                raise Reject(f"{tag}_EOD", f"sudah lewat jam tutup tiket {self.cfg.tiket_eod_wib} WIB")
+            bs = self.budget_status(req.account, day_wib(now))
             need = margin + (fee_in if self.cfg.tiket_fee_from_budget else 0.0)
             if need > bs["remaining"] + 1e-9:
-                raise Reject("BUDGET_TIKET", f"butuh ${need:.4f} (margin {margin:.4f} + fee {fee_in:.4f}), sisa budget hari ini ${bs['remaining']:.4f}")
+                raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} (margin {margin:.4f} + fee {fee_in:.4f}), sisa budget {req.account} hari ini ${bs['remaining']:.4f}")
         else:
             if margin > self.cfg.swing_margin + 1e-9:
                 raise Reject("BUDGET_SWING", f"margin ${margin:.2f} > ${self.cfg.swing_margin:.2f} per trade")
@@ -528,25 +554,51 @@ class PaperEngine:
         activate = ceil_minute(now)
         if req.expire_ts is not None:
             expire = req.expire_ts
-        elif req.account == TIKET:
+        elif req.account in DAILY_ACCOUNTS:
             expire = self.eod_ms(now)
         else:
             expire = now + self.cfg.swing_entry_ttl_h * C.HOUR_MS
-        fee_reserved = v["fee_in"] if (req.account == TIKET and self.cfg.tiket_fee_from_budget) else 0.0
+        fee_reserved = v["fee_in"] if (req.account in DAILY_ACCOUNTS and self.cfg.tiket_fee_from_budget) else 0.0
         with tx(self.conn):
             cur = self.conn.execute(
                 "INSERT INTO orders(account,symbol,side,type,reduce_only,price,qty,leverage,margin_usdt,notional,fee_reserved,tp_price,sl_price,post_only,"
-                "status,plan_id,pattern,note,created_by,created_ts,activate_ts,expire_ts,day_wib) "
-                "VALUES(?,?,?,?,0,?,?,?,?,?,?,?,?,?,'NEW',?,?,?,?,?,?,?,?)",
+                "tp_pct,sl_pct,status,plan_id,pattern,note,created_by,created_ts,activate_ts,expire_ts,day_wib) "
+                "VALUES(?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,'NEW',?,?,?,?,?,?,?,?)",
                 (req.account, req.symbol, req.side, req.type, req.price, v["qty"], req.leverage, v["margin"], v["notional"], fee_reserved,
-                 req.tp_price, req.sl_price, int(req.post_only), req.plan_id, req.pattern, req.note, req.created_by, now, activate, expire, day_wib(now)),
+                 req.tp_price, req.sl_price, int(req.post_only), req.tp_pct, req.sl_pct, req.plan_id, req.pattern, req.note, req.created_by, now, activate, expire, day_wib(now)),
             )
             oid = cur.lastrowid
             self._ledger(now, req.account, "MARGIN_LOCK", -(v["margin"] + fee_reserved), "orders", oid)
             self.event("INFO", "ORDER_NEW", f"{req.account} {req.symbol} {req.side} {req.type} qty {v['qty']} @ {req.price or 'MARKET'} lev {req.leverage}x", order_id=oid, ts=now)
+        shadow_id = None
+        if req.account == TIKET and req.shadow_of is None and req.created_by != "engine" and self.cfg.acak_enabled:
+            shadow_id = self._shadow_acak(req, oid, v, now)
         return OrderResult(ok=True, order_id=oid, status="NEW", margin_usdt=v["margin"], notional=v["notional"],
                            est_liq_price=v["est_liq"], est_fee_in=v["fee_in"], leverage_max=v["bracket"].max_leverage,
-                           activate_ts=activate, expire_ts=expire)
+                           activate_ts=activate, expire_ts=expire, shadow_order_id=shadow_id)
+
+    def _shadow_acak(self, req: OrderRequest, oid: int, v: dict, now: int) -> Optional[int]:
+        """Bayangan acak (§19.7): simbol, leverage, qty, jarak TP/SL sama; sisi acak; entry market di open bar berikutnya.
+        Kegagalan apa pun hanya dicatat sebagai event ACAK_SKIP; order asli tidak terpengaruh."""
+        side = random.Random(f"{self.cfg.acak_seed}:{oid}").choice((LONG, SHORT))
+        ref = v["ref_price"]
+        tp_pct = abs(req.tp_price - ref) / ref if req.tp_price else None
+        sl_pct = abs(req.sl_price - ref) / ref if req.sl_price else None
+        sreq = OrderRequest(account=ACAK, symbol=req.symbol, side=side, qty=req.qty, leverage=req.leverage, type="MARKET", post_only=False,
+                            tp_pct=tp_pct, sl_pct=sl_pct, plan_id=f"ACAK:{oid}", pattern=req.pattern,
+                            note=f"bayangan acak dari order #{oid}; seed {self.cfg.acak_seed}", created_by="engine", shadow_of=oid)
+        try:
+            res = self.place_order(sreq)
+        except Exception as e:  # noqa: BLE001 - bayangan tidak boleh menggagalkan order asli
+            with tx(self.conn):
+                self.event("WARNING", "ACAK_SKIP", f"{type(e).__name__}: {e}", order_id=oid, ts=now)
+            return None
+        with tx(self.conn):
+            if res.ok:
+                self.event("INFO", "ACAK_SHADOW", f"order #{res.order_id} {side} MARKET {req.symbol} lev {req.leverage}x untuk order #{oid}", order_id=oid, ts=now)
+            else:
+                self.event("WARNING", "ACAK_SKIP", f"[{res.reject_code}] {res.reject_reason}", order_id=oid, ts=now)
+        return res.order_id if res.ok else None
 
     def cancel_order(self, order_id: int, who: str = "cli") -> bool:
         now = self.clock()
@@ -558,6 +610,11 @@ class PaperEngine:
                               (now, f" [dibatalkan oleh {who}]", order_id))
             self._ledger(now, r["account"], "MARGIN_RELEASE", (r["margin_usdt"] or 0) + (r["fee_reserved"] or 0), "orders", order_id)
             self.event("INFO", "ORDER_CANCEL", f"oleh {who}", order_id=order_id, ts=now)
+            # bayangan acak yang belum terisi ikut dibatalkan supaya jumlah sampel sebanding
+            for s in self.conn.execute("SELECT * FROM orders WHERE plan_id=? AND status IN ('NEW','ACTIVE') AND reduce_only=0", (f"ACAK:{order_id}",)).fetchall():
+                self.conn.execute("UPDATE orders SET status='CANCELED', done_ts=?, note=COALESCE(note,'')||' [ikut order asli]' WHERE id=?", (now, s["id"]))
+                self._ledger(now, s["account"], "MARGIN_RELEASE", (s["margin_usdt"] or 0) + (s["fee_reserved"] or 0), "orders", s["id"])
+                self.event("INFO", "ORDER_CANCEL", f"ikut order asli #{order_id}", order_id=s["id"], ts=now)
         return True
 
     def close_position_request(self, position_id: int, who: str = "cli") -> bool:
@@ -675,7 +732,7 @@ class PaperEngine:
                 "SELECT * FROM orders WHERE position_id=? AND type='MARKET' AND reduce_only=1 AND status IN ('NEW','ACTIVE') AND activate_ts<=?",
                 (p["id"], ot),
             ).fetchone()
-            if manual is not None or (p["account"] == TIKET and ot >= eod):
+            if manual is not None or (p["account"] in DAILY_ACCOUNTS and ot >= eod):
                 reason = "MANUAL" if manual is not None else "EOD"
                 px = bar.open * (1 - slip) if p["side"] == LONG else bar.open * (1 + slip)
                 self._close_position(p, px, reason, False, "MARKET_OPEN", bar, order_id=manual["id"] if manual else None)
@@ -710,7 +767,7 @@ class PaperEngine:
         for o in self.conn.execute(
             "SELECT * FROM orders WHERE symbol=? AND status='ACTIVE' AND reduce_only=0 ORDER BY id", (sym,)
         ).fetchall():
-            if o["account"] == TIKET and ot >= eod:
+            if o["account"] in DAILY_ACCOUNTS and ot >= eod:
                 self._expire_order(o, ot)
                 continue
             fill = None
@@ -759,6 +816,17 @@ class PaperEngine:
         liq = liq_price(o["side"], qty, px, margin, mmr, cum)
         fee_in = fee_amount(notional, is_maker, self.cfg)
         ts = ot if rule in ("GAP_OPEN", "MARKET_OPEN") else ot + 30_000
+        o = dict(o)
+        if o.get("tp_pct") or o.get("sl_pct"):   # akun acak: jarak relatif → harga, dibulatkan menjauh dari untung / lebih ketat
+            f = self.market.filters(o["symbol"])
+            if f is None:
+                self.event("WARNING", "ACAK_TANPA_TP", f"filter {o['symbol']} tidak tersedia; posisi tanpa TP/SL (ditutup EOD)", order_id=o["id"], ts=ts)
+            else:
+                long = o["side"] == LONG
+                if o.get("tp_pct") and not o.get("tp_price"):
+                    o["tp_price"] = float(C.round_step(D(px) * (1 + D(o["tp_pct"]) if long else 1 - D(o["tp_pct"])), f.tick_size, "down" if long else "up"))
+                if o.get("sl_pct") and not o.get("sl_price"):
+                    o["sl_price"] = float(C.round_step(D(px) * (1 - D(o["sl_pct"]) if long else 1 + D(o["sl_pct"])), f.tick_size, "up" if long else "down"))
         cur = self.conn.execute(
             "INSERT INTO positions(account,symbol,side,qty,entry_price,leverage,margin_initial,margin_now,notional_entry,mmr,cum,bracket,liq_price,"
             "tp_price,sl_price,entry_order_id,plan_id,pattern,day_wib,opened_ts,opened_bar,fees_total,funding_total,worst_mark,best_mark,status) "
@@ -875,9 +943,19 @@ class PaperEngine:
         p["status"] = "CLOSED"
 
     # ---- ringkasan harian / ekspor
+    def day_counts(self, account: str, day: str) -> dict:
+        pos = self.conn.execute("SELECT * FROM positions WHERE account=? AND day_wib=?", (account, day)).fetchall()
+        closed = [p for p in pos if p["status"] == "CLOSED"]
+        tt = self.conn.execute("SELECT COUNT(*) FROM orders WHERE account=? AND day_wib=? AND reduce_only=0 AND status='EXPIRED'", (account, day)).fetchone()[0]
+        return {"filled_n": len(pos), "tidak_terisi_n": tt,
+                "tp_n": sum(1 for p in closed if p["close_reason"] == "TP"),
+                "hangus_n": sum(1 for p in closed if p["close_reason"] in ("HANGUS", "FUNDING_LIQ")),
+                "other_close_n": sum(1 for p in closed if p["close_reason"] not in ("TP", "HANGUS", "FUNDING_LIQ")),
+                "pnl_net": sum(p["net_result"] or 0 for p in closed)}
+
     def rollover_day(self, day: str) -> list[dict]:
         out = []
-        for acc in (TIKET, SWING):
+        for acc in (TIKET, SWING, ACAK):
             pos = self.conn.execute("SELECT * FROM positions WHERE account=? AND day_wib=?", (acc, day)).fetchall()
             orders_n = self.conn.execute("SELECT COUNT(*) FROM orders WHERE account=? AND day_wib=? AND reduce_only=0 AND status!='REJECTED'", (acc, day)).fetchone()[0]
             tt = self.conn.execute("SELECT COUNT(*) FROM orders WHERE account=? AND day_wib=? AND reduce_only=0 AND status='EXPIRED'", (acc, day)).fetchone()[0]
@@ -934,6 +1012,12 @@ class PaperEngine:
         lines.append(f"Budget tiket: ${bs['budget']:.2f} | terpakai ${bs['used']:.4f} | tereservasi ${bs['reserved']:.4f} | sisa ${bs['remaining']:.4f}")
         sw = self.budget_status(SWING)
         lines.append(f"Swing: {sw['open']} posisi terbuka, {sw['pending']} order menunggu (maks {sw['max_open']}, margin ${sw['margin_per_trade']:.2f}/trade)")
+        ak = self.budget_status(ACAK, day)
+        lines.append(f"Acak (bayangan pembanding, dibuat mesin): terpakai ${ak['used']:.4f} | tereservasi ${ak['reserved']:.4f} | sisa ${ak['remaining']:.4f}")
+        lines += ["", "## Tiket vs acak (hari ini)", "", "| akun | posisi | TP | HANGUS | lain | TIDAK_TERISI | net |", "|---|---|---|---|---|---|---|"]
+        for acc in (TIKET, ACAK):
+            d = self.day_counts(acc, day)
+            lines.append(f"| {acc} | {d['filled_n']} | {d['tp_n']} | {d['hangus_n']} | {d['other_close_n']} | {d['tidak_terisi_n']} | {d['pnl_net']:+.4f} |")
         lines += ["", "## Posisi terbuka", "", "| id | akun | pair | sisi | qty | entry | lev | liq | jarak liq | TP | SL | unrealized | sejak |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for p in self.positions():
             lines.append(f"| {p['id']} | {p['account']} | {p['symbol']} | {p['side']} | {p['qty']} | {p['entry_price']:.6g} | {p['leverage']}x | {p['liq_price']:.6g} | "
@@ -1015,6 +1099,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     elif args.cmd == "budget":
         print(json.dumps(eng.budget_status(TIKET), ensure_ascii=False))
         print(json.dumps(eng.budget_status(SWING), ensure_ascii=False))
+        print(json.dumps(eng.budget_status(ACAK), ensure_ascii=False))
     elif args.cmd == "step":
         until = C.parse_iso_ms(args.sampai) if args.sampai else None
         print(eng.step(until_ms=until))

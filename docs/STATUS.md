@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 17:25 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 18:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -13,13 +13,16 @@ Folder Startup user (login, tanpa jendela)
  ├─ crypto-analyst_collector.vbs → run_collector.cmd     data pasar + mesin paper            (JALAN)
  ├─ crypto-analyst_proxy.vbs     → run_budget_proxy.cmd  127.0.0.1:8585 → Anthropic, cap $10/hari (JALAN, key_set)
  └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron
-      ├─ MCP "paper"               scripts/mcp_server.py, 22 tool  (TERHUBUNG, hermes mcp test paper OK)
+      ├─ MCP "paper"               scripts/mcp_server.py, 23 tool  (+statistik_lulus; tulis_hipotesis terstruktur)
       ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM);
       │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
       ├─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
-      └─ cron notif-paper          * * * * * --no-agent → notif_cron.py → scripts/notifikasi.py --cron (tanpa LLM):
-                                   kejadian paper (terisi/TP/STOP/likuidasi/kedaluwarsa/batal) → Telegram, kosong = diam
+      ├─ cron notif-paper          * * * * * --no-agent → notif_cron.py → scripts/notifikasi.py --cron (tanpa LLM):
+      │                            kejadian paper (terisi/TP/STOP/likuidasi/kedaluwarsa/batal) → Telegram, kosong = diam
+      └─ cron uji-hipotesis        40 23 * * * --no-agent → uji_cron.py → scripts/uji_hipotesis.py --cron (tanpa LLM):
+                                   nilai hipotesis jatuh tempo + baseline + pelajaran → Telegram bila ada hasil
 ```
+Mesin paper v2: setiap order tiket agent mendapat bayangan acak di akun `acak` (pembanding §19.7, dibuat mesin, tidak dinotifikasi).
 Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga mengisi `kline_1h` (120 hari) untuk konteks 1h/4h/1d.
 
 ## Milestone
@@ -29,7 +32,9 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 1 | Mesin paper trading: collector, paper_engine, budget_guard, 43 tes | **Selesai**, live |
 | 2a | Hermes: budget_proxy, analisis, mcp_server (22 tool), SOUL + skill `tiket` + `sync.py` + `setup_hermes.cmd`, docs | **Selesai & terverifikasi** (`hermes -z` menjawab lewat tool MCP; biaya tercatat). Sisa: uji dari Telegram oleh user |
 | 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
-| 3 | Baseline acak, kriteria lulus §19.7, memori pasar lengkap (§16), referensi buku (§15) | Belum mulai |
+| 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Kode selesai** (109 tes hijau). Deploy: lihat verifikasi 3a |
+| 3b | Panel psikologi pasar harian (§16.2) | Belum mulai |
+| 3c | Referensi buku & playbook (§15) — menunggu ebook | Belum mulai |
 
 ## Yang harus dilakukan user
 
@@ -76,6 +81,10 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | 23:55 evaluasi harian tiba di Telegram | ⬜ menunggu |
 | 2b+ | `test_notifikasi` N1–N3 (init sunyi, order/terisi/TP, batal/kedaluwarsa, likuidasi, batas 20, CLI), `test_hermes_sync` H5 | ✅ |
 | 2b+ | Cron `notif-paper` 4c19f528cc31 terdaftar (mode no-agent); `hermes cron run notif-paper` 17:01 WIB mengirim 2 kejadian (#6 order SOL, #7 terisi) → `delivery_outcome=delivered`, kursor #7; tanpa panggilan API | ✅ |
+| 3a | `test_paper_engine` T20–T23 (bayangan acak: dibuat, terisi+TP relatif+EOD, dilewati tanpa merusak order asli, deterministik/ACAK_EOD), `test_evaluasi` E1–E3, `test_uji_hipotesis` U1–U5, `test_mcp_server` M11 + M9 (23 tool), `test_notifikasi` N4 | ✅ 109 tes |
+| 3a | Collector dimulai ulang dengan skema paper v2 (kolom `tp_pct/sl_pct`, akun `acak`); `paper_engine.py budget` menampilkan 3 akun | ⬜ deploy |
+| 3a | `hermes cron list` memuat `uji-hipotesis` (40 23); `hermes mcp test paper` → 23 tool; `hermes cron run uji-hipotesis` tanpa hipotesis → suppressed, `api_calls` tetap | ⬜ deploy |
+| 3a | Jalur positif: order tiket agent berikutnya menghasilkan baris `acak` `ACAK:<id>`; `evaluasi.py` berjalan pada data nyata; agent menulis hipotesis terstruktur via Telegram | ⬜ menunggu kejadian |
 
 ## Keputusan yang berlaku
 
@@ -87,12 +96,17 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 - Pemindai: jadwal `1-59/5` (bar 1m tersimpan detik :05), `data_until` dari bar tersimpan (bukan jam dinding), gate G1–G8,
   skor ≥ 3, jarak liq ≥ 2×ATR 5m, cooldown 30 menit per simbol, maks 12 wake/hari, jam 07:00–22:30 WIB. Knob: `PemindaiConfig`.
 - `kandidat_terbaru` = run terakhir yang membangunkan agent; `plan_id` order tiket = `K<id>` dari kandidat (`MANUAL` bila dari pemilik).
-- Agent hanya lewat MCP (22 tool whitelist); toolset terminal/file/browser dimatikan di cron, telegram, cli.
+- Agent hanya lewat MCP (23 tool whitelist); toolset terminal/file/browser dimatikan di cron, telegram, cli.
 - `mcp==1.30.0` (FastMCP). Hermes diinstal dari terminal user, bukan dari Claude Code.
 - Di laptop ini, proses dari Claude Code tervirtualisasi (MSIX): yang menyentuh `%LOCALAPPDATA%\hermes`, Startup, atau
   perintah `hermes` dijalankan lewat `explorer.exe "<path>\hermes\setup_hermes.cmd"` / `run_logged.cmd` (lihat OPERASI).
 - Proxy menolak budget habis / kill switch dengan 403 (bukan 429) agar SDK tidak mengulang.
 - `hermes cron create --script` harus path **relatif** terhadap `HERMES_HOME\scripts` (`pemindai_cron.py`); path absolut ditolak.
+- Baseline acak = bayangan per order tiket (sisi acak `Random("acak-v1:<id>")`, entry market bar berikutnya, TP/SL jarak sama, budget
+  cermin $1/hari); dibuat di dalam `PaperEngine.place_order` (satu penulis), tidak dinotifikasi ke Telegram.
+- Hipotesis harus terstruktur (`jenis` sentuh_harga|gerak_atr|close_arah, tf, arah, nilai, batas 1–7 hari); dinilai `uji_hipotesis.py`
+  dengan baseline 200 titik acak/120 hari; pelajaran naik/pensiun otomatis (§16.6). Kepemilikan file: `hipotesis.jsonl` ← mcp_server;
+  `hipotesis-hasil.jsonl`, `hipotesis.md`, `pelajaran.{jsonl,md}` ← uji_hipotesis.py. `pelajaran-usulan.md` hanya diputuskan pemilik.
 - Notifikasi kejadian paper memakai cron Hermes `--no-agent` (stdout = pesan, kosong = diam), bukan Bot API langsung:
   token Telegram tetap hanya di Hermes, nol biaya LLM. Kursor `data/notif.json` (penulis tunggal `notifikasi.py`).
 - Run cron dengan `{"wakeAgent": false}` tidak dikirim ke Telegram (`delivery_outcome=suppressed`). Jejak run:

@@ -3,6 +3,30 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (petang, 18:30) — laptop Windows — Milestone 3a: baseline acak, statistik kelulusan, hipotesis dinilai skrip
+
+**Apa:** (1) `paper_engine.py` skema v2: akun `acak`, kolom `orders.tp_pct/sl_pct` (migrasi otomatis), `_shadow_acak` —
+setiap order tiket agent/CLI mendapat bayangan sisi acak (`Random("acak-v1:<id>")`), entry market bar berikutnya, jarak TP/SL sama
+(diresolusi saat terisi, dibulatkan menjauh dari untung), budget cermin $1/hari (`BUDGET_ACAK`/`ACAK_EOD`), EOD 23:50, batal ikut;
+`report()` blok tiket vs acak, `rollover_day` 3 akun, `OrderResult.shadow_order_id`. (2) `scripts/evaluasi.py` + tool MCP
+`statistik_lulus` (23 tool): expectancy, per bulan, win rate, stabilitas (−5% terbaik), kepatuhan (order tiket > 22:30), tiket vs acak
+(permutasi 2000× + sign test berpasangan), tabel kriteria §19.7 dengan `lulus | belum | tidak tersedia`. (3) `scripts/hipotesis.py`
+(murni) + `scripts/uji_hipotesis.py`: `tulis_hipotesis` kini terstruktur (`symbol, tf, jenis, arah, nilai, batas_hari, kondisi`) →
+`pasar/hipotesis.jsonl`; skrip 23:40 menilai (benar/salah/ambigu, tanpa look-back), baseline 200 titik acak/120 hari `kline_1h`,
+pelajaran naik (≥10 sampel, ≥ baseline+15) / dinilai ulang 30 hari / pensiun; view `hipotesis.md`, `pelajaran.md` ditulis skrip.
+`baca_memori("hipotesis")` merender dari jsonl. (4) cron `uji-hipotesis` `40 23 * * *` `--no-agent` + `hermes/scripts/uji_cron.py`;
+skill `evaluasi-harian` v1.1 (baca pelajaran/hipotesis/statistik, parameter hipotesis baru, larangan menilai sendiri); SOUL.md.
+`notifikasi.py` melewati kejadian akun acak (baris 🎲 saat dibuat).
+
+**Kenapa:** §19.6–19.7 dan §16.5–16.6 — agar bisa dinilai apakah agent benar-benar lebih baik dari acak dan belajar, dengan
+skrip sebagai penilai (model cenderung membenarkan ceritanya). Cakupan dibatasi 3a atas keputusan user; 3b (panel psikologi)
+dan 3c (buku) menyusul.
+
+**Tes:** T20–T23, E1–E3, U1–U5, M11, N4, M9 → 23 tool; tes lama memakai `EngineConfig(acak_enabled=False)`. Total 109 hijau.
+
+**File:** `scripts/{paper_engine,schema_paper.sql,evaluasi,hipotesis,uji_hipotesis,mcp_server,notifikasi}.py`,
+`hermes/{cron.cmd,SOUL.md,scripts/uji_cron.py,skills/evaluasi-harian/SKILL.md}`, `tests/*`, `docs/*`, `CLAUDE.md`.
+
 ## 2026-10-11 (sore, 17:25) — laptop Windows — notifikasi kejadian paper ke Telegram; order uji dibatalkan
 
 **Apa:** `scripts/notifikasi.py` (baru; penulis tunggal `data/notif.json`): membaca `paper.sqlite` `events` ⋈ `orders` ⋈

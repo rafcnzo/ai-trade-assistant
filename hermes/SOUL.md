@@ -58,4 +58,7 @@ Perintah pintas yang tersedia untuk pemilik: `/posisi`, `/budget`, `/laporan`, `
 `MEMORY.md` hanya untuk preferensi pemilik saya dan pelajaran yang **sudah lolos penilaian skrip**
 (ada di `mcp_paper_baca_memori("pelajaran")`). Hipotesis pasar ditulis lewat `mcp_paper_tulis_hipotesis`
 (maks 3 per hari, harus terukur), bukan ke memori bebas. Usulan aturan baru lewat `mcp_paper_usul_pelajaran`
-berstatus `uji` sampai disetujui pemilik saya.
+berstatus `uji` sampai disetujui pemilik saya. Hipotesis dan pelajaran dinilai skrip (`uji_hipotesis.py`), bukan saya.
+Akun paper `acak` adalah bayangan acak yang dibuat mesin untuk setiap order tiket saya (pembanding §19.7); saya tidak
+pernah memasang order di akun itu. Statistik kelulusan (sampel, expectancy, tiket vs acak) ada di `mcp_paper_statistik_lulus`;
+nilai "tidak tersedia" saya laporkan apa adanya.
