@@ -3,98 +3,123 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>crypto-analyst — dashboard paper</title>
+<title>Paper trading — crypto-analyst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
-<header>
-  <div class="brand">crypto-analyst <span class="muted">paper · lokal · baca saja</span></div>
-  <div id="status-bar" class="status-bar">
-    <span id="st-jam" class="pill">—</span>
-    <span id="st-collector" class="pill">collector —</span>
-    <span id="st-pemindai" class="pill">pemindai —</span>
-    <span id="st-biaya" class="pill">API —</span>
-    <span id="st-kill" class="pill hidden">KILL SWITCH</span>
+<header class="top">
+  <div class="brand">
+    <div class="logo">PT</div>
+    <div><div class="title">Paper trading</div><div class="sub">Latihan dengan uang bohongan · hanya di laptop ini · <span id="jam">—</span> WIB</div></div>
   </div>
+  <div class="health" id="health" title="Kesehatan sistem: hijau = semua jalan, kuning = ada yang perlu dilihat, merah = berhenti"></div>
 </header>
 
-<nav class="tabs">
+<section class="kpis" id="kpis"></section>
+
+<nav class="tabs" aria-label="Bagian">
   <button data-tab="chart" class="active">Chart</button>
-  <button data-tab="riwayat">Riwayat</button>
-  <button data-tab="statistik">Statistik</button>
-  <button data-tab="kandidat">Pemindai</button>
-  <button data-tab="psikologi">Psikologi</button>
-  <button data-tab="jurnal">Jurnal</button>
+  <button data-tab="riwayat">Riwayat & hasil</button>
+  <button data-tab="statistik">Rapor</button>
+  <button data-tab="kandidat">Radar</button>
+  <button data-tab="psikologi">Suasana pasar</button>
+  <button data-tab="jurnal">Catatan AI</button>
 </nav>
 
 <main>
+  <!-- CHART -->
   <section id="tab-chart" class="tab active">
-    <div class="chart-wrap">
-      <div class="toolbar">
-        <select id="sel-symbol"></select>
-        <div class="tf" id="tf-group">
-          <button data-tf="1m">1m</button><button data-tf="5m" class="active">5m</button><button data-tf="15m">15m</button>
-          <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="1d">1d</button>
+    <div class="chart-col">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Grafik harga</h2>
+            <p class="hint">Lilin hijau = harga naik, merah = turun. Tanda di atas lilin adalah apa yang dilakukan AI pada harga itu.</p>
+          </div>
+          <div class="controls">
+            <select id="sel-symbol" aria-label="Pilih koin"></select>
+            <div class="seg" id="tf-group"><button data-tf="1m">1m</button><button data-tf="5m" class="active">5m</button><button data-tf="15m">15m</button><button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="1d">1d</button></div>
+            <label class="toggle"><input type="checkbox" id="chk-acak"> tampilkan pembanding acak</label>
+          </div>
         </div>
-        <label class="chk"><input type="checkbox" id="chk-acak"> tampilkan akun acak</label>
-        <span id="chart-info" class="muted"></span>
+        <div id="chart"></div>
+        <div class="legend">
+          <span><b class="sw up">▲</b> AI beli (LONG)</span><span><b class="sw down">▼</b> AI jual (SHORT)</span>
+          <span><b class="sw tp">●</b> target tercapai (untung)</span><span><b class="sw liq">■</b> modal hangus (likuidasi)</span>
+          <span><b class="sw grey">●</b> ditutup (stop / jam 23:50 / manual)</span><span><b class="sw warn">●</b> order tidak terisi / dibatalkan</span>
+          <span><b class="sw line">—</b> garis: harga masuk · target · batas hangus · order menunggu</span>
+        </div>
+        <div id="chart-info" class="hint"></div>
       </div>
-      <div id="chart"></div>
-      <div id="legend" class="legend"></div>
+      <div class="panel">
+        <h2>Kejadian pada koin ini</h2>
+        <p class="hint">Versi teks dari tanda-tanda di grafik, dari yang terbaru.</p>
+        <div id="kejadian" class="list"></div>
+      </div>
     </div>
     <aside class="side">
-      <div class="card" id="card-budget"><h3>Budget hari ini</h3><div class="body">—</div></div>
-      <div class="card" id="card-posisi"><h3>Posisi terbuka</h3><div class="body">—</div></div>
-      <div class="card" id="card-order"><h3>Order menunggu</h3><div class="body">—</div></div>
-      <div class="card" id="card-cron"><h3>Cron Hermes</h3><div class="body">—</div></div>
+      <div class="panel" id="p-budget"><h2>Jatah modal hari ini</h2><p class="hint">Tiap hari AI hanya boleh mempertaruhkan $1 (termasuk fee). Habis = tidak ada trade baru sampai besok.</p><div class="body">—</div></div>
+      <div class="panel" id="p-posisi"><h2>Posisi yang sedang berjalan</h2><p class="hint">Trade yang sudah masuk dan belum ditutup. Angka hijau/merah = untung/rugi kalau ditutup sekarang.</p><div class="body">—</div></div>
+      <div class="panel" id="p-order"><h2>Order menunggu</h2><p class="hint">AI sudah pasang harga, tapi harga pasar belum menyentuhnya.</p><div class="body">—</div></div>
+      <div class="panel" id="p-mesin"><h2>Mesin di belakang layar</h2><p class="hint">Apa yang sedang dikerjakan robot-robot pendukung.</p><div class="body">—</div></div>
     </aside>
   </section>
 
+  <!-- RIWAYAT -->
   <section id="tab-riwayat" class="tab">
-    <div class="toolbar">
-      <select id="f-akun"><option value="">semua akun</option><option value="tiket">tiket</option><option value="swing">swing</option><option value="acak">acak</option></select>
-      <input id="f-hari" type="date">
-      <input id="f-symbol" placeholder="simbol (opsional)">
-      <button id="f-apply">Terapkan</button>
-      <span class="muted">klik baris → lompat ke chart</span>
+    <div class="panel">
+      <div class="panel-head"><div><h2>Perjalanan modal</h2><p class="hint">Garis = untung/rugi kumulatif dari semua trade yang sudah selesai. Area merah di bawahnya = <b>trailing drawdown</b>: seberapa jauh modal turun dari titik tertingginya. Semakin dalam, semakin sakit.</p></div>
+        <div class="controls"><div class="seg" id="eq-group"><button data-acc="tiket" class="active">Tiket ($1/hari)</button><button data-acc="swing">Swing</button><button data-acc="acak">Pembanding acak</button></div></div></div>
+      <div id="dd-cards" class="cards"></div>
+      <div id="chart-ekuitas"></div>
+      <div id="chart-drawdown"></div>
     </div>
-    <div id="chart-ekuitas"></div>
-    <h3>Posisi ditutup</h3>
-    <div class="tablewrap"><table id="tbl-posisi"></table></div>
-    <h3>Order kedaluwarsa / dibatalkan / ditolak</h3>
-    <div class="tablewrap"><table id="tbl-order"></table></div>
-    <h3>Ringkasan harian</h3>
-    <div class="tablewrap"><table id="tbl-harian"></table></div>
+    <div class="panel">
+      <div class="panel-head"><div><h2>Trade yang sudah selesai</h2><p class="hint">Setiap baris satu trade. Klik untuk melihatnya di grafik.</p></div>
+        <div class="controls"><select id="f-akun"><option value="">semua akun</option><option value="tiket">tiket</option><option value="swing">swing</option><option value="acak">pembanding acak</option></select><input id="f-hari" type="date"><input id="f-symbol" placeholder="koin, mis. BTCUSDT"><button id="f-apply" class="btn">Terapkan</button></div></div>
+      <div class="tablewrap"><table id="tbl-posisi"></table></div>
+    </div>
+    <div class="panel"><h2>Order yang tidak jadi</h2><p class="hint">Harga tidak pernah menyentuh order (kedaluwarsa), dibatalkan, atau ditolak mesin karena melanggar aturan.</p><div class="tablewrap"><table id="tbl-order"></table></div></div>
+    <div class="panel"><h2>Rekap per hari</h2><div class="tablewrap"><table id="tbl-harian"></table></div></div>
   </section>
 
-  <section id="tab-statistik" class="tab"><pre id="statistik-md" class="md"></pre><pre id="statistik-json" class="json"></pre></section>
+  <!-- RAPOR -->
+  <section id="tab-statistik" class="tab">
+    <div class="panel"><h2>Apakah AI layak dipercaya?</h2><p class="hint">Lima syarat yang harus lolos sebelum rencananya boleh dipakai untuk uang sungguhan. "Belum cukup data" itu jawaban jujur, bukan kegagalan.</p><div id="lulus" class="list"></div></div>
+    <div class="panel"><h2>Angka per akun</h2><p class="hint">Rata-rata hasil per trade dihitung hanya kalau sudah ≥ 10 trade, supaya tidak tertipu keberuntungan.</p><div class="tablewrap"><table id="tbl-akun"></table></div></div>
+    <div class="panel"><h2>AI vs lempar koin</h2><p class="hint">Setiap trade AI dibuatkan kembaran yang arahnya acak. Kalau AI tidak lebih baik dari kembaran acaknya, berarti belum ada keunggulan.</p><div id="vs-acak" class="list"></div></div>
+  </section>
 
+  <!-- RADAR -->
   <section id="tab-kandidat" class="tab">
-    <h3>Run terakhir yang membangunkan agent</h3>
-    <div class="tablewrap"><table id="tbl-kandidat"></table></div>
-    <h3>24 run pemindai terakhir</h3>
-    <div class="tablewrap"><table id="tbl-runs"></table></div>
+    <div class="panel"><h2>Koin yang terakhir dilirik</h2><p class="hint">Tiap 5 menit robot memindai 30 koin teramai. Hanya kalau ada yang menarik, AI dibangunkan (dan itu yang kena biaya).</p><div class="tablewrap"><table id="tbl-kandidat"></table></div></div>
+    <div class="panel"><h2>Riwayat pemindaian</h2><p class="hint">Alasan robot tidak membangunkan AI juga dicatat, supaya tidak ada yang misterius.</p><div class="tablewrap"><table id="tbl-runs"></table></div></div>
   </section>
 
+  <!-- PSIKOLOGI -->
   <section id="tab-psikologi" class="tab">
-    <div class="toolbar"><button data-ps="BTCUSDT" class="active">BTCUSDT</button><button data-ps="ETHUSDT">ETHUSDT</button><span id="ps-info" class="muted"></span></div>
-    <div class="tablewrap"><table id="tbl-panel"></table></div>
-    <div id="ps-divergensi" class="card"><h3>Divergensi</h3><div class="body">—</div></div>
+    <div class="panel">
+      <div class="panel-head"><div><h2>Suasana pasar</h2><p class="hint">Siapa yang sedang takut, siapa yang serakah. Tidak ada satu angka ajaib — baca per baris, lalu lihat bagian "yang tidak nyambung".</p></div>
+        <div class="controls"><div class="seg"><button data-ps="BTCUSDT" class="active">Bitcoin</button><button data-ps="ETHUSDT">Ethereum</button></div></div></div>
+      <div id="ps-info" class="hint"></div>
+      <div class="tablewrap"><table id="tbl-panel"></table></div>
+    </div>
+    <div class="panel"><h2>Yang tidak nyambung (divergensi)</h2><p class="hint">Dua angka yang seharusnya searah tapi berlawanan — biasanya ini lebih penting daripada angka tunggal.</p><div id="ps-divergensi" class="list"></div></div>
   </section>
 
+  <!-- JURNAL -->
   <section id="tab-jurnal" class="tab">
-    <div class="toolbar">
-      <select id="j-jenis">
-        <option value="jurnal">Jurnal agent (hari ini)</option><option value="harian">Catatan harian</option>
-        <option value="hipotesis">Hipotesis</option><option value="pelajaran">Pelajaran</option>
-        <option value="pelajaran-usulan">Usulan pelajaran</option><option value="playbook">Playbook</option><option value="indeks">Indeks referensi</option>
-      </select>
-      <input id="j-hari" type="date">
+    <div class="panel">
+      <div class="panel-head"><div><h2>Catatan AI</h2><p class="hint">Alasan setiap keputusan ditulis AI sendiri. Hipotesis dan pelajaran dinilai oleh skrip, bukan oleh AI.</p></div>
+        <div class="controls"><select id="j-jenis"><option value="jurnal">Keputusan hari ini</option><option value="harian">Catatan pasar harian</option><option value="hipotesis">Hipotesis (dugaan yang diuji)</option><option value="pelajaran">Pelajaran yang terbukti</option><option value="pelajaran-usulan">Usulan pelajaran</option><option value="playbook">Playbook (aturan Anda)</option><option value="indeks">Indeks buku</option></select><input id="j-hari" type="date"></div></div>
+      <pre id="jurnal-md" class="md"></pre>
     </div>
-    <pre id="jurnal-md" class="md"></pre>
   </section>
 </main>
+<footer class="foot">Semua angka dari mesin paper lokal; tidak ada uang sungguhan, tidak ada API key exchange. Dashboard hanya membaca.</footer>
 <script src="/static/app.js"></script>
 </body>
 </html>

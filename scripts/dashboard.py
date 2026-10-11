@@ -263,13 +263,10 @@ class Data:
         if paper is None:
             return {}
         try:
-            out: dict[str, list] = {}
+            out: dict[str, dict] = {}
             for acc in (TIKET, SWING, ACAK):
-                cum, pts = 0.0, []
-                for r in paper.execute("SELECT closed_ts, net_result FROM positions WHERE account=? AND status='CLOSED' AND net_result IS NOT NULL ORDER BY closed_ts, id", (acc,)):
-                    cum += float(r[1])
-                    pts.append({"time": int(r[0]) // 1000, "value": round(cum, 6)})
-                out[acc] = pts
+                out[acc] = ekuitas_drawdown([(int(r[0]), float(r[1])) for r in paper.execute(
+                    "SELECT closed_ts, net_result FROM positions WHERE account=? AND status='CLOSED' AND net_result IS NOT NULL ORDER BY closed_ts, id", (acc,))])
             return out
         finally:
             paper.close()
@@ -322,6 +319,23 @@ class Data:
             return {"jenis": jenis, "isi": "", "error": "jenis tidak dikenal"}
         p = self.root / rel
         return {"jenis": jenis, "path": rel, "isi": p.read_text(encoding="utf-8") if p.exists() else ""}
+
+
+def ekuitas_drawdown(closes: list[tuple[int, float]]) -> dict:
+    """Kurva ekuitas kumulatif + trailing drawdown (jarak dari puncak tertinggi sejauh ini), semua dalam USD.
+    closes: [(closed_ts_ms, net_result)] urut waktu."""
+    cum, peak, max_dd, max_dd_ts = 0.0, 0.0, 0.0, None
+    ek, dd = [], []
+    for ts, net in closes:
+        cum += net
+        peak = max(peak, cum)
+        d = cum - peak
+        if d < max_dd:
+            max_dd, max_dd_ts = d, ts
+        ek.append({"time": ts // 1000, "value": round(cum, 6)})
+        dd.append({"time": ts // 1000, "value": round(d, 6)})
+    return {"ekuitas": ek, "drawdown": dd, "ekuitas_akhir": round(cum, 6), "puncak": round(peak, 6),
+            "drawdown_sekarang": round(cum - peak, 6), "drawdown_maks": round(max_dd, 6), "drawdown_maks_ts": max_dd_ts, "n": len(closes)}
 
 
 # --------------------------------------------------------------------------- app

@@ -37,7 +37,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
-| D | Dashboard lokal: chart trading (Lightweight Charts) + marker mesin paper, posisi/order live, riwayat, ekuitas, statistik, pemindai, psikologi, jurnal; autostart | **Selesai & jalan** (127 tes; D1–D4) |
+| D | Dashboard lokal: chart trading (Lightweight Charts) + marker mesin paper, posisi/order live, riwayat + **trailing drawdown per akun**, rapor, radar, suasana pasar, catatan AI; bahasa awam; autostart | **Selesai & jalan** (128 tes; D1–D5) |
 | 3c | Referensi buku & playbook (§15): `konversi_buku.py`, `referensi.py`, tool `cari_referensi`/`baca_referensi`, `/referensi`, `referensi/indeks.md`, `referensi/playbook.md` v1, aturan SOUL "Referensi", playbook di skill tiket | **Selesai & terpasang** (122 tes; 3 buku terkonversi; MCP 26 tool; `/referensi` di menu) |
 
 ## Yang harus dilakukan user

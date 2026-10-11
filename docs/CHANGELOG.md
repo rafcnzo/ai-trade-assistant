@@ -3,6 +3,19 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (malam, 19:25) — laptop Windows — dashboard: trailing drawdown + desain ulang untuk trader awam
+
+**Apa:** `dashboard.ekuitas_drawdown()` (ekuitas kumulatif, puncak, trailing drawdown, drawdown maks + waktunya) per akun di `/api/ekuitas`;
+tab Riwayat punya pilihan akun, 4 kartu (hasil, puncak, penurunan sekarang, penurunan terdalam), chart ekuitas + chart drawdown (sinkron).
+Frontend ditulis ulang dengan bahasa awam: kartu KPI (jatah modal, posisi berjalan, hasil tiket vs pembanding acak, penurunan dari puncak,
+swing), chip kesehatan dengan kalimat ("Data harga segar (41 dtk)"), setiap panel punya penjelasan satu kalimat, istilah teknis diganti
+(unrealized → untung/rugi kalau ditutup sekarang, liq → modal hangus, EOD → ditutup jam 23:50, acak → pembanding acak/lempar koin),
+daftar "Kejadian pada koin ini" sebagai versi teks marker, rapor kelulusan sebagai checklist, kode penolakan mesin diterjemahkan,
+indikator psikologi diberi arti. Tipografi Inter + JetBrains Mono untuk angka. Tes D5.
+
+**Kenapa:** permintaan pemilik: trailing drawdown per akun, dan UI sebelumnya tidak terbaca trader awam. **File:** `scripts/dashboard.py`,
+`dashboard/*`, `tests/test_dashboard.py`.
+
 ## 2026-10-11 (malam, 19:10) — laptop Windows — dashboard lokal: chart trading live + riwayat
 
 **Apa:** `scripts/dashboard.py` (Starlette/uvicorn, sudah ada sebagai dependensi mcp; `127.0.0.1:8586`; semua koneksi DB readonly

@@ -42,6 +42,15 @@ class Base(unittest.TestCase):
         return eng, pasar_ro
 
 
+class TestDrawdown(unittest.TestCase):
+    def test_d5_trailing_drawdown(self):
+        r = D.ekuitas_drawdown([(1000, 0.3), (2000, 0.2), (3000, -0.8), (4000, -0.1), (5000, 0.9), (6000, -0.2)])
+        self.assertEqual([p["value"] for p in r["ekuitas"]], [0.3, 0.5, -0.3, -0.4, 0.5, 0.3])
+        self.assertEqual([p["value"] for p in r["drawdown"]], [0.0, 0.0, -0.8, -0.9, 0.0, -0.2])
+        self.assertEqual((r["puncak"], r["drawdown_maks"], r["drawdown_maks_ts"], r["drawdown_sekarang"], r["n"]), (0.5, -0.9, 4000, -0.2, 6))
+        self.assertEqual(D.ekuitas_drawdown([])["drawdown_maks"], 0.0)
+
+
 class TestDashboard(Base):
     def test_d1_empty_everything_is_200(self):
         for path in ("/api/ringkasan", "/api/simbol", "/api/candles?symbol=X&tf=5m", "/api/marker?symbol=X", "/api/riwayat", "/api/ekuitas",
@@ -105,7 +114,7 @@ class TestDashboard(Base):
         self.assertEqual((len(rw["posisi"]), rw["posisi"][0]["close_reason"]), (1, "EOD"))
         self.assertEqual(self.client.get("/api/riwayat?akun=tiket").json()["order"][0]["status"], "EXPIRED")
         eq = self.client.get("/api/ekuitas").json()
-        self.assertEqual((len(eq["acak"]), eq["tiket"]), (1, []))
+        self.assertEqual((eq["acak"]["n"], eq["tiket"]["n"], eq["tiket"]["ekuitas"]), (1, 0, []))
         st = self.client.get("/api/statistik").json()
         self.assertTrue(st["lulus"]["sampel"].startswith("belum"))
         eng.conn.close()
