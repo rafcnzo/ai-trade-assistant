@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 18:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 17:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -32,7 +32,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 1 | Mesin paper trading: collector, paper_engine, budget_guard, 43 tes | **Selesai**, live |
 | 2a | Hermes: budget_proxy, analisis, mcp_server (22 tool), SOUL + skill `tiket` + `sync.py` + `setup_hermes.cmd`, docs | **Selesai & terverifikasi** (`hermes -z` menjawab lewat tool MCP; biaya tercatat). Sisa: uji dari Telegram oleh user |
 | 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
-| 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Kode selesai** (109 tes hijau). Deploy: lihat verifikasi 3a |
+| 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar harian (§16.2) | Belum mulai |
 | 3c | Referensi buku & playbook (§15) — menunggu ebook | Belum mulai |
 
@@ -82,8 +82,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b+ | `test_notifikasi` N1–N3 (init sunyi, order/terisi/TP, batal/kedaluwarsa, likuidasi, batas 20, CLI), `test_hermes_sync` H5 | ✅ |
 | 2b+ | Cron `notif-paper` 4c19f528cc31 terdaftar (mode no-agent); `hermes cron run notif-paper` 17:01 WIB mengirim 2 kejadian (#6 order SOL, #7 terisi) → `delivery_outcome=delivered`, kursor #7; tanpa panggilan API | ✅ |
 | 3a | `test_paper_engine` T20–T23 (bayangan acak: dibuat, terisi+TP relatif+EOD, dilewati tanpa merusak order asli, deterministik/ACAK_EOD), `test_evaluasi` E1–E3, `test_uji_hipotesis` U1–U5, `test_mcp_server` M11 + M9 (23 tool), `test_notifikasi` N4 | ✅ 109 tes |
-| 3a | Collector dimulai ulang dengan skema paper v2 (kolom `tp_pct/sl_pct`, akun `acak`); `paper_engine.py budget` menampilkan 3 akun | ⬜ deploy |
-| 3a | `hermes cron list` memuat `uji-hipotesis` (40 23); `hermes mcp test paper` → 23 tool; `hermes cron run uji-hipotesis` tanpa hipotesis → suppressed, `api_calls` tetap | ⬜ deploy |
+| 3a | Collector dimulai ulang 17:35 WIB dengan skema paper v2; `paper_engine.py budget` menampilkan tiket/swing/acak; tick normal (weight 91) | ✅ |
+| 3a | Cron `uji-hipotesis` f497508f3dd4 (40 23, no-agent) terdaftar; gateway restart PID 16660; `hermes mcp test paper` → 23 tool; `hermes cron run uji-hipotesis` → 0 dinilai, `delivery_outcome=suppressed`, `api_calls` tetap 29 | ✅ |
 | 3a | Jalur positif: order tiket agent berikutnya menghasilkan baris `acak` `ACAK:<id>`; `evaluasi.py` berjalan pada data nyata; agent menulis hipotesis terstruktur via Telegram | ⬜ menunggu kejadian |
 
 ## Keputusan yang berlaku
