@@ -130,6 +130,18 @@ class SqliteMarket:
             out.append((bar, mark))
         return out
 
+    def bars_1h(self, symbol, after_open_time, until_open_time) -> list[Bar]:
+        """Bar 1 jam (kline_1h). Catatan: Bar.close_time mengasumsikan 1m; untuk 1h pakai open_time + HOUR_MS."""
+        try:
+            rows = self.conn.execute(
+                "SELECT symbol, open_time, open, high, low, close, volume, quote_volume, trades, taker_buy_quote FROM kline_1h "
+                "WHERE symbol=? AND open_time>? AND open_time<=? ORDER BY open_time",
+                (symbol, after_open_time, until_open_time),
+            ).fetchall()
+        except Exception:  # noqa: BLE001 - skema lama tanpa kline_1h
+            return []
+        return [Bar(r[0], int(r[1]), r[2], r[3], r[4], r[5], r[6] or 0.0, r[7] or 0.0, int(r[8] or 0), r[9] or 0.0) for r in rows]
+
     def funding_events(self, symbol, after_ms, until_ms):
         rows = self.conn.execute(
             "SELECT symbol, funding_time, rate, mark_price FROM funding_rate WHERE symbol=? AND funding_time>? AND funding_time<=? ORDER BY funding_time",

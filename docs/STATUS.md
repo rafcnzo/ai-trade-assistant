@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 15:55 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 16:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -12,9 +12,13 @@ Otak asisten = **Hermes Agent v0.21.6** native Windows (Telegram + CLI). Claude 
 Folder Startup user (login, tanpa jendela)
  ├─ crypto-analyst_collector.vbs → run_collector.cmd     data pasar + mesin paper            (JALAN)
  ├─ crypto-analyst_proxy.vbs     → run_budget_proxy.cmd  127.0.0.1:8585 → Anthropic, cap $10/hari (JALAN, key_set)
- └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron (cron job belum dibuat: 2b)
-      └─ MCP "paper"               scripts/mcp_server.py, 22 tool  (TERHUBUNG, hermes mcp test paper OK)
+ └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron
+      ├─ MCP "paper"               scripts/mcp_server.py, 22 tool  (TERHUBUNG, hermes mcp test paper OK)
+      ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM);
+      │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
+      └─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
 ```
+Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga mengisi `kline_1h` (120 hari) untuk konteks 1h/4h/1d.
 
 ## Milestone
 
@@ -22,7 +26,7 @@ Folder Startup user (login, tanpa jendela)
 |---|---|---|
 | 1 | Mesin paper trading: collector, paper_engine, budget_guard, 43 tes | **Selesai**, live |
 | 2a | Hermes: budget_proxy, analisis, mcp_server (22 tool), SOUL + skill `tiket` + `sync.py` + `setup_hermes.cmd`, docs | **Selesai & terverifikasi** (`hermes -z` menjawab lewat tool MCP; biaya tercatat). Sisa: uji dari Telegram oleh user |
-| 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | Belum mulai (skill, skema kandidat, pembungkus cron sudah ada) |
+| 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Kode selesai** (91 tes hijau, uji data nyata OK). Deploy: lihat tabel verifikasi 2b |
 | 3 | Baseline acak, kriteria lulus §19.7, memori pasar lengkap (§16), referensi buku (§15) | Belum mulai |
 
 ## Yang harus dilakukan user
@@ -30,6 +34,9 @@ Folder Startup user (login, tanpa jendela)
 1. Uji Telegram pertama **lolos** (posisi/order benar, shell ditolak, `/cek SOL LONG` → SKIP beralasan + jurnal).
    Berikutnya: tutup-buka chat bot, cek menu `/` berisi 14 perintah proyek, coba `/posisi`, `/budget`, `/status`;
    laporkan apakah tebal/daftar sudah dirender.
+1b. Order tiket uji #1 (BTC) dan #2 (ETH) menahan gate pemindai ("sudah 2 order tiket hidup"). Kalau ingin pemindai
+   benar-benar membangunkan agent hari ini: `/batal semua` di Telegram atau `paper_engine.py batal 1` + `batal 2`.
+   Lalu amati Telegram: pesan "PEMINDAI … K<id> …" + keputusan agent hanya saat ada kandidat; 23:55 evaluasi harian.
 2. Opsional: pasang spend limit di workspace Console Anthropic; `hermes doctor --fix` untuk saran `custom_providers → providers`;
    sembunyikan skill bundel Hermes yang tidak dipakai dengan mengganti nama folder di `%LOCALAPPDATA%\hermes\skills\` menjadi `_nama`.
 
@@ -54,7 +61,12 @@ Folder Startup user (login, tanpa jendela)
 | 2a | `hermes --version` (v0.21.6), `hermes mcp test paper` → 22 tool, `config.yaml` tergabung (toolset tanpa terminal/file) | ✅ |
 | 2a | `/healthz` ok + `key_set`; `hermes -z` menjawab jam/umur tick/budget lewat tool MCP; proxy mencatat 2 panggilan $0,0955 | ✅ |
 | 2a | Kill switch `data/STOP_AGENT` → Hermes ditolak 403 tanpa biaya (`hermes -z` melapor langsung, proxy `TOLAK`) | ✅ |
-| 2a | Telegram: posisi/order; pasang tiket → `created_by=hermes`; "jalankan shell" → tidak punya tool | ⬜ user |
+| 2a | Telegram: posisi/order; pasang tiket → `created_by=hermes`; "jalankan shell" → tidak punya tool | ✅ (user, 11 Okt) |
+| 2b | `test_pemindai` S1–S10, `test_collector_1h` C1–C3, M8 `plan_id`, M10 `ohlcv` 1h/4h/1d, `kline_limit` 1h | ✅ 91 tes |
+| 2b | `pemindai.py --once` data nyata: 20 simbol, tabel per simbol, kandidat UNI/XRP, gate line ASCII | ✅ |
+| 2b | Collector restart dengan skema v2 → `collector.py status` menampilkan `Bar 1h` 120 hari; weight tick tetap < 1000 | ⬜ deploy |
+| 2b | `hermes cron list` memuat `pemindai-tiket` (1-59/5) & `evaluasi-harian` (55 23); `hermes cron run pemindai-tiket` tanpa kandidat → `api_calls` tidak bertambah | ⬜ deploy |
+| 2b | Jalur positif: wake alami → order `plan_id=K<id>` / SKIP + jurnal; 23:55 evaluasi harian tiba | ⬜ menunggu kejadian |
 
 ## Keputusan yang berlaku
 
@@ -63,6 +75,9 @@ Folder Startup user (login, tanpa jendela)
 - Ambiguitas intrabar pesimis (liq → SL → TP), ditandai `ambiguous`.
 - Budget API: $10/hari, $190/bulan, $1/panggilan, ditegakkan `budget_proxy.py`; kill switch `data/STOP_AGENT`.
 - Model agent: `claude-opus-5-5`, effort `low`; pemindai mekanis (tanpa LLM) membangunkan agent hanya bila ada kandidat.
+- Pemindai: jadwal `1-59/5` (bar 1m tersimpan detik :05), `data_until` dari bar tersimpan (bukan jam dinding), gate G1–G8,
+  skor ≥ 3, jarak liq ≥ 2×ATR 5m, cooldown 30 menit per simbol, maks 12 wake/hari, jam 07:00–22:30 WIB. Knob: `PemindaiConfig`.
+- `kandidat_terbaru` = run terakhir yang membangunkan agent; `plan_id` order tiket = `K<id>` dari kandidat (`MANUAL` bila dari pemilik).
 - Agent hanya lewat MCP (22 tool whitelist); toolset terminal/file/browser dimatikan di cron, telegram, cli.
 - `mcp==1.30.0` (FastMCP). Hermes diinstal dari terminal user, bukan dari Claude Code.
 - Di laptop ini, proses dari Claude Code tervirtualisasi (MSIX): yang menyentuh `%LOCALAPPDATA%\hermes`, Startup, atau
@@ -72,6 +87,7 @@ Folder Startup user (login, tanpa jendela)
 
 ## Pertanyaan terbuka
 
-- Semantik Hermes yang belum dikonfirmasi dari instalasi nyata: nama entri `platform_toolsets.cron`, apakah `tools.include`
-  memakai nama bare atau `mcp_paper_*`, dan apakah stdout skrip cron sampai ke agent atau hanya ke kanal (skill `tiket`
-  tidak bergantung padanya: ia memanggil `kandidat_terbaru`). Dicek saat `hermes mcp test paper` / `hermes tools`.
+- Apakah Hermes mengirim stdout skrip cron ke Telegram saat `{"wakeAgent": false}` (tiap 5 menit dua baris)? Jika ya,
+  kecilkan output gate-off menjadi satu baris atau pakai `--deliver` lain. Dicek setelah cron terpasang.
+- `platform_toolsets.cron` dan nama tool `mcp_paper_*` sudah terkonfirmasi bekerja (Telegram/CLI); untuk cron dikonfirmasi
+  saat wake pertama.

@@ -18,8 +18,9 @@ metadata:
 1. `mcp_paper_waktu_sekarang`. Berhenti jika `status_data` = BASI (katakan datanya basi) atau `menit_ke_eod` < 80
    (tidak ada tiket baru setelah 22:30 WIB).
 2. `mcp_paper_budget_tiket`. Berhenti jika `tiket.remaining` < 0,10 (katakan budget hari ini habis).
-3. Ambil kandidat: `mcp_paper_kandidat_terbaru` (atau simbol yang disebut pemilik). Lewati simbol yang sudah punya
-   order/posisi (`mcp_paper_order_menunggu`, `mcp_paper_posisi`). Maksimal 2 order tiket hidup pada satu waktu.
+3. Ambil kandidat: `mcp_paper_kandidat_terbaru(limit=3)` (atau simbol yang disebut pemilik). Dari cron: nilai HANYA
+   kandidat yang ID-nya (`K<id>`) disebut di ringkasan pemindai. Lewati simbol yang sudah punya order/posisi
+   (`mcp_paper_order_menunggu`, `mcp_paper_posisi`). Maksimal 2 order tiket hidup pada satu waktu.
 4. Per kandidat, kumpulkan FAKTA:
    - `mcp_paper_harga` (mark, funding, kesegaran),
    - `mcp_paper_ohlcv` tf 15m lalu 5m: tren, level terdekat (`level_atas`/`level_bawah`, sentuhan), ATR, jejak
@@ -33,7 +34,8 @@ metadata:
    - level invalidasi bisa disebut (biasanya likuidasi = stop untuk tiket).
 6. Tulis rencana bersyarat (format):
    `Pemicu: ... | Batal jika: ... | Leverage: Nx → liq ≈ ... (k×ATR5m) | TP: ... (+p%) → untung bersih ≈ $..., win rate minimum ≈ ..% | Terjebak jika benar: ... | Terjebak jika salah: ...`
-7. `mcp_paper_pasang_order(akun="tiket", symbol, sisi, qty=<dari tabel>, leverage, harga=<level>, tp, plan_id="K<id>", pola=<pola>, catatan=<rencana>)`.
+7. `mcp_paper_pasang_order(akun="tiket", symbol, sisi, qty=<dari tabel>, leverage, harga=<level>, tp, plan_id=<field plan_id kandidat, mis. "K17">, pola=<pola>, catatan=<rencana>)`.
+   Jangan mengarang ID; tanpa kandidat pemindai (permintaan pemilik) pakai `plan_id="MANUAL"`.
    Kode tolak: `LIMIT_CROSSES` → harga sudah lewat level, nilai ulang sekali atau SKIP (jangan `market=true`);
    `BUDGET_TIKET`/`TIKET_EOD` → SKIP; lainnya → laporkan apa adanya.
 8. **Selalu** `mcp_paper_tulis_jurnal(jenis="keputusan", judul, isi=<rencana + alasan>, symbol, kandidat_id, order_id)`, termasuk saat SKIP.

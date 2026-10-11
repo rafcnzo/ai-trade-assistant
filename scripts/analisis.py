@@ -375,3 +375,11 @@ def top_volume(pasar: sqlite3.Connection, n: int = 20, now_ms: Optional[int] = N
 def load_bars(market, symbol: str, hours: float, until_ms: int) -> list[Bar]:
     start = int(until_ms - hours * HOUR_MS) - 1
     return [b for b, _ in market.bars(symbol, start, until_ms)]
+
+
+def load_bars_1h(market, symbol: str, days: float, until_ms: int) -> list[Bar]:
+    """Bar 1 jam yang sudah close dari kline_1h (kosong bila market tidak menyediakannya)."""
+    if not hasattr(market, "bars_1h"):
+        return []
+    start = int(until_ms - days * DAY_MS) - 1
+    return [b for b in market.bars_1h(symbol, start, until_ms) if b.open_time + HOUR_MS <= until_ms]

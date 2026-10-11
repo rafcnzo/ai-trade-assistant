@@ -6,7 +6,8 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 
 | File | Peran | Penulis DB |
 |---|---|---|
-| `scripts/collector.py` | Mengambil kline 1m (harga terakhir + mark), funding, snapshot mark, peringkat volume; memanggil mesin tiap menit | `data/pasar.sqlite` |
+| `scripts/collector.py` | Mengambil kline 1m (harga terakhir + mark), kline 1h (120 hari), funding, snapshot mark, peringkat volume; memanggil mesin tiap menit | `data/pasar.sqlite` |
+| `scripts/pemindai.py` | Pemindai kandidat tiket mekanis (tanpa LLM) tiap 5 menit lewat cron Hermes; membangunkan agent hanya bila ada kandidat | `data/kandidat.sqlite` |
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
@@ -68,6 +69,9 @@ Log: `logs/collector.log` (rotasi 5 MB × 5) dan `logs/collector.out.log`.
 
 - `tick ...: 20 simbol, 60 bar, 5400 ms, weight 90` — normal. Weight adalah pemakaian limit Binance per
   menit (batas 1.200; pacing otomatis mulai 1.000). Tick pertama setelah celah panjang bisa mencapai ±850.
+- `bar1h 21` — bar 1 jam baru (sekali per jam, ≥ 60 s setelah jam bulat, 1 permintaan kecil per simbol). Simbol baru
+  di-backfill 120 hari, maksimal 5 simbol per tick (±4 tick untuk 20 simbol; weight tick sementara ±100–400).
+  `collector.py status` menampilkan cakupan `Bar 1h`. Retensi 180 hari.
 - `GAP` — tidak ada tick > 2,5 menit (laptop tidur); celah diisi otomatis.
 - `BAR_REVISED` — Binance mengubah bar yang sudah diproses mesin. Revisi < 0,01% diabaikan. Dicatat sebagai
   event WARNING hanya jika simbol itu punya order/posisi; periksa apakah level likuidasi/TP terpengaruh.
@@ -121,7 +125,7 @@ hari ini), `TIKET_EOD`, `BUDGET_SWING`, `SWING_MAX_OPEN`, `SWING_NEEDS_SL_TP`, `
 - `jurnal/tiket.csv`: satu baris per tiket (`TP|HANGUS|MANUAL|TIDAK_TERISI|SKIP`), kolom
   `aturan_dilanggar` dan `emosi` diisi manual.
 
-## Biaya API (untuk agent di milestone 3)
+## Biaya API (agent Hermes)
 
 ```bash
 .venv/Scripts/python.exe scripts/budget_guard.py harga
@@ -256,10 +260,68 @@ Jika menu tidak terlihat: tutup dan buka lagi chat bot (klien Telegram men-cache
 | Agent memasang order padahal kandidat jelek | Periksa `jurnal/agent/<hari>.md`; sesuaikan aturan di `hermes/skills/tiket/SKILL.md`, `sync.py`, uji lagi |
 | Proses `python.exe` MCP tertinggal | Gateway dihentikan paksa; tutup lewat Task Manager (`idle_timeout_seconds` membersihkan yang idle) |
 
+## Pemindai mekanis (`scripts/pemindai.py`)
+
+Skrip **tanpa LLM** yang dijalankan cron Hermes `pemindai-tiket` tiap 5 menit (`1-59/5 * * * *`; menit :00 terlalu dini
+karena bar 1m tersimpan pada detik :05) lewat `HERMES_HOME\scripts\pemindai_cron.py`. Membaca `pasar.sqlite` (readonly) dan
+`paper.sqlite` (hanya metode baca), menulis `data/kandidat.sqlite` (`pemindai_run`, `kandidat`). Agent (Opus 5.5, effort low)
+hanya dibangunkan bila baris terakhir stdout persis `{"wakeAgent": true}`; `{"wakeAgent": false}` = tidak ada biaya.
+
+Uji manual (tidak menyimpan, memindai walau gate menahan, tabel per simbol dengan alasan):
+```bash
+.venv/Scripts/python.exe scripts/pemindai.py --once
+```
+Opsi: `--json` (keluaran mesin), `--sekarang 2026-10-11T10:01` (jam uji), `--n 30` (universe), `--jam-mulai/--jam-akhir`.
+Mode cron (menyimpan hasil): `--cron`. Log: `logs/pemindai.log`.
+
+Cara kerja per simbol (top 20 volume ∪ simbol berposisi):
+1. Bar 1m 48 jam → bucket 5m/15m/1h **yang sudah lengkap** (`data_until` = akhir bar tersimpan, dibatasi tick collector − 5 s;
+   bukan jam dinding).
+2. Level = klaster swing 5m ∪ 15m (lebar 0,5×ATR), hanya ≥ 2 sentuhan; level terdekat dari mark dan jaraknya dalam ATR 5m (maks 2).
+3. Arah dugaan: BREAKOUT_GAGAL atas → SHORT / bawah → LONG; WICK bawah di level → LONG / atas → SHORT; tanpa penolakan:
+   level di bawah mark → LONG (pullback ke support), di atas → SHORT.
+4. Skor: dekat level (≤ 0,5×ATR 5m) +2; WICK segar (≤ 3 bucket 5m) searah +2; BREAKOUT_GAGAL segar searah +2; VOL +1;
+   SUDAH_LARI (|24 jam| > 20%) −1; FUNDING_EKSTREM melawan arah −1. Flag tanpa skor: IMPULS, KOMPRESI, MELAWAN_TREN_15M, `*_LAMA`.
+5. Leverage layak = baris `tabel_leverage` (entry = level, sisa budget tiket hari ini) dengan jarak likuidasi ≥ 2×ATR 5m;
+   dicoba 150/125/100x, atau leverage maks simbol bila lebih kecil.
+
+Kandidat = skor ≥ 3 **dan** ada leverage layak; peringkat (skor, jarak), maksimal 3, masing-masing mendapat ID `K<id>`.
+
+Gate (yang pertama gagal menang; alasan ada di baris pertama stdout dan `pemindai_run.alasan`):
+
+| Gate | Alasan di stdout |
+|---|---|
+| G1 | `data basi` — tick collector > 180 s |
+| G2 | `di luar jam 07:00–22:30 WIB` |
+| G3 | `budget tiket habis` — sisa < $0,10 |
+| G4 | `sudah 2 order tiket hidup` |
+| G5 | `cap 12 wake/hari tercapai` |
+| G6 | simbol dengan order/posisi → `Ditahan: … (ada order/posisi)` |
+| G7 | `cooldown` 30 menit per simbol, kecuali skor naik |
+| G8 | `tidak ada kandidat (N simbol dipindai)` |
+
+Membaca baris kandidat: `K7 UNIUSDT SHORT skor 4 | mark 7.5635 | level 7.563 (5 sentuhan 5m, 0.03×ATR5m di bawah; wick atas
+menolak level) | jejak BREAKOUT_GAGAL_LAMA, WICK | ATR5m 0.0203 (0.27%) | 24j +1.5% | funding +0.0042% | tren15m turun |
+lev layak: 75x liq 7.618 (2.7×ATR5m)`. Agent wajib memakai `plan_id` persis `K<id>` saat memasang order
+(`mcp_paper_kandidat_terbaru` mengembalikan field `plan_id` dari run terakhir yang membangunkan agent).
+
+Knob: `PemindaiConfig` di `scripts/pemindai.py` (`top_n`, `lookback_h`, `score_min`, `x_atr5m_min`, `cooldown_min`,
+`max_wake_per_day`, `jam_mulai`/`jam_akhir`, `leverages`). Perkiraan biaya: ≤ 12 wake/hari × $0,05–0,15 < $2/hari.
+
+Verifikasi nol biaya: catat `budget_guard.py status`, jalankan `hermes cron run pemindai-tiket` saat tidak ada kandidat
+(mis. gate G4 aktif) → `kandidat.sqlite` mendapat baris `pemindai_run` dengan `wake=0` dan `api_calls` tidak bertambah.
+Dari Telegram: `/status` (field `pemindai`), atau minta "kandidat terbaru".
+
+| Gejala | Tindakan |
+|---|---|
+| Tiap 5 menit Telegram menerima "tidak membangunkan agent" | Hermes meneruskan stdout saat gate off; kecilkan output (hanya baris gate) atau ubah `--deliver` |
+| `pemindai gagal (exit 1)` di Telegram/log | `pemindai.py --once` di terminal untuk melihat traceback; `logs/pemindai.log` |
+| Selalu `data basi` | Collector mati/tersendat: `collector.py status`, `logs/collector.log` |
+| Tidak pernah ada kandidat | Normal di pasar datar; di tabel `--once` banyak `skor 2 < 3` = dekat level tanpa penolakan. Ubah `score_min` hanya setelah beberapa hari data |
+| Kandidat ada tapi agent tidak memasang order | Alasan SKIP di `jurnal/agent/<hari>.md`; aturan di `hermes/skills/tiket/SKILL.md` |
+
 ## Milestone berikutnya
 
-- **Milestone 2**: skrip asisten harian (`topvolume`, `tiket`, `snapshot`, `ohlcv`, `jejak_grafik`,
-  `psikologi`, `derivatif`, `makro`, `unlock`, `posisi`, `stats_jurnal`), CLAUDE.md profil trader
-  lengkap (§6), 4 slash command, memori pasar (§16), referensi buku (§15).
-- **Milestone 3**: `pemindai.py` (tanpa LLM) + `agent.py` (Haiku 5.5 saring, Opus 5.5 putuskan)
-  di atas `paper_engine.place_order` dan `budget_guard.call`, baseline acak, kriteria lulus §19.7.
+- **Milestone 3**: baseline acak (order acak dengan budget yang sama) sebagai pembanding, kriteria lulus §19.7,
+  memori pasar lengkap (§16: pelajaran yang dinilai skrip), referensi buku (§15), tuning pemindai dari data nyata
+  (`lookback_h` 96 untuk level 15m, `score_min`, `leverages`).

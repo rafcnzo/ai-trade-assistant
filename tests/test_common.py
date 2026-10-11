@@ -118,6 +118,9 @@ class TestCollectorParsers(unittest.TestCase):
         self.assertEqual(kline_limit(1000 * m, 1000 * m), 3)
         self.assertEqual(kline_limit(0, 47 * 60 * m), 1500)         # backfill 48 jam → halaman penuh
         self.assertEqual(kline_limit(0, 90 * m), 93)
+        h = C.HOUR_MS
+        self.assertEqual(kline_limit(0, 2880 * h, tf_ms=h), 1500)     # backfill 120 hari bar 1h → halaman penuh
+        self.assertEqual(kline_limit(1000 * h, 1001 * h, tf_ms=h), 4)  # tick rutin 1h: 2 bar → weight 1
 
     def test_parse_klines(self):
         k = [1791602340000, "82537.80", "82548.10", "82537.70", "82548.00", "13.866", 1791602399999, "1144507.16590", 511, "6.1", "503400.1", "0"]

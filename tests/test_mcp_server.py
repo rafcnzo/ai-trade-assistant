@@ -1,4 +1,4 @@
-"""Tes mcp_server.py (M1–M9): tool dipanggil langsung lewat Tools dengan FixtureMarket; tanpa Hermes, tanpa jaringan."""
+"""Tes mcp_server.py (M1–M10): tool dipanggil langsung lewat Tools dengan FixtureMarket; tanpa Hermes, tanpa jaringan."""
 from __future__ import annotations
 
 import asyncio
@@ -190,8 +190,37 @@ class TestNotes(Base):
         self.assertEqual(r["kandidat"][0]["flags"], ["WICK", "VOL"])
         self.assertEqual(r["kandidat"][0]["lev_layak"][0]["leverage"], 100)
         self.assertEqual(r["run"]["wake"], 1)
+        self.assertEqual(r["kandidat"][0]["plan_id"], "K1")
         s = self.tools.status_sistem()
         self.assertEqual(s["pemindai"]["wake_hari_ini"], 1)
+        # run berikutnya tanpa kandidat tidak mengosongkan daftar: tetap run wake=1 terakhir
+        k = connect(self.kand)
+        with C.tx(k):
+            k.execute("INSERT INTO pemindai_run(ts,day_wib,n_symbols,n_kandidat,wake,alasan,ok) VALUES(?,?,?,?,?,?,?)", (t("10:05"), DAY, 20, 0, 0, "tidak ada kandidat", 1))
+        k.close()
+        r2 = self.tools.kandidat_terbaru()
+        self.assertEqual([x["plan_id"] for x in r2["kandidat"]], ["K1"])
+        self.assertEqual((r2["run"]["ts"], r2["run_terakhir"]["wake"]), (t("10:00"), 0))
+
+    def test_m10_ohlcv_from_kline_1h(self):
+        start = t("10:03") - 30 * C.DAY_MS
+        start -= start % C.HOUR_MS
+        for i in range(30 * 24):
+            px = 80000 + (i % 24) * 10
+            self.market.add_bar_1h(BTC, start + i * C.HOUR_MS, px, px + 50, px - 50, px + 5)
+        o4 = self.tools.ohlcv(BTC, "4h", 5)
+        self.assertEqual((o4["sumber"], o4["tf"]), ("kline_1h", "4h"))
+        self.assertGreaterEqual(o4["n_bar"], 170)
+        self.assertEqual(o4["bars"][-1]["open_time"] % (4 * C.HOUR_MS), 0)
+        o1d = self.tools.ohlcv(BTC, "1d", 3)
+        self.assertEqual((o1d["sumber"], o1d["n_bar"] >= 28), ("kline_1h", True))
+        o1h = self.tools.ohlcv(BTC, "1h", 3)
+        self.assertEqual(o1h["sumber"], "kline_1h")
+        self.assertLessEqual(o1h["bars"][-1]["open_time"] + C.HOUR_MS, t("10:03"))
+        # tanpa kline_1h → 1h jatuh ke resample 1m; 4h tidak tersedia dengan catatan
+        cn1h = self.tools.ohlcv(CN, "1h")
+        self.assertEqual((cn1h["status"], cn1h["sumber"]), ("tidak tersedia", "resample_1m"))
+        self.assertIn("kline_1h belum cukup", self.tools.ohlcv(CN, "4h")["catatan"])
 
 
 class TestRegistration(unittest.TestCase):

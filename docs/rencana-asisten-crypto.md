@@ -1574,6 +1574,11 @@ rencananya tidak dipakai untuk uang sungguhan.
 6. Baseline acak + laporan harian
 7. Opsional: coba Hermes Agent dengan mesin yang sama
 
+> **Realisasi (11 Okt 2026):** langkah 1, 2, 4 selesai (Milestone 1); langkah 7 dipilih sebagai otak (Hermes, Milestone 2a)
+> sehingga `agent.py` tidak dibuat; langkah 3 terlaksana sebagai `pemindai.py` mekanis tanpa LLM di atas `analisis.py`
+> (Milestone 2b): cron Hermes tiap 5 menit, agent Opus 5.5 hanya dibangunkan bila ada kandidat (`{"wakeAgent": true}`).
+> Saringan Haiku tidak dipakai: gate mekanis sudah menahan ≥ 95% run tanpa biaya. Langkah 6 = Milestone 3.
+
 ---
 
 *Dokumen ini adalah rencana teknis, bukan saran investasi.*

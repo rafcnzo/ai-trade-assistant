@@ -41,6 +41,15 @@ CREATE TABLE IF NOT EXISTS mark_kline_1m(
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS ix_mark_time ON mark_kline_1m(open_time);
 
+-- Kline 1 jam harga terakhir (konteks 1h/4h/1d; backfill 120 hari, retensi 180 hari).
+CREATE TABLE IF NOT EXISTS kline_1h(
+  symbol TEXT, open_time INTEGER,
+  open REAL, high REAL, low REAL, close REAL,
+  volume REAL, quote_volume REAL, trades INTEGER, taker_buy_quote REAL,
+  PRIMARY KEY(symbol, open_time)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS ix_kline_1h_time ON kline_1h(open_time);
+
 -- Snapshot premiumIndex per tick (kesegaran, funding berikutnya).
 CREATE TABLE IF NOT EXISTS mark_snapshot(
   symbol TEXT, ts INTEGER, mark REAL, index_price REAL,

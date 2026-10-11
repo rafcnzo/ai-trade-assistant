@@ -38,7 +38,7 @@ from common import (  # noqa: E402
     tx,
 )
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"   # v2: + kline_1h
 FAPI = "https://fapi.binance.com"
 BRACKETS_URL = "https://www.binance.com/bapi/futures/v1/friendly/future/common/brackets"
 
@@ -73,12 +73,15 @@ class BinanceFapi:
         data, _ = http_get(f"{FAPI}/fapi/v1/premiumIndex", timeout=20)
         return data
 
-    def klines(self, symbol: str, start_ms: int, end_ms: Optional[int] = None, limit: int = 1500) -> list:
-        p = {"symbol": symbol, "interval": "1m", "startTime": int(start_ms), "limit": limit}
+    def klines_tf(self, symbol: str, interval: str, start_ms: int, end_ms: Optional[int] = None, limit: int = 1500) -> list:
+        p = {"symbol": symbol, "interval": interval, "startTime": int(start_ms), "limit": limit}
         if end_ms is not None:
             p["endTime"] = int(end_ms)
         data, _ = http_get(f"{FAPI}/fapi/v1/klines", p, timeout=20)
         return data
+
+    def klines(self, symbol: str, start_ms: int, end_ms: Optional[int] = None, limit: int = 1500) -> list:
+        return self.klines_tf(symbol, "1m", start_ms, end_ms, limit)
 
     def mark_klines(self, symbol: str, start_ms: int, end_ms: Optional[int] = None, limit: int = 1500) -> list:
         p = {"symbol": symbol, "interval": "1m", "startTime": int(start_ms), "limit": limit}
@@ -112,6 +115,10 @@ class CollectorConfig:
     snapshot_days: int = 3
     ticker_days: int = 7
     log_days: int = 30
+    klines_1h_history_days: int = 120   # backfill awal per simbol baru
+    klines_1h_retention_days: int = 180
+    klines_1h_grace_ms: int = 60_000    # ambil bar 1h setelah close + grace
+    klines_1h_backfill_per_tick: int = 5
     extra_symbols: tuple = field(default_factory=tuple)
 
 
@@ -120,6 +127,7 @@ class TickReport:
     ts: int = 0
     symbols: int = 0
     bars: int = 0
+    bars_1h: int = 0
     gap_ms: int = 0
     engine: Optional[dict] = None
     duration_ms: int = 0
@@ -196,10 +204,10 @@ def _f(x) -> Optional[float]:
         return None
 
 
-def kline_limit(start_ms: int, to_ms: int, max_limit: int = 1500) -> int:
+def kline_limit(start_ms: int, to_ms: int, max_limit: int = 1500, tf_ms: int = MINUTE_MS) -> int:
     """Jumlah bar yang diminta: secukupnya + 2. Weight Binance mengikuti `limit`
     (< 100 → 1, < 500 → 2, ≤ 1000 → 5, > 1000 → 10), jadi tick rutin tidak boleh minta 1500."""
-    need = (to_ms - start_ms) // MINUTE_MS + 1
+    need = (to_ms - start_ms) // tf_ms + 1
     return max(2, min(max_limit, need + 2))
 
 
@@ -399,6 +407,64 @@ class Collector:
         with tx(self.conn):
             self.conn.executemany(sql, parsed)
 
+    def update_klines_1h(self, universe: Iterable[str], server_now: int) -> int:
+        """Bar 1 jam: sekali per jam setelah close + grace; simbol baru di-backfill 120 hari (maks N simbol per tick)."""
+        cfg = self.cfg
+        hour = server_now // C.HOUR_MS
+        if server_now % C.HOUR_MS < cfg.klines_1h_grace_ms:
+            return 0
+        if int(meta_get(self.conn, "last_1h_hour", "0") or 0) == hour:
+            return 0
+        last_closed = hour * C.HOUR_MS - C.HOUR_MS
+        n, fresh_budget, pending_new = 0, cfg.klines_1h_backfill_per_tick, False
+        for sym in universe:
+            cur = self._last_open("kline_1h", sym)
+            if cur is None:
+                if fresh_budget <= 0:
+                    pending_new = True
+                    continue
+                fresh_budget -= 1
+                start = last_closed - cfg.klines_1h_history_days * C.DAY_MS
+            elif cur >= last_closed:
+                continue      # belum ada bar baru untuk simbol ini
+            else:
+                start = cur   # refetch bar terakhir (bisa direvisi), lalu bar baru
+            if start > last_closed:
+                continue
+            try:
+                n += self._fetch_1h(sym, start, last_closed)
+            except BlockedError:
+                raise
+            except NetError as e:
+                self.event("WARNING", "BAR_1H", str(e), sym)
+        if not pending_new:
+            with tx(self.conn):
+                meta_set(self.conn, "last_1h_hour", hour)
+        return n
+
+    def _fetch_1h(self, symbol: str, from_ms: int, to_ms: int) -> int:
+        n, start, guard = 0, from_ms, 0
+        while start <= to_ms and guard < 200:
+            guard += 1
+            limit = kline_limit(start, to_ms, tf_ms=C.HOUR_MS)
+            rows = self.api.klines_tf(symbol, "1h", start, to_ms, limit)
+            if not rows:
+                break
+            parsed = [parse_kline(symbol, k) for k in rows if int(k[0]) <= to_ms]
+            if not parsed:
+                break
+            with tx(self.conn):
+                self.conn.executemany(
+                    "INSERT OR REPLACE INTO kline_1h(symbol,open_time,open,high,low,close,volume,quote_volume,trades,taker_buy_quote) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    parsed,
+                )
+            n += len(parsed)
+            last_open = int(rows[-1][0])
+            if len(rows) < limit or last_open >= to_ms:
+                break
+            start = last_open + C.HOUR_MS
+        return n
+
     def update_funding(self, symbols: Iterable[str], server_now: int) -> int:
         n = 0
         for sym in symbols:
@@ -468,6 +534,15 @@ class Collector:
                 rep.errors.append(f"{sym}: {e}")
                 self.event("WARNING", "BAR_FETCH", str(e), sym)
 
+        # bar 1 jam (sekali per jam)
+        try:
+            rep.bars_1h = self.update_klines_1h(uni, server_now)
+        except BlockedError:
+            raise
+        except NetError as e:
+            rep.errors.append(f"1h: {e}")
+            self.event("WARNING", "BAR_1H", str(e))
+
         # funding: simbol berposisi tiap tick, lainnya tiap N menit
         need = set(self.engine.active_symbols()) if self.engine is not None else set()
         if (server_now // MINUTE_MS) % self.cfg.funding_every_min == 0:
@@ -522,6 +597,9 @@ class Collector:
                 else:
                     self.conn.execute(f"DELETE FROM {table} WHERE open_time < ?", (cutoff,))
                 removed[table] = self.conn.total_changes - before
+            before = self.conn.total_changes
+            self.conn.execute("DELETE FROM kline_1h WHERE open_time < ?", (now - self.cfg.klines_1h_retention_days * C.DAY_MS,))
+            removed["kline_1h"] = self.conn.total_changes - before
             self.conn.execute("DELETE FROM mark_snapshot WHERE ts < ?", (now - self.cfg.snapshot_days * C.DAY_MS,))
             self.conn.execute("DELETE FROM ticker_24h WHERE ts < ?", (now - self.cfg.ticker_days * C.DAY_MS,))
             self.conn.execute("DELETE FROM collector_run WHERE ts < ?", (now - self.cfg.log_days * C.DAY_MS,))
@@ -539,8 +617,9 @@ class Collector:
                 try:
                     rep = self.tick()
                     self.log.info(
-                        "tick %s: %d simbol, %d bar, %d ms, weight %s%s%s",
+                        "tick %s: %d simbol, %d bar, %d ms, weight %s%s%s%s",
                         fmt_wib(rep.ts), rep.symbols, rep.bars, rep.duration_ms, rep.weight,
+                        f", bar1h {rep.bars_1h}" if rep.bars_1h else "",
                         f", mesin {rep.engine}" if rep.engine else "",
                         f", error {len(rep.errors)}" if rep.errors else "",
                     )
@@ -590,6 +669,14 @@ def cmd_status(args) -> None:
     n_sym = conn.execute("SELECT COUNT(*) FROM symbol_info WHERE status='TRADING'").fetchone()[0]
     n_br = conn.execute("SELECT COUNT(DISTINCT symbol) FROM leverage_bracket").fetchone()[0]
     print(f"Simbol TRADING: {n_sym} | simbol dengan bracket: {n_br}")
+    try:
+        r1h = conn.execute("SELECT COUNT(DISTINCT symbol), COUNT(*), MIN(open_time), MAX(open_time) FROM kline_1h").fetchone()
+        if r1h and r1h[1]:
+            print(f"Bar 1h: {r1h[0]} simbol, {r1h[1]} bar, {fmt_wib(int(r1h[2]))} → {fmt_wib(int(r1h[3]))}")
+        else:
+            print("Bar 1h: belum ada")
+    except Exception:  # noqa: BLE001 - skema lama tanpa kline_1h
+        print("Bar 1h: tabel belum ada (skema lama)")
     print("\n| simbol | bar 1m | bar terakhir (WIB) | umur | mark bar |")
     print("|---|---|---|---|---|")
     for r in conn.execute(

@@ -226,25 +226,40 @@ class Tools:
         return self._call("tabel_tiket", run)
 
     def ohlcv(self, symbol: str, tf: str = "5m", n: int = 60) -> dict:
-        """Candle yang sudah close (tf: 1m|5m|15m|1h|4h) + EMA20/50, RSI14, ATR14, tren, swing, level kunci terdekat, dan jejak psikologi (WICK, VOL, BREAKOUT_GAGAL, IMPULS, KOMPRESI)."""
+        """Candle yang sudah close (tf: 1m|5m|15m|1h|4h|1d) + EMA20/50, RSI14, ATR14, tren, swing, level kunci terdekat, dan jejak psikologi (WICK, VOL, BREAKOUT_GAGAL, IMPULS, KOMPRESI). 1h/4h/1d dari kline_1h (120 hari)."""
         def run():
             sym = symbol.strip()
-            if tf not in A.TF_MS or tf == "1d":
-                raise ValueError("tf harus salah satu dari 1m, 5m, 15m, 1h, 4h")
+            if tf not in A.TF_MS:
+                raise ValueError("tf harus salah satu dari 1m, 5m, 15m, 1h, 4h, 1d")
             now = self.ctx.clock()
-            raw = A.load_bars(self.ctx.market, sym, 48, now)
-            if not raw:
-                return {"symbol": sym, "tf": tf, "status": "tidak tersedia", "alasan": "belum ada bar untuk simbol ini"}
-            bars = [b for b in raw if b.open_time + C.MINUTE_MS <= now] if tf == "1m" else A.resample(raw, A.TF_MS[tf], now)
+            sumber = "resample_1m"
+            if tf in ("1h", "4h", "1d"):
+                h = A.load_bars_1h(self.ctx.market, sym, 180 if tf != "1h" else 30, now)
+                if tf == "1h" and len(h) >= 20:
+                    bars, sumber = h, "kline_1h"
+                elif tf in ("4h", "1d"):
+                    bars = A.resample(h, A.TF_MS[tf], now) if h else []
+                    sumber = "kline_1h"
+                    if len(bars) < 20:
+                        return {"symbol": sym, "tf": tf, "status": "tidak tersedia", "alasan": f"hanya {len(bars)} bar {tf} close (butuh ≥ 20)",
+                                "catatan": "kline_1h belum cukup; collector mengisi 120 hari saat pertama jalan (±4 tick)"}
+                else:
+                    raw = A.load_bars(self.ctx.market, sym, 48, now)
+                    bars = A.resample(raw, A.TF_MS[tf], now) if raw else []
+            else:
+                raw = A.load_bars(self.ctx.market, sym, 48, now)
+                if not raw:
+                    return {"symbol": sym, "tf": tf, "status": "tidak tersedia", "alasan": "belum ada bar untuk simbol ini"}
+                bars = [b for b in raw if b.open_time + C.MINUTE_MS <= now] if tf == "1m" else A.resample(raw, A.TF_MS[tf], now)
             if len(bars) < 20:
-                return {"symbol": sym, "tf": tf, "status": "tidak tersedia", "alasan": f"hanya {len(bars)} bar close (butuh ≥ 20)", "catatan": "riwayat 1m hanya 48 jam; 4h butuh kline_1h (milestone 2b)"}
+                return {"symbol": sym, "tf": tf, "status": "tidak tersedia", "alasan": f"hanya {len(bars)} bar close (butuh ≥ 20)", "sumber": sumber}
             closes = [b.close for b in bars]
             atr_v = A.atr(bars)
             sw = A.swings(bars)
             levels = A.cluster_levels(sw, 0.5 * atr_v) if atr_v else []
             above, below = A.nearest(levels, bars[-1].close)
             out_bars = [{"open_time": b.open_time, "o": b.open, "h": b.high, "l": b.low, "c": b.close, "qv": round(b.quote_volume, 2)} for b in bars[-int(n):]]
-            return {"symbol": sym, "tf": tf, "n_bar": len(bars), "bar_terakhir": bars[-1].open_time, "close": bars[-1].close,
+            return {"symbol": sym, "tf": tf, "sumber": sumber, "n_bar": len(bars), "bar_terakhir": bars[-1].open_time, "close": bars[-1].close,
                     "ema20": A.ema_last(closes, 20), "ema50": A.ema_last(closes, 50), "rsi14": A.rsi(closes), "atr14": atr_v,
                     "atr14_pct": (atr_v / bars[-1].close * 100) if atr_v else None, "tren": A.tren(bars),
                     "swing_terakhir": sw[-6:], "level_atas": above, "level_bawah": below,
@@ -264,12 +279,14 @@ class Tools:
                     rows = k.execute("SELECT * FROM kandidat WHERE day_wib=? ORDER BY score DESC, id DESC LIMIT ?", (hari, int(limit))).fetchall()
                     run_row = k.execute("SELECT * FROM pemindai_run WHERE day_wib=? ORDER BY ts DESC LIMIT 1", (hari,)).fetchone()
                 else:
-                    run_row = k.execute("SELECT * FROM pemindai_run ORDER BY ts DESC LIMIT 1").fetchone()
+                    # run terakhir yang MEMBANGUNKAN agent; run tanpa kandidat sesudahnya tidak mengosongkan daftar
+                    run_row = k.execute("SELECT * FROM pemindai_run WHERE wake=1 ORDER BY ts DESC LIMIT 1").fetchone()
                     rows = k.execute("SELECT * FROM kandidat WHERE run_ts=? ORDER BY score DESC, id DESC LIMIT ?",
                                      (run_row["ts"] if run_row else 0, int(limit))).fetchall()
                 out = []
                 for r in rows:
                     d = dict(r)
+                    d["plan_id"] = f"K{d['id']}"
                     for fld in ("lev_layak", "flags"):
                         if isinstance(d.get(fld), str):
                             try:
@@ -277,7 +294,9 @@ class Tools:
                             except ValueError:
                                 pass
                     out.append(d)
-                return {"run": dict(run_row) if run_row else None, "kandidat": out}
+                last = k.execute("SELECT ts, wake, alasan FROM pemindai_run ORDER BY ts DESC LIMIT 1").fetchone()
+                return {"run": dict(run_row) if run_row else None, "run_terakhir": dict(last) if last else None, "kandidat": out,
+                        "catatan": "plan_id untuk pasang_order = field plan_id (K<id>); jangan mengarang ID"}
             finally:
                 k.close()
         return self._call("kandidat_terbaru", run)

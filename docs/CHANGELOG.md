@@ -3,6 +3,34 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (sore, 16:40) — laptop Windows — Milestone 2b: pemindai mekanis, kline_1h, cron Hermes
+
+**Apa:** `scripts/pemindai.py` (baru; penulis tunggal `data/kandidat.sqlite`): tiap 5 menit memindai 20 koin top volume
+∪ simbol berposisi tanpa LLM — level = klaster swing 5m∪15m (≥ 2 sentuhan), jejak 5m (WICK/BREAKOUT_GAGAL/VOL),
+skor, arah dugaan, kelayakan leverage lewat `analisis.tabel_leverage` (jarak liq ≥ 2×ATR 5m untuk sisa budget tiket),
+gate G1–G8 (data basi, jam 07:00–22:30, budget < $0,10, ≥ 2 order tiket hidup, cap 12 wake/hari, exposure, cooldown 30 menit,
+skor < 3). Stdout = ringkasan untuk agent + baris terakhir `{"wakeAgent": true|false}` (kontrak cron Hermes; false = nol biaya).
+Collector: tabel `kline_1h` (`SCHEMA_VERSION="2"`, backfill 120 hari per simbol baru maks 5 simbol/tick, 1 permintaan kecil
+per simbol per jam, retensi 180 hari), `BinanceFapi.klines_tf`, `kline_limit(tf_ms=)`. `SqliteMarket.bars_1h`,
+`analisis.load_bars_1h`. `mcp_server.ohlcv` menerima `1d`; 1h/4h/1d dari `kline_1h` (field `sumber`), fallback resample 1m.
+`kandidat_terbaru` memakai run terakhir yang `wake=1` (run kosong sesudahnya tidak mengosongkan daftar) + field `plan_id`.
+`hermes/cron.cmd`: jadwal `1-59/5 * * * *` (bar 1m tersimpan pada detik :05, jadi :00 terlalu dini) dan prompt yang
+menyebut `plan_id`; skill `tiket` langkah 3/7 memakai `plan_id` dari kandidat, `MANUAL` untuk permintaan pemilik.
+
+**Kenapa:** agent sebelumnya hanya bekerja saat diajak bicara. Sekarang ia bekerja sendiri dengan biaya hanya saat
+ada kandidat (≤ 12 wake/hari × ≈ $0,05–0,15). `data_until` dihitung dari bar yang tersimpan (bukan jam dinding)
+supaya bucket 5m yang belum lengkap tidak pernah ikut.
+
+**Tes:** `tests/test_pemindai.py` S1–S10 (setup LONG sintetis → wake K1; datar → off; jam; budget; basi; cap; cooldown +
+skor naik + kedaluwarsa; retensi; exposure; CLI `--once/--cron/--json/--sekarang`), `tests/test_collector_1h.py` C1–C3
+(+C2b budget backfill), `test_mcp_server` M8 `plan_id` + M10 `ohlcv` dari `kline_1h`, `test_common` `kline_limit` 1h.
+Total 91 tes hijau. Uji data nyata: `pemindai.py --once` → 20 simbol, 2 kandidat (UNI, XRP SHORT skor 4), gate off
+karena 2 order tiket uji masih hidup.
+
+**File:** `scripts/pemindai.py`, `scripts/collector.py`, `scripts/schema_pasar.sql`, `scripts/paper_engine.py`,
+`scripts/analisis.py`, `scripts/mcp_server.py`, `hermes/cron.cmd`, `hermes/skills/tiket/SKILL.md`, `tests/fixtures.py`,
+`tests/test_pemindai.py`, `tests/test_collector_1h.py`, `tests/test_mcp_server.py`, `tests/test_common.py`, `docs/*`, `CLAUDE.md`.
+
 ## 2026-10-11 (malam) — laptop Windows — menu Telegram ringkas, pesan kaya, skill pintas
 
 **Apa:** skill pintas `posisi`, `budget`, `laporan`, `cek <SIMBOL> <ARAH>`, `batal`, `status` (tiap skill = perintah

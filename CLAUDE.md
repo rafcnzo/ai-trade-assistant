@@ -48,7 +48,7 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 ## Struktur
 ```
 scripts/   common.py, collector.py, paper_engine.py, budget_guard.py, budget_proxy.py, analisis.py,
-           mcp_server.py, pemindai.py (2b), schema_{pasar,paper,budget,kandidat}.sql
+           mcp_server.py, pemindai.py, schema_{pasar,paper,budget,kandidat}.sql
 hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/pemindai_cron.py, config.snippet.yaml, cron.cmd, sync.py
 tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)
 data/      sqlite (gitignored)        logs/   log UTF-8 (gitignored)
