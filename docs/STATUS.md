@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 16:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 16:50 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -26,7 +26,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 |---|---|---|
 | 1 | Mesin paper trading: collector, paper_engine, budget_guard, 43 tes | **Selesai**, live |
 | 2a | Hermes: budget_proxy, analisis, mcp_server (22 tool), SOUL + skill `tiket` + `sync.py` + `setup_hermes.cmd`, docs | **Selesai & terverifikasi** (`hermes -z` menjawab lewat tool MCP; biaya tercatat). Sisa: uji dari Telegram oleh user |
-| 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Kode selesai** (91 tes hijau, uji data nyata OK). Deploy: lihat tabel verifikasi 2b |
+| 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
 | 3 | Baseline acak, kriteria lulus §19.7, memori pasar lengkap (§16), referensi buku (§15) | Belum mulai |
 
 ## Yang harus dilakukan user
@@ -46,7 +46,9 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
   `curl 127.0.0.1:8585/healthz`, `hermes gateway status`.
 - Order paper uji 11 Okt 11:42 WIB: #1 tiket BTC LONG 150x @ 82.915,7; #2 tiket ETH LONG 100x @ 2.431,1 (jauh);
   #3 swing ETH SHORT 10x @ 2.511,3. Status: `paper_engine.py laporan`.
-- Biaya API hari ini: ≈ $0,10 (2 panggilan uji). Laporan: `budget_guard.py laporan`.
+- Cron Hermes aktif sejak 16:43 WIB: `pemindai-tiket` tiap 5 menit (`1-59/5`), `evaluasi-harian` 23:55. `hermes cron list`.
+- Collector skema v2: `kline_1h` 20 simbol × 120 hari (57.620 bar) terisi dalam 4 tick; weight tick kembali ±91.
+- Biaya API hari ini: ≈ $0,75 (16 panggilan uji Telegram/CLI). Laporan: `budget_guard.py laporan`.
 
 ## Verifikasi
 
@@ -64,9 +66,10 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2a | Telegram: posisi/order; pasang tiket → `created_by=hermes`; "jalankan shell" → tidak punya tool | ✅ (user, 11 Okt) |
 | 2b | `test_pemindai` S1–S10, `test_collector_1h` C1–C3, M8 `plan_id`, M10 `ohlcv` 1h/4h/1d, `kline_limit` 1h | ✅ 91 tes |
 | 2b | `pemindai.py --once` data nyata: 20 simbol, tabel per simbol, kandidat UNI/XRP, gate line ASCII | ✅ |
-| 2b | Collector restart dengan skema v2 → `collector.py status` menampilkan `Bar 1h` 120 hari; weight tick tetap < 1000 | ⬜ deploy |
-| 2b | `hermes cron list` memuat `pemindai-tiket` (1-59/5) & `evaluasi-harian` (55 23); `hermes cron run pemindai-tiket` tanpa kandidat → `api_calls` tidak bertambah | ⬜ deploy |
-| 2b | Jalur positif: wake alami → order `plan_id=K<id>` / SKIP + jurnal; 23:55 evaluasi harian tiba | ⬜ menunggu kejadian |
+| 2b | Collector restart dengan skema v2 → `collector.py status`: `Bar 1h: 20 simbol, 57620 bar, 13 Jun → 11 Okt`; weight tick 282 → 191 → 91 | ✅ |
+| 2b | `hermes cron list` memuat `pemindai-tiket` (1-59/5) & `evaluasi-harian` (55 23); `hermes cron run pemindai-tiket` → `pemindai_run` wake=0 "sudah 2 order tiket hidup", `api_calls` tetap 16 | ✅ |
+| 2b | Scheduler gateway menjalankan `pemindai-tiket` sendiri: run 16:46:25 WIB tercatat di `pemindai_run` (wake=0), `api_calls` tetap 16 | ✅ |
+| 2b | Jalur positif: wake alami → order `plan_id=K<id>` / SKIP + jurnal; 23:55 evaluasi harian tiba; apakah gate-off sampai ke Telegram | ⬜ menunggu kejadian / user |
 
 ## Keputusan yang berlaku
 
@@ -83,6 +86,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 - Di laptop ini, proses dari Claude Code tervirtualisasi (MSIX): yang menyentuh `%LOCALAPPDATA%\hermes`, Startup, atau
   perintah `hermes` dijalankan lewat `explorer.exe "<path>\hermes\setup_hermes.cmd"` / `run_logged.cmd` (lihat OPERASI).
 - Proxy menolak budget habis / kill switch dengan 403 (bukan 429) agar SDK tidak mengulang.
+- `hermes cron create --script` harus path **relatif** terhadap `HERMES_HOME\scripts` (`pemindai_cron.py`); path absolut ditolak.
 - Repo GitHub `rafcnzo/ai-trade-assistant`; `data/`, `logs/`, `jurnal/`, `laporan/`, `pasar/harian`, `pasar/komunitas`, `referensi/buku/` tidak di-commit.
 
 ## Pertanyaan terbuka

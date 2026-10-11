@@ -218,7 +218,7 @@ apa pun bila sudah sesuai. Setelah mengubah skill/SOUL: `hermes gateway restart`
 
 ### 5. Gateway, Telegram, cron
 Wizard `hermes setup` sudah memasang `Hermes_Gateway.vbs` di folder Startup (fallback karena Task Scheduler butuh admin).
-`hermes gateway start|status|stop|restart`. Cron (dari `hermes/cron.cmd` setelah path diisi `sync.py`): `pemindai-tiket`
+`hermes gateway start|status|stop|restart`. Cron (baris `hermes cron create` dari `hermes/sync.py --snippet`; `--script` harus relatif terhadap `HERMES_HOME\scripts`): `pemindai-tiket`
 tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat) dan `evaluasi-harian` 23:55 WIB.
 `hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
