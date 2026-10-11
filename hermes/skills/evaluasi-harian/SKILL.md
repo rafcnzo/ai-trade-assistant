@@ -1,7 +1,7 @@
 ---
 name: evaluasi-harian
 description: Evaluasi harian paper trading pukul 23:55 WIB: laporan hasil, biaya API, catatan psikologi pasar, maksimal 3 hipotesis terukur, dan usulan pelajaran. Dipakai oleh cron evaluasi-harian atau saat pemilik minta "evaluasi hari ini".
-version: 1.1.0
+version: 1.2.0
 metadata:
   hermes:
     tags: [trading, paper, evaluasi, memori-pasar]
@@ -19,8 +19,10 @@ metadata:
    Lalu keputusan sendiri: `mcp_paper_baca_memori("jurnal")`. Per keputusan: rencana vs hasil
    (`TP` / `HANGUS` / `TIDAK_TERISI` / `SKIP` / `MANUAL`), apakah aturan skill tiket dipatuhi, berapa yang
    `ambiguous` (hasil ditentukan aturan pesimis).
-4. Konteks pasar: `mcp_paper_top_volume`, `mcp_paper_ohlcv` BTCUSDT 1h dan ETHUSDT 1h (tren, jejak, level),
-   `mcp_paper_harga` untuk funding. Panel psikologi lengkap belum tersedia → tulis "tidak tersedia", jangan mengarang.
+4. Konteks pasar: `mcp_paper_panel_psikologi("BTCUSDT")` dan `("ETHUSDT")` (zona takut/serakah per indikator, divergensi,
+   perubahan 24 jam — tidak ada skor gabungan; indikator `tidak tersedia` disebut apa adanya), `mcp_paper_top_volume`,
+   `mcp_paper_ohlcv` BTCUSDT 1h dan ETHUSDT 1h (tren, jejak, level). Divergensi panel adalah bahan utama hipotesis
+   `penumpukan-leverage`, `kapitulasi`, `divergensi-funding`.
 5. `mcp_paper_tulis_catatan_harian(ringkasan_psikologi, jejak_grafik, reaksi_berita="tidak tersedia", rezim)`:
    2–4 kalimat: siapa yang dominan, siapa yang terjebak, apa yang berubah dari kemarin.
 6. Maksimal 3 `mcp_paper_tulis_hipotesis(pola, symbol, tf, jenis, arah, nilai, batas_hari, kondisi)`:

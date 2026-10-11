@@ -3,6 +3,27 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (petang, 18:05) — laptop Windows — Milestone 3b: panel psikologi pasar; watchlist top 30 / 5 kandidat
+
+**Apa:** `scripts/psikologi.py` (penulis tunggal `data/psikologi.sqlite`, `schema_psikologi.sql`): 12 indikator §16.2 untuk BTC/ETH/
+pasar luas (FNG alternative.me; funding dari pasar.sqlite; Δ OI 24j Binance `futures/data` + Δ harga 24j kline_1h → kapitulasi/
+penumpukan; L/S akun & top trader; taker 4 jam; likuidasi OKX ±100 order; premium Coinbase dikoreksi USDT/USD; premium IDR via
+Indodax; suplai stablecoin 7 hari DefiLlama), zona takut/serakah (ambang awal → persentil 10/90 setelah 90 hari), divergensi,
+retensi 400 hari; sumber gagal → `tidak tersedia` + alasan. Tool MCP `panel_psikologi` (24 tool); `tulis_catatan_harian` mengisi
+frontmatter `panel_*`, `fng`, `funding_btc`. Skill `psikologi` (`/psikologi`, menu Telegram menggantikan `/whoami`;
+`merge_config.py` kini memperbarui baris `priority` yang sudah ada). Skill `evaluasi-harian` v1.2 memakai panel. Cron Hermes
+`psikologi` `7 * * * *` `--no-agent` + `hermes/scripts/psikologi_cron.py`. `common.BINANCE_HOSTS` + Coinbase & OKX (DoH).
+Pemindai: `top_n=30`, `top_k=5`; prompt cron & skill tiket `kandidat_terbaru(limit=5)`.
+
+**Kenapa:** catatan harian agent selama ini menulis "panel psikologi tidak tersedia"; §16.2 membutuhkan data positioning/sentimen
+mekanis sebagai bahan hipotesis (`penumpukan-leverage`, `kapitulasi`, `divergensi-funding`). Pertanyaan user "kenapa top 3":
+watchlist memang top volume 24 jam; yang tampak 3 adalah `top_k` kandidat skor tertinggi — dinaikkan ke 5 dengan universe 30.
+
+**Tes:** PS1–PS6, M12, M9 → 24 (116 hijau). Probe jaringan: semua sumber bisa diakses lewat DoH; `fapi/v1/allForceOrders`
+diblokir → likuidasi dari OKX. **File:** `scripts/{psikologi.py,schema_psikologi.sql,common.py,mcp_server.py,pemindai.py}`,
+`hermes/{cron.cmd,SOUL.md,merge_config.py,scripts/psikologi_cron.py,skills/psikologi,skills/evaluasi-harian,skills/tiket}`,
+`tests/test_psikologi.py`, `tests/test_mcp_server.py`, `docs/*`, `CLAUDE.md`.
+
 ## 2026-10-11 (petang, 18:30) — laptop Windows — Milestone 3a: baseline acak, statistik kelulusan, hipotesis dinilai skrip
 
 **Apa:** (1) `paper_engine.py` skema v2: akun `acak`, kolom `orders.tp_pct/sl_pct` (migrasi otomatis), `_shadow_acak` —

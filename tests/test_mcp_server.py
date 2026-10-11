@@ -47,7 +47,7 @@ class Base(unittest.TestCase):
         self.kand = self.root / "kandidat.sqlite"
         self.ctx = Ctx(engine=self.engine, market=self.market, pasar=self.pasar, root=self.root, clock=lambda: self.clock[0],
                        guard_factory=lambda: BudgetGuard(self.root / "budget.sqlite", clock=lambda: self.clock[0], kill_file=self.root / "STOP"),
-                       kandidat_path=self.kand, proxy_health=None)
+                       kandidat_path=self.kand, psikologi_path=self.root / "psikologi.sqlite", proxy_health=None)
         self.tools = Tools(ctx=self.ctx)
 
     def tearDown(self):
@@ -251,7 +251,33 @@ class TestHipotesisStatistik(Base):
         self.assertTrue(str(s["akun"]["tiket"]["expectancy"]).startswith("tidak tersedia"))
         self.assertIn("# Statistik kelulusan", s["markdown"])
         self.assertIn("statistik_lulus", TOOL_NAMES)
-        self.assertEqual(len(TOOL_NAMES), 23)
+        self.assertEqual(len(TOOL_NAMES), 24)
+
+
+class TestPanelPsikologi(Base):
+    def test_m12_panel_psikologi_and_frontmatter(self):
+        import psikologi as P
+        self.assertEqual(self.tools.panel_psikologi()["status"], "tidak tersedia")
+        conn = connect(self.root / "psikologi.sqlite")
+        C.init_schema(conn, C.SCRIPTS_DIR / "schema_psikologi.sql", "1")
+        ts = t("10:00")
+        rows = [P.Baris(ts, BTC, "funding", 0.0004, P.SERAKAH, "uji", ""), P.Baris(ts, BTC, "oi_24h", 0.12, P.SERAKAH, "uji", "penumpukan"),
+                P.Baris(ts, BTC, "harga_24h", 0.002, P.NETRAL, "uji", ""), P.Baris(ts, BTC, "taker", 0.85, P.NETRAL, "uji", ""),
+                P.Baris(ts, "*", "fng", 72.0, P.NETRAL, "uji", "")]
+        P.simpan(conn, rows, "awal", 1, None, 10)
+        conn.close()
+        p = self.tools.panel_psikologi(BTC)
+        self.assertEqual((p["status"], p["serakah_ekstrem"], p["takut_ekstrem"], len(p["indikator"])), ("OK", 2, 0, 5))
+        self.assertTrue(any("funding tinggi" in d for d in p["divergensi"]))
+        self.clock[0] = t("14:00")
+        self.assertEqual(self.tools.panel_psikologi()["status"], "BASI")
+        self.clock[0] = t("10:03", sec=27)
+        self.assertTrue(self.tools.tulis_catatan_harian("ringkasan", rezim="range")["ok"])
+        txt = (self.root / "pasar" / "harian" / f"{DAY}.md").read_text(encoding="utf-8")
+        self.assertIn("fng: 72\n", txt)
+        self.assertIn("funding_btc: 0.0004\n", txt)
+        self.assertIn("panel_serakah_ekstrem: 2\n", txt)
+        self.assertIn("panel_psikologi", TOOL_NAMES)
 
 
 class TestRegistration(unittest.TestCase):
@@ -259,7 +285,7 @@ class TestRegistration(unittest.TestCase):
         from mcp.server.fastmcp import FastMCP
         mcp = FastMCP("paper-uji")
         names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
-        self.assertEqual(len(names), 23)
+        self.assertEqual(len(names), 24)
         listed = asyncio.run(mcp.list_tools())
         self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
         po = [x for x in listed if x.name == "pasang_order"][0]

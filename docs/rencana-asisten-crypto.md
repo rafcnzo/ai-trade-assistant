@@ -3,6 +3,14 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.6 (11 Okt 2026, Milestone 3b)
+- **§16.2 panel psikologi** terealisasi sebagai `scripts/psikologi.py` (cron Hermes tiap jam, tanpa LLM) → `data/psikologi.sqlite`,
+  tool MCP `panel_psikologi`, perintah `/psikologi`. Likuidasi memakai OKX `liquidation-orders` (±100 order terakhir; Binance
+  `allForceOrders` diblokir ISP) — dicatat "sampel terbatas". Premium IDR memakai USDT/IDR Indodax sebagai pembanding, bukan kurs
+  resmi. Suplai stablecoin dari DefiLlama. Ambang awal sesuai tabel; persentil 10/90 setelah ≥ 90 hari data (mode `persentil`).
+  Tidak ada skor gabungan; divergensi dihitung mekanis. §16.4 frontmatter catatan harian diisi otomatis dari panel.
+- §17.7 watchlist pemindai = top **30** volume 24 jam, maks **5** kandidat per wake.
+
 ### Perubahan v1.5 (11 Okt 2026, Milestone 3a)
 - **§19.7 baseline acak** = bayangan per order tiket agent di akun paper `acak`: simbol, leverage, qty, jarak TP/SL sama; sisi acak
   deterministik (`Random("acak-v1:<order_id>")`), entry market di open bar berikutnya, budget cermin $1/hari. Perbandingan:

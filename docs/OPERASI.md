@@ -10,11 +10,12 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/pemindai.py` | Pemindai kandidat tiket mekanis (tanpa LLM) tiap 5 menit lewat cron Hermes; membangunkan agent hanya bila ada kandidat | `data/kandidat.sqlite` |
 | `scripts/notifikasi.py` | Notifikasi kejadian paper (terisi, TP, STOP, likuidasi, kedaluwarsa, batal) ke Telegram tiap menit lewat cron Hermes `--no-agent` (tanpa LLM) | `data/notif.json` |
 | `scripts/evaluasi.py` | Statistik kelulusan §19.7 (expectancy, stabilitas, kepatuhan, tiket vs akun `acak`); baca saja | — |
+| `scripts/psikologi.py` | Panel psikologi pasar §16.2 tiap jam (FNG, funding, OI, L/S, taker, likuidasi OKX, premium Coinbase/IDR, stablecoin) dengan zona & divergensi; cron Hermes `--no-agent` | `data/psikologi.sqlite` |
 | `scripts/hipotesis.py`, `scripts/uji_hipotesis.py` | Hipotesis terstruktur: skema/penilaian/baseline (murni) dan skrip harian 23:40 yang menilai, menghitung baseline, mengelola pelajaran | `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/pelajaran.{jsonl,md}` |
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
-| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 23 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
+| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 24 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
 | `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
 | `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
@@ -195,11 +196,11 @@ Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
 1. `hermes/sync.py` — menyalin `SOUL.md`, skill `tiket` & `evaluasi-harian`, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`;
 2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
    `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
-   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (23 tool whitelist);
+   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (24 tool whitelist);
 3. menaruh launcher `crypto-analyst_proxy.vbs` dan `crypto-analyst_collector.vbs` di folder **Startup** user
    (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
 4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
-   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 23 tool), `hermes cron list`.
+   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 24 tool), `hermes cron list`.
 
 Log: `logs/hermes_setup.log`. Cek proxy: `curl http://127.0.0.1:8585/healthz` (`key_set` harus `true`).
 Log proxy: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya). Budget habis → Hermes menerima
@@ -224,7 +225,8 @@ Wizard `hermes setup` sudah memasang `Hermes_Gateway.vbs` di folder Startup (fal
 `hermes gateway start|status|stop|restart`. Cron (baris `hermes cron create` dari `hermes/sync.py --snippet`; `--script` harus relatif terhadap `HERMES_HOME\scripts`): `pemindai-tiket`
 tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `evaluasi-harian` 23:55 WIB, dan `notif-paper`
 tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM), serta `uji-hipotesis`
-23:40 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 23:55).
+23:40 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 23:55), dan `psikologi` menit ke-7 tiap jam
+(`--no-agent`, diam; mengisi `data/psikologi.sqlite`).
 `hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
 + `base_url` tetap berfungsi, jadi ini opsional.
@@ -241,8 +243,9 @@ tenggelam di antara ±120 perintah bawaan Hermes. Pesan kaya (`rich_messages: tr
 | `/cek <SIMBOL> <LONG\|SHORT> [entry] [tp]` | Nilai setup tiket, pasang order paper atau SKIP |
 | `/batal <id>` · `/batal semua` · `/batal posisi <id>` | Batalkan order / minta tutup posisi |
 | `/status` | Kesehatan collector, proxy, pemindai, kill switch |
+| `/psikologi` | Panel psikologi pasar BTC/ETH: zona takut/serakah per indikator, divergensi, siapa yang terjebak |
 | `/tiket`, `/evaluasi-harian` | Skill inti (dipakai cron; bisa dipanggil manual) |
-| `/help`, `/new`, `/usage`, `/commands`, `/whoami`, `/model` | Bawaan Hermes |
+| `/help`, `/new`, `/usage`, `/commands`, `/model` | Bawaan Hermes (`/whoami` keluar dari menu agar muat 14) |
 
 Setiap perintah adalah satu sesi agent (≈ $0,02–0,10 lewat proxy). Chat bebas juga bisa; agent memilih skill sendiri.
 Jika menu tidak terlihat: tutup dan buka lagi chat bot (klien Telegram men-cache menu), atau ketik `/commands`.
@@ -411,9 +414,45 @@ memutuskan dengan mengedit file itu; skrip hanya melaporkan jumlahnya.
 | Banyak `ambigu` | Simbol baru/koin dengan `kline_1h` kurang dari horizon; atau bar 1d (UTC) belum lengkap — tunggu run berikutnya |
 | `tulis_hipotesis` ditolak "ATR tidak tersedia" | `kline_1h` simbol itu belum terisi (butuh > 15 bar tf); pakai `sentuh_harga`/`close_arah` |
 
+## Panel psikologi pasar (`scripts/psikologi.py`)
+
+Cron Hermes `psikologi` (`7 * * * *`, `--no-agent`, diam) menjalankan `psikologi.py --cron`: mengumpulkan 12 indikator §16.2 untuk
+BTCUSDT, ETHUSDT (per simbol) dan pasar luas (`*`), memberi zona, lalu menyimpan ke `data/psikologi.sqlite` (`panel`, `panel_run`).
+Agent membacanya lewat `mcp_paper_panel_psikologi(symbol)`; pemilik lewat `/psikologi`; catatan harian otomatis mendapat frontmatter
+`panel_takut_ekstrem`, `panel_serakah_ekstrem`, `fng`, `funding_btc`.
+
+| Indikator | Sumber | Zona awal (takut ≤ · serakah ≥) |
+|---|---|---|
+| Fear & Greed | alternative.me | 25 · 75 |
+| Funding rate terakhir | `pasar.sqlite` mark_snapshot (tanpa jaringan) | −0,01% · +0,03% |
+| Δ OI 24 jam + Δ harga 24 jam | Binance `futures/data/openInterestHist` (nilai USD) + `kline_1h` | kapitulasi: OI ≤ −5% & harga ≤ −3% (takut); penumpukan: OI ≥ +10% & |harga| < 1% (serakah) |
+| L/S rasio akun | Binance `globalLongShortAccountRatio` 1h | 0,8 · 2,0 |
+| L/S top trader (posisi) | Binance `topLongShortPositionRatio` 1h | hanya catatan/divergensi |
+| Taker buy/sell (rata-rata 4 jam) | Binance `takerlongshortRatio` 1h | 0,8 · 1,2 |
+| Likuidasi long/short 24 jam | OKX `liquidation-orders` (±100 order terakhir — **sampel terbatas**) | dominasi > 2× |
+| Premium Coinbase | Coinbase BTC-USD ÷ (Binance spot × Coinbase USDT-USD) − 1 | −0,10% · +0,10% |
+| Premium IDR | Indodax btcidr ÷ (usdtidr × Binance spot) − 1 (bukan kurs resmi) | 0% · +1,0% |
+| Δ suplai stablecoin 7 hari | DefiLlama `stablecoincharts/all` | −1% · +1% |
+
+Setelah ≥ 90 hari data (≥ 100 titik), zona indikator memakai persentil 10/90 dari datanya sendiri (`mode_zona: persentil`;
+`campuran` saat sebagian). **Tidak ada skor gabungan** — hanya hitungan indikator di zona ekstrem dan daftar **divergensi**
+(harga naik & OI turun; harga turun & OI naik; funding tinggi & taker sell; ritel long vs top trader short; FNG serakah &
+premium Coinbase negatif). Sumber yang gagal/diblokir → `nilai NULL`, zona `tidak tersedia`, alasan di `catatan`; run tetap `ok`.
+Host `api.exchange.coinbase.com` dan `www.okx.com` ikut diresolusi lewat DoH (`common.BINANCE_HOSTS`).
+
+```bash
+.venv/Scripts/python.exe scripts/psikologi.py --once
+```
+(`--lihat` hanya membaca DB, `--symbol ETHUSDT`, `--json`, `--sekarang`). Log: `logs/psikologi.log`; pembungkus `logs/psikologi_cron.log`.
+Retensi 400 hari. Weight Binance: 8 permintaan/jam (weight 1) — tidak memengaruhi collector.
+
+| Gejala | Tindakan |
+|---|---|
+| Semua indikator Binance `tidak tersedia` | Blokir ISP berubah (`BlockedError` di log) → cek `looks_blocked`, DoH; indikator lain tetap jalan |
+| Likuidasi selalu 0 | Endpoint OKX hanya memberi ±100 order terakhir; bila semuanya > 24 jam, nilainya 0 — baca `catatan` |
+| `/psikologi` menjawab BASI | Cron `psikologi` tidak jalan > 3 jam: `hermes cron list`, `logs/psikologi_cron.log` |
+
 ## Milestone berikutnya
 
-- **3b** panel psikologi pasar harian (§16.2: Fear&Greed, OI, L/S ratio, taker, premium Coinbase/IDR, stablecoin) sebagai
-  skrip + tool MCP untuk catatan harian & hipotesis.
 - **3c** referensi buku & playbook (§15): `konversi_buku.py`, `indeks.md`, `playbook.md`, tool `cari_referensi` (butuh ebook).
 - Tuning pemindai dari data nyata (`lookback_h` 96 untuk level 15m, `score_min`, bobot VOL, `leverages`).

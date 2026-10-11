@@ -88,7 +88,7 @@ PLATFORMS_BLOCK = """platforms:  # crypto-analyst: menu perintah Telegram ringka
       command_menu:
         max_commands: 14
         priority_mode: replace
-        priority: [posisi, budget, laporan, cek, tiket, batal, status, evaluasi-harian, help, new, usage, commands, whoami, model]
+        priority: [posisi, budget, laporan, cek, tiket, batal, status, psikologi, evaluasi-harian, help, new, usage, commands, model]
 """
 
 
@@ -97,6 +97,12 @@ def ensure_platforms_block(lines: list[str], changes: list[str]) -> None:
     if section_bounds(lines, "platforms") is not None:
         start, end = section_bounds(lines, "platforms")
         if any("command_menu" in ln for ln in lines[start:end]):
+            # blok sudah ada: samakan baris `priority:` bila daftar perintah kita berubah
+            want = next(ln for ln in PLATFORMS_BLOCK.splitlines() if ln.strip().startswith("priority:"))
+            for i in range(start, end):
+                if lines[i].split("#")[0].strip().startswith("priority:") and lines[i].split("#")[0].rstrip() != want.rstrip():
+                    lines[i] = want
+                    changes.append("ubah platforms.telegram.extra.command_menu.priority")
             return
         changes.append("platforms: sudah ada tanpa command_menu; tidak diubah (tambahkan manual, lihat hermes/merge_config.py)")
         return

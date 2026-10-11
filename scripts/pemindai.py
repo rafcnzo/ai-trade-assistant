@@ -35,7 +35,7 @@ GATE_OFF = '{"wakeAgent": false}'
 # --------------------------------------------------------------------------- konfigurasi & data
 @dataclass
 class PemindaiConfig:
-    top_n: int = 20
+    top_n: int = 30          # watchlist = top volume 24 jam (bukan daftar tetap)
     lookback_h: int = 48
     bar_grace_ms: int = 5_000
     atr_n: int = 14
@@ -49,7 +49,7 @@ class PemindaiConfig:
     lev_max_fallback: bool = True
     x_atr5m_min: float = 2.0
     score_min: int = 3
-    top_k: int = 3
+    top_k: int = 5           # kandidat skor tertinggi yang dikirim ke agent per wake
     stale_s: int = 180
     budget_min: float = 0.10
     jam_mulai: str = "07:00"

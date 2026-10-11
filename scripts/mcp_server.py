@@ -27,6 +27,7 @@ import analisis as A  # noqa: E402
 import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
+import psikologi as PSI  # noqa: E402
 from budget_guard import BudgetGuard  # noqa: E402
 from paper_engine import LONG, SHORT, SWING, TIKET, OrderRequest, PaperEngine, SqliteMarket  # noqa: E402
 
@@ -42,7 +43,7 @@ MS_FIELDS = {"ts", "open_time", "funding_time", "opened_ts", "closed_ts", "creat
 TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
-    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus",
+    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi",
 )
 
 
@@ -81,6 +82,7 @@ class Ctx:
     clock: Callable[[], int]
     guard_factory: Optional[Callable[[], BudgetGuard]] = None
     kandidat_path: Optional[Path] = None
+    psikologi_path: Optional[Path] = None
     proxy_health: Optional[str] = PROXY_HEALTH
     log: logging.Logger = logging.getLogger("mcp_server")
 
@@ -93,7 +95,7 @@ def build_ctx() -> Ctx:
     market = SqliteMarket(pasar)
     engine = PaperEngine(C.connect(C.PAPER_DB), market, log=log)
     return Ctx(engine=engine, market=market, pasar=pasar, root=C.ROOT, clock=C.now_ms,
-               guard_factory=lambda: BudgetGuard(), kandidat_path=KANDIDAT_DB, log=log)
+               guard_factory=lambda: BudgetGuard(), kandidat_path=KANDIDAT_DB, psikologi_path=PSI.PSIKOLOGI_DB, log=log)
 
 
 # --------------------------------------------------------------------------- tools
@@ -403,6 +405,20 @@ class Tools:
                 g.conn.close()
         return self._call("biaya_api", run)
 
+    def _panel(self, symbol: str) -> dict:
+        p = self.ctx.psikologi_path
+        if not p or not Path(p).exists():
+            return {"symbol": symbol, "status": "tidak tersedia", "alasan": "psikologi.sqlite belum ada (cron psikologi belum jalan)"}
+        conn = C.connect(p, readonly=True)
+        try:
+            return PSI.panel_untuk(conn, symbol.strip(), self.ctx.clock())
+        finally:
+            conn.close()
+
+    def panel_psikologi(self, symbol: str = "BTCUSDT") -> dict:
+        """Panel psikologi pasar (§16.2) snapshot terakhir (cron tiap jam): Fear & Greed, funding, Δ OI 24j + Δ harga 24j (kapitulasi/penumpukan), L/S akun vs top trader, taker buy/sell, likuidasi OKX (sampel terbatas), premium Coinbase & IDR, suplai stablecoin 7 hari — masing-masing dengan zona takut_ekstrem|netral|serakah_ekstrem, hitungan ekstrem, divergensi, perubahan 24 jam. Tidak ada skor gabungan; 'tidak tersedia' = sumber gagal/diblokir."""
+        return self._call("panel_psikologi", lambda: self._panel(symbol))
+
     def statistik_lulus(self, sejak: Optional[str] = None) -> dict:
         """Statistik kelulusan §19.7 per akun (tiket, swing, acak = bayangan acak yang dibuat mesin sebagai pembanding): sampel, expectancy/trade setelah fee, per bulan, win rate, stabilitas tanpa 5% trade terbaik, kepatuhan aturan tiket, tiket vs acak (uji permutasi + sign test). Nilai 'tidak tersedia' bila sampel < 10 — laporkan apa adanya, jangan menafsirkan."""
         def run():
@@ -452,6 +468,19 @@ class Tools:
             return {"path": rel, "ada": True, "isi": txt[-MAX_READ_CHARS:], "terpotong": len(txt) > MAX_READ_CHARS}
         return self._call("baca_memori", run)
 
+    def _panel_frontmatter(self) -> str:
+        """Baris frontmatter §16.4 dari panel psikologi terakhir (kosong bila panel belum ada)."""
+        try:
+            pn = self._panel("BTCUSDT")
+        except Exception:  # noqa: BLE001
+            return ""
+        if pn.get("status") == "tidak tersedia":
+            return ""
+        nilai = {r["indikator"]: r["nilai"] for r in pn["indikator"]}
+        fmt = lambda v: "tidak tersedia" if v is None else f"{v:g}"  # noqa: E731
+        return (f"panel_takut_ekstrem: {pn['takut_ekstrem']}\npanel_serakah_ekstrem: {pn['serakah_ekstrem']}\n"
+                f"fng: {fmt(nilai.get('fng'))}\nfunding_btc: {fmt(nilai.get('funding'))}\npanel_ts: {pn['waktu']}\n")
+
     def tulis_catatan_harian(self, ringkasan_psikologi: str, jejak_grafik: str = "", reaksi_berita: str = "",
                              rezim: str = "tidak tersedia", catatan: str = "") -> dict:
         """Tulis catatan pasar harian pasar/harian/YYYY-MM-DD.md (§16.4). Jika sudah ada, ditambahkan sebagai revisi berjam."""
@@ -461,7 +490,8 @@ class Tools:
             p = self.ctx.root / "pasar" / "harian" / f"{day}.md"
             tick, umur, status = self._tick()
             if not p.exists():
-                head = (f"---\ntanggal: {day}\njam: \"{C.to_wib(now).strftime('%H:%M')}\"\nrezim: {rezim}\nstatus_data: {status}\n---\n\n")
+                head = f"---\ntanggal: {day}\njam: \"{C.to_wib(now).strftime('%H:%M')}\"\nrezim: {rezim}\nstatus_data: {status}\n"
+                head += self._panel_frontmatter() + "---\n\n"
             else:
                 head = f"\n## Revisi {C.to_wib(now).strftime('%H:%M')} WIB\n\n"
             body = (f"## Psikologi hari ini\n{ringkasan_psikologi.strip()}\n\n## Jejak di grafik\n{jejak_grafik.strip() or 'tidak tersedia'}\n\n"

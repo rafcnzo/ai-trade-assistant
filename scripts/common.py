@@ -131,7 +131,8 @@ class AlreadyRunning(Exception):
 
 
 # --------------------------------------------------------------------------- DoH
-BINANCE_HOSTS = ("fapi.binance.com", "www.binance.com", "api.binance.com", "dapi.binance.com")
+BINANCE_HOSTS = ("fapi.binance.com", "www.binance.com", "api.binance.com", "dapi.binance.com",
+                 "api.exchange.coinbase.com", "www.okx.com")   # + host panel psikologi yang juga diblokir DNS ISP
 DOH_URLS = (
     "https://cloudflare-dns.com/dns-query",
     "https://dns.google/resolve",
