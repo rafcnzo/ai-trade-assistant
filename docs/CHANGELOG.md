@@ -3,6 +3,19 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (siang) — laptop Windows — weight tick dan saringan BAR_REVISED
+
+**Apa:** `collector.py`: (1) `kline_limit()` — jumlah bar yang diminta mengikuti kebutuhan, bukan selalu 1500;
+weight tick rutin turun dari ±451 ke ±90 per menit (weight Binance mengikuti `limit`, bukan jumlah baris
+yang kembali). (2) Revisi bar < 0,01% diabaikan (`REVISION_MIN_REL`); revisi lebih besar jadi event
+`BAR_REVISED` hanya jika simbol punya order/posisi (`PaperEngine.has_exposure`), selain itu hanya log INFO.
+Tes `test_kline_limit_keeps_weight_small` ditambah.
+
+**Kenapa:** log soak pertama dipenuhi `BAR_REVISED` tak berarti (Binance merapikan mark kline yang baru close
+dengan selisih 0,001%), dan weight 451/menit membatasi jumlah simbol yang bisa dipantau.
+
+**File:** `scripts/collector.py`, `scripts/paper_engine.py`, `tests/test_common.py`, `docs/OPERASI.md`.
+
 ## 2026-10-11 — laptop Windows — Milestone 1 selesai
 
 **Apa:** mesin paper trading lengkap: `scripts/common.py`, `scripts/collector.py`, `scripts/paper_engine.py`,

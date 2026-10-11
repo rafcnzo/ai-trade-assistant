@@ -196,6 +196,16 @@ def _f(x) -> Optional[float]:
         return None
 
 
+def kline_limit(start_ms: int, to_ms: int, max_limit: int = 1500) -> int:
+    """Jumlah bar yang diminta: secukupnya + 2. Weight Binance mengikuti `limit`
+    (< 100 → 1, < 500 → 2, ≤ 1000 → 5, > 1000 → 10), jadi tick rutin tidak boleh minta 1500."""
+    need = (to_ms - start_ms) // MINUTE_MS + 1
+    return max(2, min(max_limit, need + 2))
+
+
+REVISION_MIN_REL = 1e-4   # revisi bar < 0,01% diabaikan (Binance merapikan mark kline yang baru close)
+
+
 # --------------------------------------------------------------------------- collector
 class Collector:
     def __init__(self, conn, api: BinanceFapi, cfg: CollectorConfig, engine=None, log: Optional[logging.Logger] = None):
@@ -337,7 +347,8 @@ class Collector:
             guard = 0
             while start <= to_ms and guard < 2000:
                 guard += 1
-                rows = fetch(symbol, start, to_ms, 1500)
+                limit = kline_limit(start, to_ms)
+                rows = fetch(symbol, start, to_ms, limit)
                 if not rows:
                     break
                 parsed = [parser(symbol, k) for k in rows if int(k[0]) <= to_ms]
@@ -347,7 +358,7 @@ class Collector:
                 if table == "kline_1m":
                     n_total += len(parsed)
                 last_open = int(rows[-1][0])
-                if len(rows) < 1500 or last_open >= to_ms:
+                if len(rows) < limit or last_open >= to_ms:
                     break
                 start = last_open + MINUTE_MS
         return n_total
@@ -367,10 +378,20 @@ class Collector:
                         f"SELECT * FROM {table} WHERE symbol=? AND open_time BETWEEN ? AND ?", (symbol, lo, hi)
                     )
                 }
+                exposed = self.engine.has_exposure(symbol)
                 for p in check:
                     o = old.get(p[1])
-                    if o is not None and (abs(o["high"] - p[3]) > 1e-9 or abs(o["low"] - p[4]) > 1e-9 or abs(o["close"] - p[5]) > 1e-9):
-                        self.event("WARNING", "BAR_REVISED", f"{table} {fmt_wib(p[1])} h/l/c {o['high']}/{o['low']}/{o['close']} → {p[3]}/{p[4]}/{p[5]}", symbol)
+                    if o is None:
+                        continue
+                    ref = abs(p[5]) or 1.0
+                    rel = max(abs(o["high"] - p[3]), abs(o["low"] - p[4]), abs(o["close"] - p[5])) / ref
+                    if rel < REVISION_MIN_REL:
+                        continue
+                    msg = f"{table} {fmt_wib(p[1])} h/l/c {o['high']}/{o['low']}/{o['close']} → {p[3]}/{p[4]}/{p[5]} ({rel:.4%})"
+                    if exposed:
+                        self.event("WARNING", "BAR_REVISED", msg, symbol)
+                    else:
+                        self.log.info("BAR_REVISED %s %s", symbol, msg)
         if table == "kline_1m":
             sql = "INSERT OR REPLACE INTO kline_1m(symbol,open_time,open,high,low,close,volume,quote_volume,trades,taker_buy_quote) VALUES(?,?,?,?,?,?,?,?,?,?)"
         else:

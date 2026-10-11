@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 11:50 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 12:00 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Milestone
 
@@ -28,7 +28,7 @@ Diperbarui: 2026-10-11 11:50 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 | 4 | Order manual: terisi / tidak terisi / swing / ditolak | ✅ 3 diterima, 3 ditolak dengan kode benar; hasil isi menunggu bar |
 | 5 | Uji tidur laptop → GAP + replay | ⬜ belum (tes unit T15 sudah membuktikan replay == live) |
 | 6 | `budget_guard.py harga` / `status` | ✅ |
-| 7 | Soak 24 jam (ukuran DB, locking, retensi) | ⬜ sedang berjalan |
+| 7 | Soak 24 jam (ukuran DB, locking, retensi) | ⬜ sedang berjalan; 20 menit pertama: tick 5–10 s, tanpa error; weight dan log BAR_REVISED sudah dirapikan (lihat CHANGELOG) |
 | 8 | Bandingkan harga likuidasi dengan kalkulator Binance | ⬜ user: BTC LONG 150x isolated entry 82.915,7 margin $0,5528 → mesin ≈ 82.693,7 |
 
 ## Keputusan yang berlaku

@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import common as C  # noqa: E402
-from collector import parse_brackets, parse_kline, parse_mark_kline, parse_symbol_info  # noqa: E402
+from collector import kline_limit, parse_brackets, parse_kline, parse_mark_kline, parse_symbol_info  # noqa: E402
 
 BLOCK_HTML = """<html>
 \t<body>
@@ -111,6 +111,13 @@ class TestCollectorParsers(unittest.TestCase):
             {"bracketSeq": 1, "bracketNotionalFloor": 0, "bracketNotionalCap": 300000, "bracketMaintenanceMarginRate": 0.004,
              "cumFastMaintenanceAmount": 0, "minOpenPosLeverage": 1, "maxOpenPosLeverage": 150}]}])
         self.assertEqual(b[0], ("BTCUSDT", 1, 0.0, 300000.0, 150, 1, 0.004, 0.0))
+
+    def test_kline_limit_keeps_weight_small(self):
+        m = C.MINUTE_MS
+        self.assertEqual(kline_limit(1000 * m, 1001 * m), 4)       # refetch 2 bar → limit kecil (weight 1)
+        self.assertEqual(kline_limit(1000 * m, 1000 * m), 3)
+        self.assertEqual(kline_limit(0, 47 * 60 * m), 1500)         # backfill 48 jam → halaman penuh
+        self.assertEqual(kline_limit(0, 90 * m), 93)
 
     def test_parse_klines(self):
         k = [1791602340000, "82537.80", "82548.10", "82537.70", "82548.00", "13.866", 1791602399999, "1144507.16590", 511, "6.1", "503400.1", "0"]

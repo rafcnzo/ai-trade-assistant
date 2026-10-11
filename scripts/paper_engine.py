@@ -323,6 +323,14 @@ class PaperEngine:
         r = self.conn.execute("SELECT last_open_time FROM cursor WHERE symbol=?", (symbol,)).fetchone()
         return int(r[0]) if r else None
 
+    def has_exposure(self, symbol: str) -> bool:
+        """Ada posisi terbuka atau order hidup untuk simbol ini (revisi bar jadi berarti)."""
+        return self.conn.execute(
+            "SELECT 1 FROM positions WHERE symbol=? AND status='OPEN' "
+            "UNION SELECT 1 FROM orders WHERE symbol=? AND status IN ('NEW','ACTIVE') LIMIT 1",
+            (symbol, symbol),
+        ).fetchone() is not None
+
     def active_symbols(self) -> list[str]:
         rows = self.conn.execute(
             "SELECT symbol FROM positions WHERE status='OPEN' UNION SELECT symbol FROM orders WHERE status IN ('NEW','ACTIVE')"

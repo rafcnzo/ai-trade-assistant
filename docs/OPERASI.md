@@ -60,6 +60,15 @@ Hentikan: `schtasks /End /TN "crypto-analyst collector"`, atau tutup proses `pyt
 
 Log: `logs/collector.log` (rotasi 5 MB × 5) dan `logs/collector.out.log`.
 
+### Membaca log collector
+
+- `tick ...: 20 simbol, 60 bar, 5400 ms, weight 90` — normal. Weight adalah pemakaian limit Binance per
+  menit (batas 1.200; pacing otomatis mulai 1.000). Tick pertama setelah celah panjang bisa mencapai ±850.
+- `GAP` — tidak ada tick > 2,5 menit (laptop tidur); celah diisi otomatis.
+- `BAR_REVISED` — Binance mengubah bar yang sudah diproses mesin. Revisi < 0,01% diabaikan. Dicatat sebagai
+  event WARNING hanya jika simbol itu punya order/posisi; periksa apakah level likuidasi/TP terpengaruh.
+- `BLOCKED` — respons berupa halaman blokir ISP walau lewat DoH; tidak ada data yang disimpan.
+
 ## Setelah laptop tidur / mati
 
 Tidak ada mode khusus. Saat tick berikutnya, collector mencatat event `GAP`, mengisi
