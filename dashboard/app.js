@@ -11,6 +11,9 @@ const TF_SEC = { "1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d":
 const OFF = 7 * 3600; // sumbu waktu Lightweight Charts memakai UTC → geser ke WIB
 const wibT = (t) => new Date((t - OFF) * 1000).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour12: false, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 const state = { symbol: null, tf: "5m", acak: false, lastBar: null, ps: "BTCUSDT", eq: "tiket", eqData: null };
+const stripFm = (t) => (t.startsWith("---") && t.indexOf("
+---", 3) > 0) ? t.slice(t.indexOf("
+---", 3) + 4).trim() : t.trim();
 const api = async (p) => { const r = await fetch(p, { cache: "no-store" }); return r.json(); };
 const hasLWC = typeof LightweightCharts !== "undefined";
 const AKUN = { tiket: "Tiket ($1/hari)", swing: "Swing", acak: "Pembanding acak" };
@@ -214,7 +217,7 @@ async function loadPsikologi() {
   $("#ps-bacaan").innerHTML = bacaanPasar(p);
   const ai = await api("/api/teks?jenis=harian"); let aiTxt = ai.isi || "";
   if (!aiTxt) { const kemarin = new Date(Date.now() - 86400000).toISOString().slice(0, 10); aiTxt = (await api(`/api/teks?jenis=harian&hari=${kemarin}`)).isi || ""; }
-  $("#ps-ai").textContent = aiTxt ? aiTxt.replace(/^---[\s\S]*?---
+  $("#ps-ai").textContent = aiTxt ? stripFm(aiTxt) : "Belum ada catatan harian dari AI (ditulis tiap 23:55 WIB).";
 */, "").trim() : "Belum ada catatan harian dari AI (ditulis tiap 23:55 WIB).";
   const f = (ind, v) => v === null ? "—" : ["funding", "premium_coinbase", "premium_idr"].includes(ind) ? (v * 100).toFixed(4) + "%" : ["oi_24h", "harga_24h", "stablecoin_7d"].includes(ind) ? pct(v) : ind.startsWith("liq") ? v : ind === "fng" ? v.toFixed(0) : v.toFixed(2);
   const zona = (z) => z === "takut_ekstrem" ? '<span class="tag takut">sangat takut</span>' : z === "serakah_ekstrem" ? '<span class="tag serakah">sangat serakah</span>' : z === "netral" ? '<span class="tag">biasa</span>' : '<span class="tag na">tidak tersedia</span>';
