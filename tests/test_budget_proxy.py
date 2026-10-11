@@ -165,10 +165,10 @@ class TestProxy(Base):
         g.record(OPUS, Usage(2_000_000, 100_000))   # $10
         g.conn.close()
         status, headers, body = self.call("POST", "/v1/messages", {"model": OPUS, "max_tokens": 10, "messages": []})
-        self.assertEqual(status, 429)
+        self.assertEqual(status, 403)   # bukan 429: SDK tidak mengulang 403
         j = json.loads(body)
         self.assertEqual(j["type"], "error")
-        self.assertEqual(j["error"]["type"], "rate_limit_error")
+        self.assertEqual(j["error"]["type"], "permission_error")
         self.assertIn("budget_guard", j["error"]["message"])
         self.assertIn("Retry-After", headers)
         self.assertEqual(FakeUpstream.received, [])
@@ -207,14 +207,14 @@ class TestProxy(Base):
         self.assertEqual((est_in, est_out), (100_001, 8192))
         self.srv.state.cfg.per_call = 0.001  # type: ignore[attr-defined]
         status, _, body = self.call("POST", "/v1/messages", {"model": OPUS, "max_tokens": 4096, "messages": []})
-        self.assertEqual(status, 429)
+        self.assertEqual(status, 403)
         self.assertIn("per panggilan", json.loads(body)["error"]["message"])
         self.assertEqual(FakeUpstream.received, [])
 
     def test_p8b_kill_switch_and_healthz(self):
         self.kill.write_text("stop", encoding="utf-8")
         status, _, body = self.call("POST", "/v1/messages", {"model": OPUS, "max_tokens": 10, "messages": []})
-        self.assertEqual(status, 429)
+        self.assertEqual(status, 403)
         self.assertIn("kill switch", json.loads(body)["error"]["message"])
         status, _, body = self.call("GET", "/healthz")
         j = json.loads(body)

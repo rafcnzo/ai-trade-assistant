@@ -5,7 +5,7 @@ Proxy ini:
 - membuang key dummy dan menyuntikkan key asli dari env var ANTHROPIC_API_KEY (tidak pernah ada di konfigurasi Hermes),
 - memeriksa BudgetGuard.allow() sebelum meneruskan (cap $10/hari, $190/bulan, $1/panggilan, kill file data/STOP_AGENT),
 - meneruskan respons apa adanya (termasuk stream SSE) sambil membaca `usage`, lalu mencatatnya lewat BudgetGuard.record(),
-- menolak dengan HTTP 429 berformat error Anthropic bila budget habis.
+- menolak dengan HTTP 403 `permission_error` berformat error Anthropic bila budget habis (403 tidak diulang SDK).
 
 Penulis tunggal data/budget.sqlite tetap budget_guard.py (dipanggil dari sini).
 """
@@ -304,7 +304,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if d.blocked_until:
                 retry = max(1, int((d.blocked_until - (st.cfg.clock or C.now_ms)()) / 1000))
             st.log.warning("TOLAK model=%s est_in=%d est_out=%d: %s", model, est_in, est_out, d.reason)
-            self._send(429, anthropic_error("rate_limit_error", f"budget_guard: {d.reason}"), extra={"Retry-After": str(retry)})
+            # 403 (bukan 429): SDK Anthropic tidak mengulang 403, jadi Hermes langsung melapor alih-alih
+            # menunggu dan mencoba berulang saat budget habis. Retry-After tetap dikirim sebagai informasi.
+            self._send(403, anthropic_error("permission_error", f"budget_guard: {d.reason}"), extra={"Retry-After": str(retry)})
             return
         try:
             resp = self._upstream("POST", raw, stream=stream)

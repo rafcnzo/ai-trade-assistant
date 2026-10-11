@@ -183,38 +183,42 @@ hermes config set TELEGRAM_ALLOWED_USERS <user-id-telegram-anda>
 `ANTHROPIC_API_KEY` dibaca hanya oleh `budget_proxy.py` (buka terminal baru setelah `setx`). Hermes memegang key dummy.
 Pasang juga spend limit di workspace Console Anthropic (mis. $200/bulan) sebagai lapis kedua.
 
-### 3. Proxy budget
-```bash
-schtasks /Create /TN "crypto-analyst budget proxy" /TR "\"C:\Users\hp\crypto-analyst\run_budget_proxy.cmd\"" /SC ONLOGON /RL LIMITED /F
-```
-```bash
-schtasks /Run /TN "crypto-analyst budget proxy"
-```
-Pengaturan tugas sama seperti collector (lihat atas) + "If the task fails, restart every 1 minute". Cek:
-`curl http://127.0.0.1:8585/healthz`. Log: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya).
-Budget habis → Hermes menerima HTTP 429 `budget_guard: ...`; kill switch `data/STOP_AGENT` memblokir semua panggilan.
+### 3. Satu skrip setup: `hermes\setup_hermes.cmd` (idempoten)
+Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
+1. `hermes/sync.py` — menyalin `SOUL.md`, skill `tiket` & `evaluasi-harian`, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`;
+2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
+   `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
+   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (22 tool whitelist);
+3. menaruh launcher `crypto-analyst_proxy.vbs` dan `crypto-analyst_collector.vbs` di folder **Startup** user
+   (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
+4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
+   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 22 tool), `hermes cron list`.
 
-### 4. Aset dan konfigurasi Hermes
+Log: `logs/hermes_setup.log`. Cek proxy: `curl http://127.0.0.1:8585/healthz` (`key_set` harus `true`).
+Log proxy: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya). Budget habis → Hermes menerima
+HTTP 403 `permission_error: budget_guard: ...` (403 dipilih karena SDK tidak mengulangnya, jadi agent langsung melapor);
+kill switch `data/STOP_AGENT` memblokir semua panggilan.
+
+> **Catatan untuk Claude Code di laptop ini:** proses yang dibuat dari dalam aplikasi Claude (paket MSIX) melihat
+> `AppData` yang tervirtualisasi dan tugas terjadwal yang dibuatnya hanya "Queued". Cara yang terbukti bekerja:
+> `explorer.exe "C:\Users\hp\crypto-analyst\hermes\setup_hermes.cmd"` (Explorer menjalankan skrip di luar sandbox).
+> Untuk perintah Hermes lain: tulis satu perintah per baris ke `logs/hermes_cmd.txt`, lalu
+> `explorer.exe "...\hermes\run_logged.cmd"`; hasilnya di `logs/hermes_run.log`.
+
+### 4. Memperbarui aset setelah `git pull`
 ```bash
-.venv/Scripts/python.exe hermes/sync.py
+hermes\setup_hermes.cmd
 ```
-Menyalin `SOUL.md`, skill, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`, lalu mencetak snippet `config.yaml`
-(model → proxy, toolset per platform tanpa terminal/file, `mcp_servers.paper` dengan whitelist 22 tool) dan dua
-perintah `hermes cron create`. Gabungkan snippet ke `%LOCALAPPDATA%\hermes\config.yaml`. Lalu:
-```bash
-hermes mcp test paper
-```
-harus menampilkan 22 tool. `hermes tools` untuk memastikan toolset cron/telegram tidak memuat terminal/file.
-`hermes/sync.py --check` mengembalikan 1 jika aset di HERMES_HOME tertinggal dari repo (jalankan setelah `git pull`).
+`hermes/sync.py --check` mengembalikan 1 jika aset di HERMES_HOME tertinggal dari repo. `merge_config.py` tidak mengubah
+apa pun bila sudah sesuai. Setelah mengubah skill/SOUL: `hermes gateway restart`.
 
 ### 5. Gateway, Telegram, cron
-```bash
-hermes gateway install
-```
-mendaftarkan Task Scheduler `Hermes_Gateway` (saat login, tanpa jendela). `hermes gateway status|start|stop|restart`.
-Cron (dari `hermes/cron.cmd` setelah path diisi `sync.py`): `pemindai-tiket` tiap 5 menit (skrip tanpa LLM;
-agent hanya dibangunkan bila ada kandidat) dan `evaluasi-harian` 23:55 WIB. `hermes cron list`, `hermes cron run <nama>`
-untuk uji manual, `hermes cron pause <nama>`.
+Wizard `hermes setup` sudah memasang `Hermes_Gateway.vbs` di folder Startup (fallback karena Task Scheduler butuh admin).
+`hermes gateway start|status|stop|restart`. Cron (dari `hermes/cron.cmd` setelah path diisi `sync.py`): `pemindai-tiket`
+tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat) dan `evaluasi-harian` 23:55 WIB.
+`hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
+`hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
++ `base_url` tetap berfungsi, jadi ini opsional.
 
 ### 6. Uji cepat
 - `hermes -z "jam dan budget tiket sekarang?"` → jawaban memuat umur tick collector.
@@ -226,7 +230,7 @@ untuk uji manual, `hermes cron pause <nama>`.
 ### 7. Troubleshooting
 | Gejala | Penyebab / tindakan |
 |---|---|
-| Hermes: error 429 `budget_guard` | Cap tercapai atau kill switch; `budget_guard.py status`; hapus `data/STOP_AGENT` bila sengaja |
+| Hermes: error 403 `budget_guard` | Cap tercapai atau kill switch; `budget_guard.py status`; hapus `data/STOP_AGENT` bila sengaja |
 | Hermes: koneksi ke 127.0.0.1:8585 ditolak | Proxy mati: `schtasks /Run /TN "crypto-analyst budget proxy"`; lihat `logs/budget_proxy.out.log` |
 | Proxy: `env ANTHROPIC_API_KEY tidak diset` | `setx` lalu buka terminal baru / login ulang agar Task Scheduler membaca env user |
 | `hermes mcp test paper` gagal start | Cek `logs/mcp_server.log`; pastikan `command` menunjuk `.venv\Scripts\python.exe`; tambahkan `SYSTEMROOT: C:\Windows` di `env` jika Python mengeluh soal random |

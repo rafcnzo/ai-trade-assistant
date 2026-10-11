@@ -3,6 +3,28 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (sore, lanjutan) — laptop Windows — Hermes terpasang dan terverifikasi end-to-end
+
+**Apa:** Hermes Agent v0.21.6 terpasang oleh user (wizard: provider custom → proxy, `api_mode: anthropic_messages`,
+context 200k, Telegram + allowlist, toolset Telegram minimal). Skrip baru: `hermes/merge_config.py` (penggabungan
+`config.yaml` tekstual, idempoten, dengan backup), `hermes/setup_hermes.cmd` (sync + merge + launcher Startup +
+nyalakan proxy/collector + cek Hermes), `hermes/run_logged.cmd` (pelaksana perintah dari `logs/hermes_cmd.txt`),
+`hermes/startup/*.vbs` (launcher Startup proxy & collector). Proxy menolak dengan **403** `permission_error`
+(bukan 429) agar SDK tidak mengulang saat budget habis.
+
+**Hasil verifikasi:** `hermes mcp test paper` → 22 tool terhubung (4 s); `hermes -z` menjawab jam/umur tick/budget
+lewat tool MCP; proxy mencatat 2 panggilan Opus = $0,0955 (cache write 16k token prompt sistem, lalu cache read);
+gateway jalan (Startup `Hermes_Gateway.vbs`); `config.yaml` tergabung (`cron.catch_up_missed=false`,
+`disabled_toolsets`, `platform_toolsets` cli/telegram/cron = `[clarify, memory, skills, mcp-paper]`, `mcp_servers.paper`).
+
+**Temuan sandbox (penting untuk sesi Claude Code berikutnya di laptop ini):** proses dari dalam aplikasi Claude
+(MSIX) melihat `AppData` tervirtualisasi; tugas terjadwal yang dibuat dari sana hanya "Queued" dan tidak pernah
+jalan; tugas "saat login" butuh admin. Yang bekerja: `explorer.exe "<path>\setup_hermes.cmd"` / `run_logged.cmd`
+(Explorer menjalankan skrip di luar sandbox) dan launcher di folder Startup. Didokumentasikan di OPERASI §Hermes.
+
+**File:** `scripts/budget_proxy.py`, `tests/test_budget_proxy.py`, `hermes/merge_config.py`, `hermes/setup_hermes.cmd`,
+`hermes/run_logged.cmd`, `hermes/startup/*.vbs`, `docs/OPERASI.md`, `docs/STATUS.md`.
+
 ## 2026-10-11 (sore) — laptop Windows — Milestone 2a: integrasi Hermes Agent (kode selesai)
 
 **Apa:** `scripts/budget_proxy.py` (proxy 127.0.0.1:8585 → api.anthropic.com; cap lewat `BudgetGuard`; stream SSE
