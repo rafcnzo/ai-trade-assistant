@@ -11,9 +11,7 @@ const TF_SEC = { "1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d":
 const OFF = 7 * 3600; // sumbu waktu Lightweight Charts memakai UTC → geser ke WIB
 const wibT = (t) => new Date((t - OFF) * 1000).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour12: false, day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 const state = { symbol: null, tf: "5m", acak: false, lastBar: null, ps: "BTCUSDT", eq: "tiket", eqData: null };
-const stripFm = (t) => (t.startsWith("---") && t.indexOf("
----", 3) > 0) ? t.slice(t.indexOf("
----", 3) + 4).trim() : t.trim();
+const stripFm = (t) => (t.startsWith("---") && t.indexOf("\n---", 3) > 0) ? t.slice(t.indexOf("\n---", 3) + 4).trim() : t.trim();
 const api = async (p) => { const r = await fetch(p, { cache: "no-store" }); return r.json(); };
 const hasLWC = typeof LightweightCharts !== "undefined";
 const AKUN = { tiket: "Tiket ($1/hari)", swing: "Swing", acak: "Pembanding acak" };
