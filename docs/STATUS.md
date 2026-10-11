@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 18:05 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 18:02 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -35,7 +35,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2a | Hermes: budget_proxy, analisis, mcp_server (22 tool), SOUL + skill `tiket` + `sync.py` + `setup_hermes.cmd`, docs | **Selesai & terverifikasi** (`hermes -z` menjawab lewat tool MCP; biaya tercatat). Sisa: uji dari Telegram oleh user |
 | 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
-| 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Kode selesai** (116 tes hijau; panel nyata 20 indikator terisi). Deploy: lihat verifikasi 3b |
+| 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | 3c | Referensi buku & playbook (§15) — menunggu ebook | Belum mulai |
 
 ## Yang harus dilakukan user
@@ -89,7 +89,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Jalur positif: order tiket agent berikutnya menghasilkan baris `acak` `ACAK:<id>`; `evaluasi.py` berjalan pada data nyata; agent menulis hipotesis terstruktur via Telegram | ⬜ menunggu kejadian |
 | 3b | `test_psikologi` PS1–PS6 (zona, sumber gagal, divergensi, persentil, rezim OI, retensi), M12 panel + frontmatter, M9 → 24 tool, merge menu `psikologi` | ✅ 116 tes |
 | 3b | `psikologi.py --once` nyata 17:55 WIB: 20 indikator, 0 tidak tersedia (FNG 61, funding −0,0017%, L/S akun 1,45, top 1,52, taker 1,09, likuidasi short 86 vs long 14 → serakah, premium ≈ 0, stablecoin −0,3%) | ✅ |
-| 3b | Cron `psikologi` terdaftar, menu Telegram memuat `/psikologi`, `hermes mcp test paper` → 24 tool, `cron run psikologi` → suppressed, `api_calls` tetap | ⬜ deploy |
+| 3b | Cron `psikologi` 85f32aac4251 (7 * * * *, no-agent) terdaftar; gateway restart PID 21172; menu Telegram 14 perintah termasuk `/psikologi`; `hermes mcp test paper` → 24 tool; `cron run psikologi` 17:59 → `panel_run` ok 20/0, `delivery_outcome=suppressed`, `api_calls` tetap 29 | ✅ |
 | 3b | `/psikologi` dari Telegram (user); catatan harian 23:55 punya frontmatter `fng`/`funding_btc` | ⬜ user / menunggu |
 
 ## Keputusan yang berlaku
