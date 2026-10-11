@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crypto-analyst — dashboard paper</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">crypto-analyst <span class="muted">paper · lokal · baca saja</span></div>
+  <div id="status-bar" class="status-bar">
+    <span id="st-jam" class="pill">—</span>
+    <span id="st-collector" class="pill">collector —</span>
+    <span id="st-pemindai" class="pill">pemindai —</span>
+    <span id="st-biaya" class="pill">API —</span>
+    <span id="st-kill" class="pill hidden">KILL SWITCH</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="chart" class="active">Chart</button>
+  <button data-tab="riwayat">Riwayat</button>
+  <button data-tab="statistik">Statistik</button>
+  <button data-tab="kandidat">Pemindai</button>
+  <button data-tab="psikologi">Psikologi</button>
+  <button data-tab="jurnal">Jurnal</button>
+</nav>
+
+<main>
+  <section id="tab-chart" class="tab active">
+    <div class="chart-wrap">
+      <div class="toolbar">
+        <select id="sel-symbol"></select>
+        <div class="tf" id="tf-group">
+          <button data-tf="1m">1m</button><button data-tf="5m" class="active">5m</button><button data-tf="15m">15m</button>
+          <button data-tf="1h">1h</button><button data-tf="4h">4h</button><button data-tf="1d">1d</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="chk-acak"> tampilkan akun acak</label>
+        <span id="chart-info" class="muted"></span>
+      </div>
+      <div id="chart"></div>
+      <div id="legend" class="legend"></div>
+    </div>
+    <aside class="side">
+      <div class="card" id="card-budget"><h3>Budget hari ini</h3><div class="body">—</div></div>
+      <div class="card" id="card-posisi"><h3>Posisi terbuka</h3><div class="body">—</div></div>
+      <div class="card" id="card-order"><h3>Order menunggu</h3><div class="body">—</div></div>
+      <div class="card" id="card-cron"><h3>Cron Hermes</h3><div class="body">—</div></div>
+    </aside>
+  </section>
+
+  <section id="tab-riwayat" class="tab">
+    <div class="toolbar">
+      <select id="f-akun"><option value="">semua akun</option><option value="tiket">tiket</option><option value="swing">swing</option><option value="acak">acak</option></select>
+      <input id="f-hari" type="date">
+      <input id="f-symbol" placeholder="simbol (opsional)">
+      <button id="f-apply">Terapkan</button>
+      <span class="muted">klik baris → lompat ke chart</span>
+    </div>
+    <div id="chart-ekuitas"></div>
+    <h3>Posisi ditutup</h3>
+    <div class="tablewrap"><table id="tbl-posisi"></table></div>
+    <h3>Order kedaluwarsa / dibatalkan / ditolak</h3>
+    <div class="tablewrap"><table id="tbl-order"></table></div>
+    <h3>Ringkasan harian</h3>
+    <div class="tablewrap"><table id="tbl-harian"></table></div>
+  </section>
+
+  <section id="tab-statistik" class="tab"><pre id="statistik-md" class="md"></pre><pre id="statistik-json" class="json"></pre></section>
+
+  <section id="tab-kandidat" class="tab">
+    <h3>Run terakhir yang membangunkan agent</h3>
+    <div class="tablewrap"><table id="tbl-kandidat"></table></div>
+    <h3>24 run pemindai terakhir</h3>
+    <div class="tablewrap"><table id="tbl-runs"></table></div>
+  </section>
+
+  <section id="tab-psikologi" class="tab">
+    <div class="toolbar"><button data-ps="BTCUSDT" class="active">BTCUSDT</button><button data-ps="ETHUSDT">ETHUSDT</button><span id="ps-info" class="muted"></span></div>
+    <div class="tablewrap"><table id="tbl-panel"></table></div>
+    <div id="ps-divergensi" class="card"><h3>Divergensi</h3><div class="body">—</div></div>
+  </section>
+
+  <section id="tab-jurnal" class="tab">
+    <div class="toolbar">
+      <select id="j-jenis">
+        <option value="jurnal">Jurnal agent (hari ini)</option><option value="harian">Catatan harian</option>
+        <option value="hipotesis">Hipotesis</option><option value="pelajaran">Pelajaran</option>
+        <option value="pelajaran-usulan">Usulan pelajaran</option><option value="playbook">Playbook</option><option value="indeks">Indeks referensi</option>
+      </select>
+      <input id="j-hari" type="date">
+    </div>
+    <pre id="jurnal-md" class="md"></pre>
+  </section>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -47,6 +47,7 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 - API key Anthropic hanya di env var user (dibaca `budget_proxy.py`); token Telegram hanya di `HERMES_HOME\.env`.
   Keduanya tidak pernah masuk repo, CLAUDE.md, docs, atau chat.
 - `scripts/mcp_server.py` tidak boleh `print()` (stdout = kanal MCP); log ke `logs/mcp_server.log`.
+- `scripts/dashboard.py` hanya membaca (koneksi readonly singkat); jangan menambah endpoint yang menulis DB/berkas.
 - Jaringan rumah memblokir DNS `binance.com`, `okx.com`, `coinbase.com` (Kominfo). `common.DohResolver` menanganinya di dalam proses
   (daftar host di `common.BINANCE_HOSTS`). **Jangan mengubah DNS atau pengaturan sistem**, dan jangan menyimpan data dari halaman blokir.
 - Data yang tidak tersedia ditulis "tidak tersedia" beserta alasannya. Jangan mengestimasi.
@@ -58,11 +59,12 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 ```
 scripts/   common.py, collector.py, paper_engine.py, budget_guard.py, budget_proxy.py, analisis.py,
            mcp_server.py, pemindai.py, notifikasi.py, evaluasi.py, hipotesis.py, uji_hipotesis.py, psikologi.py,
-           referensi.py, konversi_buku.py,
+           referensi.py, konversi_buku.py, dashboard.py (baca saja, 127.0.0.1:8586),
            schema_{pasar,paper,budget,kandidat,psikologi}.sql
 hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron,uji_cron,psikologi_cron}.py, config.snippet.yaml, cron.cmd, sync.py
 tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)
 data/      sqlite (gitignored)        logs/   log UTF-8 (gitignored)
 docs/      spesifikasi, operasi, STATUS, CHANGELOG      jurnal/ laporan/ pasar/ (gitignored sebagian)
 referensi/ indeks.md + playbook.md (di-commit); buku/ = ebook asli + hasil konversi <slug>/bab-NN.md (gitignored, pribadi)
+dashboard/ index.html, app.js, style.css — frontend statis dashboard lokal (Lightweight Charts dari CDN)
 ```

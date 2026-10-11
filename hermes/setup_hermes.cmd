@@ -23,11 +23,13 @@ echo --- merge_config --- >> "%LOG%"
 echo --- startup launcher --- >> "%LOG%"
 copy /Y "hermes\startup\crypto-analyst_proxy.vbs" "%STARTUP%\crypto-analyst_proxy.vbs" >> "%LOG%" 2>&1
 copy /Y "hermes\startup\crypto-analyst_collector.vbs" "%STARTUP%\crypto-analyst_collector.vbs" >> "%LOG%" 2>&1
+copy /Y "hermes\startup\crypto-analyst_dashboard.vbs" "%STARTUP%\crypto-analyst_dashboard.vbs" >> "%LOG%" 2>&1
 dir /b "%STARTUP%" >> "%LOG%" 2>&1
 
 echo --- nyalakan proxy dan collector (instance kedua keluar sendiri karena lock) --- >> "%LOG%"
 wscript "%STARTUP%\crypto-analyst_proxy.vbs"
 wscript "%STARTUP%\crypto-analyst_collector.vbs"
+wscript "%STARTUP%\crypto-analyst_dashboard.vbs"
 timeout /t 6 /nobreak > nul
 curl -s --max-time 5 http://127.0.0.1:8585/healthz >> "%LOG%" 2>&1
 echo. >> "%LOG%"

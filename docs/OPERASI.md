@@ -20,7 +20,8 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
 | `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
-| `run_collector.cmd`, `run_budget_proxy.cmd` | Pembungkus untuk Task Scheduler (tanpa jendela konsol) | — |
+| `scripts/dashboard.py` + `dashboard/` | Dashboard lokal baca-saja `http://127.0.0.1:8586`: chart candlestick + marker trade, posisi/order live, riwayat, ekuitas, statistik, pemindai, psikologi, jurnal | — |
+| `run_collector.cmd`, `run_budget_proxy.cmd`, `run_dashboard.cmd` | Pembungkus launcher Startup (tanpa jendela konsol) | — |
 
 Semua perintah dijalankan dari folder proyek dengan interpreter venv:
 
@@ -198,7 +199,7 @@ Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
 2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
    `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
    `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (26 tool whitelist);
-3. menaruh launcher `crypto-analyst_proxy.vbs` dan `crypto-analyst_collector.vbs` di folder **Startup** user
+3. menaruh launcher `crypto-analyst_proxy.vbs`, `crypto-analyst_collector.vbs`, dan `crypto-analyst_dashboard.vbs` di folder **Startup** user
    (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
 4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
    `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 26 tool), `hermes cron list`.
@@ -483,6 +484,29 @@ Buku saat ini: `mastering-trading-psychology` (14 bab heuristik; bab 1–4 adala
 | Bab terlalu banyak/sedikit | `--per-halaman 15` atau `--paksa-halaman`; konversi ulang menimpa bab lama |
 | `cari_referensi` kosong | Kata kunci bahasa Inggris, 1–3 kata; coba `salah_satu=true`; cek `indeks.md` untuk istilah buku |
 | `perlu_ocr` | Jalankan OCR (mis. ocrmypdf) di luar proyek, lalu konversi ulang |
+
+## Dashboard lokal (`scripts/dashboard.py`)
+
+Buka **http://127.0.0.1:8586** (hanya lokal; autostart lewat `crypto-analyst_dashboard.vbs`; manual: `run_dashboard.cmd` atau
+`.venv/Scripts/python.exe scripts/dashboard.py`). Baca saja — tidak menulis DB mana pun; polling ringkasan 5 s, chart 15 s.
+
+- **Chart**: candlestick + volume dari `kline_1m` (1m/5m/15m) atau `kline_1h` (1h/4h/1d), sumbu waktu WIB; marker dari mesin paper:
+  ▲/▼ entry, ● TP (hijau), ■ likuidasi (merah), ● STOP/EOD/manual (abu), ● kecil kuning = order kedaluwarsa/batal; garis harga = entry,
+  TP, SL, liq posisi terbuka dan harga order limit hidup. Akun `acak` disembunyikan kecuali dicentang. Dropdown simbol: aktif →
+  pernah ditradingkan → top 30 volume.
+- **Panel kanan**: budget tiket/swing/acak, posisi terbuka (unrealized dari mark terakhir), order menunggu, 8 eksekusi cron Hermes terakhir.
+- **Bar status**: jam, collector (OK/BASI + umur), pemindai (run terakhir, wake hari ini, alasan gate), biaya API hari ini/bulan vs cap, KILL SWITCH.
+- **Riwayat**: kurva ekuitas kumulatif (tiket/swing/acak), posisi ditutup, order kedaluwarsa/batal/ditolak, ringkasan harian; klik baris →
+  chart lompat ke simbolnya. **Statistik** = `evaluasi.compute`. **Pemindai** = run wake terakhir + 24 run. **Psikologi** = panel BTC/ETH.
+  **Jurnal** = jurnal agent, catatan harian, hipotesis, pelajaran, playbook, indeks.
+- API JSON (GET): `/api/ringkasan`, `/api/simbol`, `/api/candles?symbol&tf&n`, `/api/marker?symbol`, `/api/riwayat?akun&hari&symbol`,
+  `/api/ekuitas`, `/api/statistik`, `/api/psikologi?symbol`, `/api/kandidat`, `/api/teks?jenis&hari`.
+
+| Gejala | Tindakan |
+|---|---|
+| Chart kosong, tabel terisi | Pustaka `lightweight-charts` dari unpkg tidak termuat (offline) — muat ulang saat online; tabel tetap jalan |
+| `tidak ada bar` untuk simbol | Collector hanya menyimpan top 30 volume + simbol berposisi; pilih simbol lain |
+| Halaman tidak terbuka | `run_dashboard.cmd`; cek `logs/dashboard.log` / `dashboard.out.log`; port 8586 bentrok → `--port` |
 
 ## Milestone berikutnya
 

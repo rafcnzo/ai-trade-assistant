@@ -3,6 +3,19 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (malam, 19:10) — laptop Windows — dashboard lokal: chart trading live + riwayat
+
+**Apa:** `scripts/dashboard.py` (Starlette/uvicorn, sudah ada sebagai dependensi mcp; `127.0.0.1:8586`; semua koneksi DB readonly
+singkat; `single_instance_lock`) + `dashboard/` (index.html, app.js, style.css; TradingView Lightweight Charts v4 dari unpkg).
+Chart candlestick+volume 1m–1d dengan marker entry/TP/likuidasi/EOD/kedaluwarsa dan garis entry/TP/SL/liq/order dari mesin paper;
+panel budget, posisi (unrealized), order, cron Hermes; bar status collector/pemindai/biaya API/kill switch; tab Riwayat (ekuitas
+tiket/swing/acak, posisi ditutup, order gagal, ringkasan harian), Statistik, Pemindai, Psikologi, Jurnal. Sumbu waktu digeser ke WIB.
+`run_dashboard.cmd` + `hermes/startup/crypto-analyst_dashboard.vbs`; `setup_hermes.cmd` memasang & menyalakannya.
+
+**Kenapa:** pemilik ingin memantau live dengan chart asli dan riwayat trade tanpa membuka CLI/Telegram. **Tes:** D1–D4 (127 hijau).
+**File:** `scripts/dashboard.py`, `dashboard/*`, `run_dashboard.cmd`, `hermes/startup/crypto-analyst_dashboard.vbs`, `hermes/setup_hermes.cmd`,
+`tests/test_dashboard.py`, docs, CLAUDE.md.
+
 ## 2026-10-11 (malam, 18:50) — laptop Windows — P-09 jadi gate mekanis pemindai (G9)
 
 **Apa:** `PaperEngine.hangus_beruntun(day)` (jumlah posisi tiket HANGUS/FUNDING_LIQ berturut-turut di akhir hari) dan gate G9 di `pemindai.gate_awal` (`max_hangus_beruntun=2`) → setelah 2 likuidasi beruntun, agent tidak dibangunkan sampai hari berikutnya. Tes S11. Playbook P-09 sumber = mesin + skill. **Kenapa:** permintaan pemilik: aturan psikologi ini lebih aman ditegakkan mesin daripada diingat agent. **File:** `scripts/paper_engine.py`, `scripts/pemindai.py`, `tests/test_pemindai.py`, `referensi/playbook.md`, docs.
