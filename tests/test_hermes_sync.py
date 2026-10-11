@@ -1,4 +1,4 @@
-"""Tes hermes/sync.py (H1–H4) dan pembungkus cron pemindai_cron.py. Tanpa Hermes, tanpa jaringan."""
+"""Tes hermes/sync.py (H1–H5) dan pembungkus cron pemindai_cron.py. Tanpa Hermes, tanpa jaringan."""
 from __future__ import annotations
 
 import os
@@ -86,6 +86,16 @@ class TestSync(unittest.TestCase):
         r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip().splitlines(), ["halo", '{"wakeAgent":true}'])
+
+    def test_h5_notif_wrapper_silent_on_failure(self):
+        sync.apply(sync.plan(SRC, self.home))
+        wrapper = self.home / "scripts" / "notif_cron.py"
+        env = {**os.environ, "NOTIF_CMD": f"{sys.executable} -c exit(3)"}
+        r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, ""))        # gagal → diam (tidak membanjiri Telegram)
+        env["NOTIF_CMD"] = f"{sys.executable} -c print('pesan')"
+        r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "pesan"))
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 16:50 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 17:25 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -16,7 +16,9 @@ Folder Startup user (login, tanpa jendela)
       ├─ MCP "paper"               scripts/mcp_server.py, 22 tool  (TERHUBUNG, hermes mcp test paper OK)
       ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM);
       │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
-      └─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
+      ├─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
+      └─ cron notif-paper          * * * * * --no-agent → notif_cron.py → scripts/notifikasi.py --cron (tanpa LLM):
+                                   kejadian paper (terisi/TP/STOP/likuidasi/kedaluwarsa/batal) → Telegram, kosong = diam
 ```
 Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga mengisi `kline_1h` (120 hari) untuk konteks 1h/4h/1d.
 
@@ -34,9 +36,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 1. Uji Telegram pertama **lolos** (posisi/order benar, shell ditolak, `/cek SOL LONG` → SKIP beralasan + jurnal).
    Berikutnya: tutup-buka chat bot, cek menu `/` berisi 14 perintah proyek, coba `/posisi`, `/budget`, `/status`;
    laporkan apakah tebal/daftar sudah dirender.
-1b. Order tiket uji #1 (BTC) dan #2 (ETH) menahan gate pemindai ("sudah 2 order tiket hidup"). Kalau ingin pemindai
-   benar-benar membangunkan agent hari ini: `/batal semua` di Telegram atau `paper_engine.py batal 1` + `batal 2`.
-   Lalu amati Telegram: pesan "PEMINDAI … K<id> …" + keputusan agent hanya saat ada kandidat; 23:55 evaluasi harian.
+1b. Amati Telegram: keputusan agent hanya saat pemindai menemukan kandidat (order uji #1/#2 sudah dibatalkan 17:05 WIB,
+   gate G4 terbuka); notifikasi 📣 saat ada kejadian paper; 23:55 evaluasi harian.
 2. Opsional: pasang spend limit di workspace Console Anthropic; `hermes doctor --fix` untuk saran `custom_providers → providers`;
    sembunyikan skill bundel Hermes yang tidak dipakai dengan mengganti nama folder di `%LOCALAPPDATA%\hermes\skills\` menjadi `_nama`.
 
@@ -44,11 +45,12 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 
 - Collector, proxy, dan gateway Hermes jalan di luar sandbox (launcher Startup). Cek: `collector.py status`,
   `curl 127.0.0.1:8585/healthz`, `hermes gateway status`.
-- Order paper uji 11 Okt 11:42 WIB: #1 tiket BTC LONG 150x @ 82.915,7; #2 tiket ETH LONG 100x @ 2.431,1 (jauh);
-  #3 swing ETH SHORT 10x @ 2.511,3. Status: `paper_engine.py laporan`.
+- Order paper uji #1/#2 (tiket) dibatalkan 16:50 WIB atas permintaan user; #3 swing ETH SHORT 10x @ 2.511,3 masih ACTIVE.
+- **Posisi tiket pertama dari agent sendiri**: #1 SOLUSDT SHORT 0,67 @ 109,41 75x (K3), liq 110,317, TP 109,14 (order #8),
+  terisi 16:53 WIB. Hasilnya menentukan budget tiket hari ini. Status: `paper_engine.py posisi` / `/posisi` di Telegram.
 - Cron Hermes aktif sejak 16:43 WIB: `pemindai-tiket` tiap 5 menit (`1-59/5`), `evaluasi-harian` 23:55. `hermes cron list`.
 - Collector skema v2: `kline_1h` 20 simbol × 120 hari (57.620 bar) terisi dalam 4 tick; weight tick kembali ±91.
-- Biaya API hari ini: ≈ $0,75 (16 panggilan uji Telegram/CLI). Laporan: `budget_guard.py laporan`.
+- Biaya API hari ini: ≈ $1,62 (25 panggilan: uji Telegram/CLI + wake pemindai pertama). Laporan: `budget_guard.py laporan`.
 
 ## Verifikasi
 
@@ -70,7 +72,10 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | `hermes cron list` memuat `pemindai-tiket` (1-59/5) & `evaluasi-harian` (55 23); `hermes cron run pemindai-tiket` → `pemindai_run` wake=0 "sudah 2 order tiket hidup", `api_calls` tetap 16 | ✅ |
 | 2b | Scheduler gateway menjalankan `pemindai-tiket` sendiri: run 16:46:25 WIB tercatat di `pemindai_run` (wake=0), `api_calls` tetap 16 | ✅ |
 | 2b | Gate off tidak mengirim apa pun ke Telegram: `cron/executions.db` `delivery_outcome=suppressed`, output run "Script gate returned wakeAgent=false — agent skipped" | ✅ |
-| 2b | Jalur positif: wake alami → order `plan_id=K<id>` / SKIP + jurnal; 23:55 evaluasi harian tiba | ⬜ menunggu kejadian |
+| 2b | Jalur positif 16:51 WIB: pemindai bangun dengan 3 kandidat (K1 XRP SHORT, K2 BTC LONG, K3 SOL SHORT, skor 3); agent memasang order #7 SOL SHORT 75x @ 109,41 TP 109,14 `plan_id=K3` (persis), SKIP K1/K2 dengan alasan di jurnal; 2 panggilan Opus ≈ $0,30; order terisi 16:53 → posisi #1 | ✅ |
+| 2b | 23:55 evaluasi harian tiba di Telegram | ⬜ menunggu |
+| 2b+ | `test_notifikasi` N1–N3 (init sunyi, order/terisi/TP, batal/kedaluwarsa, likuidasi, batas 20, CLI), `test_hermes_sync` H5 | ✅ |
+| 2b+ | Cron `notif-paper` 4c19f528cc31 terdaftar (mode no-agent); `hermes cron run notif-paper` 17:01 WIB mengirim 2 kejadian (#6 order SOL, #7 terisi) → `delivery_outcome=delivered`, kursor #7; tanpa panggilan API | ✅ |
 
 ## Keputusan yang berlaku
 
@@ -88,11 +93,15 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
   perintah `hermes` dijalankan lewat `explorer.exe "<path>\hermes\setup_hermes.cmd"` / `run_logged.cmd` (lihat OPERASI).
 - Proxy menolak budget habis / kill switch dengan 403 (bukan 429) agar SDK tidak mengulang.
 - `hermes cron create --script` harus path **relatif** terhadap `HERMES_HOME\scripts` (`pemindai_cron.py`); path absolut ditolak.
+- Notifikasi kejadian paper memakai cron Hermes `--no-agent` (stdout = pesan, kosong = diam), bukan Bot API langsung:
+  token Telegram tetap hanya di Hermes, nol biaya LLM. Kursor `data/notif.json` (penulis tunggal `notifikasi.py`).
 - Run cron dengan `{"wakeAgent": false}` tidak dikirim ke Telegram (`delivery_outcome=suppressed`). Jejak run:
   `%LOCALAPPDATA%\hermes\cron\output\<job_id>\<waktu>.md` dan `cron\executions.db`.
 - Repo GitHub `rafcnzo/ai-trade-assistant`; `data/`, `logs/`, `jurnal/`, `laporan/`, `pasar/harian`, `pasar/komunitas`, `referensi/buku/` tidak di-commit.
 
 ## Pertanyaan terbuka
 
-- Saat wake pertama: apakah agent di konteks cron memakai tool `mcp_paper_*` dan `plan_id` persis `K<id>`
-  (cek `paper_engine.py orders` dan `jurnal/agent/<hari>.md`). Jika agent mengarang ID, perketat prompt di `hermes/cron.cmd`.
+- Biaya per wake: panggilan kedua pada wake 16:51 berbiaya $0,27 (cache write prompt sistem baru setelah gateway restart);
+  wake berikutnya seharusnya ±$0,05–0,10 bila cache hangat. Pantau `budget_guard.py laporan` beberapa hari.
+- Kandidat skor 3 semuanya "DEKAT_LEVEL + VOL" (tanpa penolakan segar). Setelah ada data beberapa hari, pertimbangkan
+  `score_min=4` atau bobot VOL lebih kecil supaya wake lebih selektif.

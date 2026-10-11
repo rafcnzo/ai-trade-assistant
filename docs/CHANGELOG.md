@@ -3,6 +3,26 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (sore, 17:25) — laptop Windows — notifikasi kejadian paper ke Telegram; order uji dibatalkan
+
+**Apa:** `scripts/notifikasi.py` (baru; penulis tunggal `data/notif.json`): membaca `paper.sqlite` `events` ⋈ `orders` ⋈
+`positions`, memformat kejadian (🆕 order, ❌ batal, ⌛ kedaluwarsa, ✅ terisi, 🎯 TP, 🛑 STOP, 🔚/🌙 tutup, 💀 likuidasi,
+⚠️ ambigu) dan mencetak hanya yang baru sejak kursor; `hermes/scripts/notif_cron.py` (pembungkus, diam saat gagal);
+cron `notif-paper` `* * * * *` `--no-agent --deliver telegram --failure-deliver local` di `hermes/cron.cmd`.
+Order tiket uji #1 (BTC) dan #2 (ETH) dibatalkan lewat `paper_engine.py batal` atas permintaan user; #3 swing tetap.
+
+**Kenapa:** user ingin tahu di Telegram saat order terisi / TP / SL / likuidasi tanpa bertanya ke agent. Mode `--no-agent`
+Hermes mengirim stdout skrip apa adanya (kosong = diam) sehingga tidak ada biaya LLM dan token Telegram tetap hanya di
+Hermes. Pembatalan #1/#2 membuka gate G4 supaya pemindai bisa membangunkan agent.
+
+**Wake pertama (16:51 WIB, setelah #1/#2 dibatalkan):** pemindai menemukan 3 kandidat skor 3; agent (konteks cron)
+memanggil tool MCP, memasang order #7 SOL SHORT 75x @ 109,41 TP 109,14 dengan `plan_id=K3` persis, SKIP K1/K2 dengan
+alasan tertulis di `jurnal/agent/2026-10-11.md`; biaya 2 panggilan ≈ $0,30 (termasuk cache write). Order terisi 16:53 →
+posisi tiket #1. Pertanyaan terbuka "apakah agent memakai plan_id yang benar" terjawab: ya.
+
+**Tes:** `tests/test_notifikasi.py` N1–N3, `test_hermes_sync` H5. **File:** `scripts/notifikasi.py`,
+`hermes/scripts/notif_cron.py`, `hermes/cron.cmd`, `tests/test_notifikasi.py`, `tests/test_hermes_sync.py`, `CLAUDE.md`, `docs/*`.
+
 ## 2026-10-11 (sore, 16:40) — laptop Windows — Milestone 2b: pemindai mekanis, kline_1h, cron Hermes
 
 **Apa:** `scripts/pemindai.py` (baru; penulis tunggal `data/kandidat.sqlite`): tiap 5 menit memindai 20 koin top volume

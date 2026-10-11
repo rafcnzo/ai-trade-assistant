@@ -8,6 +8,7 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 |---|---|---|
 | `scripts/collector.py` | Mengambil kline 1m (harga terakhir + mark), kline 1h (120 hari), funding, snapshot mark, peringkat volume; memanggil mesin tiap menit | `data/pasar.sqlite` |
 | `scripts/pemindai.py` | Pemindai kandidat tiket mekanis (tanpa LLM) tiap 5 menit lewat cron Hermes; membangunkan agent hanya bila ada kandidat | `data/kandidat.sqlite` |
+| `scripts/notifikasi.py` | Notifikasi kejadian paper (terisi, TP, STOP, likuidasi, kedaluwarsa, batal) ke Telegram tiap menit lewat cron Hermes `--no-agent` (tanpa LLM) | `data/notif.json` |
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
@@ -219,7 +220,8 @@ apa pun bila sudah sesuai. Setelah mengubah skill/SOUL: `hermes gateway restart`
 ### 5. Gateway, Telegram, cron
 Wizard `hermes setup` sudah memasang `Hermes_Gateway.vbs` di folder Startup (fallback karena Task Scheduler butuh admin).
 `hermes gateway start|status|stop|restart`. Cron (baris `hermes cron create` dari `hermes/sync.py --snippet`; `--script` harus relatif terhadap `HERMES_HOME\scripts`): `pemindai-tiket`
-tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat) dan `evaluasi-harian` 23:55 WIB.
+tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `evaluasi-harian` 23:55 WIB, dan `notif-paper`
+tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM).
 `hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
 + `base_url` tetap berfungsi, jadi ini opsional.
@@ -319,6 +321,32 @@ Dari Telegram: `/status` (field `pemindai`), atau minta "kandidat terbaru".
 | Selalu `data basi` | Collector mati/tersendat: `collector.py status`, `logs/collector.log` |
 | Tidak pernah ada kandidat | Normal di pasar datar; di tabel `--once` banyak `skor 2 < 3` = dekat level tanpa penolakan. Ubah `score_min` hanya setelah beberapa hari data |
 | Kandidat ada tapi agent tidak memasang order | Alasan SKIP di `jurnal/agent/<hari>.md`; aturan di `hermes/skills/tiket/SKILL.md` |
+| Order terisi/TP tapi tidak ada notifikasi Telegram | `hermes cron list` → `notif-paper` aktif? `notifikasi.py --uji 3` menampilkan kejadiannya? `logs/notif_cron.log` berisi error? Kursor `data/notif.json` melompat (`--kursor <id>` untuk mengirim ulang) |
+
+## Notifikasi Telegram (`scripts/notifikasi.py`)
+
+Cron Hermes `notif-paper` (`* * * * *`, `--no-agent --script notif_cron.py --deliver telegram --failure-deliver local`)
+menjalankan `scripts/notifikasi.py --cron` tiap menit **tanpa LLM**: membaca `paper.sqlite` (`events` ⋈ `orders` ⋈ `positions`,
+readonly), mengirim kejadian baru sejak kursor `data/notif.json`, lalu memajukan kursor. Stdout kosong = Hermes tidak
+mengirim apa pun. Kali pertama (tanpa kursor) hanya menandai kejadian terakhir — tidak mengirim riwayat lama.
+
+Contoh pesan:
+```
+📣 Paper trading — 2 kejadian baru
+10:04 ✅ TERISI posisi #4 tiket BTCUSDT LONG 0.001 @ 82700 (THROUGH) 100x · margin $0.8270 · liq 82201.8 · TP 83000 · SL - · K7
+10:05 🎯 TP posisi #4 tiket BTCUSDT LONG keluar 83000 · net +$0.2669 (pnl +$0.3000, fee $0.0331, funding +$0.0000)
+```
+Jenis: 🆕 order baru, ❌ dibatalkan, ⌛ kedaluwarsa (tidak terisi), ✅ terisi, 🎯 TP, 🛑 STOP, 🔚 tutup manual, 🌙 tutup EOD,
+💀 likuidasi (termasuk karena funding), ⏳ permintaan tutup; `⚠️ AMBIGU` bila mesin menandai ambiguitas intrabar.
+Maksimal 20 kejadian per pesan (sisanya diringkas "+n lebih lama").
+
+```bash
+.venv/Scripts/python.exe scripts/notifikasi.py --uji 5
+```
+`--uji N` mencetak N kejadian terakhir tanpa mengubah kursor; `--kursor ID` mengirim ulang kejadian setelah ID pada run
+berikutnya; `--reset` melompat ke kejadian terakhir. Log: `logs/notifikasi.log`; kegagalan pembungkus: `logs/notif_cron.log`
+(pembungkus selalu diam saat gagal supaya Telegram tidak dibanjiri; `--failure-deliver local` menahan notice Hermes).
+Kejadian yang dibuat agent lewat Telegram (order baru) tetap dinotifikasi — itu konfirmasi bahwa mesin menerimanya.
 
 ## Milestone berikutnya
 
