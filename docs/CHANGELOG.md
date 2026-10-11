@@ -3,6 +3,10 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (malam, 18:40) — laptop Windows — playbook: P-09, P-11, P-15 diaktifkan pemilik
+
+**Apa:** status `uji` → `aktif` untuk P-09 (stop setelah 2 HANGUS beruntun), P-11 (R:R eksplisit sebelum entry, tidak bisa = SKIP), P-15 (pola chart hanya setelah close breakout + volume). Aturan aktif: 11. **Kenapa:** keputusan pemilik setelah membaca usulan dari buku (§15.6). **File:** `referensi/playbook.md`.
+
 ## 2026-10-11 (malam, 18:45) — laptop Windows — Milestone 3c: referensi buku, playbook, tool cari/baca_referensi
 
 **Apa:** `scripts/konversi_buku.py` (pymupdf/ebooklib: bab dari bookmark → heuristik judul berfont besar → potongan halaman;
