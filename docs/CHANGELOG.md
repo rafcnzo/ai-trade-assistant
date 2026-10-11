@@ -31,7 +31,9 @@ karena 2 order tiket uji masih hidup.
 282 → 91); `hermes cron create` lewat `run_logged.cmd`: `evaluasi-harian` d38d3262d1b5, `pemindai-tiket` f27a23cad20c —
 percobaan pertama ditolak karena `--script` harus **relatif** terhadap `HERMES_HOME\scripts` (cron.cmd diperbaiki:
 `--script pemindai_cron.py`). `hermes cron run pemindai-tiket` → `pemindai_run` wake=0 "sudah 2 order tiket hidup",
-`api_calls` tetap 16 (nol biaya). Gateway dimulai ulang (PID 24408) agar skill `tiket` baru terbaca.
+`api_calls` tetap 16 (nol biaya). Gateway dimulai ulang (PID 24408) agar skill `tiket` baru terbaca. Run terjadwal
+pertama 16:46:25 WIB berjalan sendiri; gate off → `delivery_outcome=suppressed` (tidak ada pesan Telegram), jadi tidak
+perlu mengecilkan output gate-off.
 
 **File:** `scripts/pemindai.py`, `scripts/collector.py`, `scripts/schema_pasar.sql`, `scripts/paper_engine.py`,
 `scripts/analisis.py`, `scripts/mcp_server.py`, `hermes/cron.cmd`, `hermes/skills/tiket/SKILL.md`, `tests/fixtures.py`,

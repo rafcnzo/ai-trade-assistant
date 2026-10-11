@@ -69,7 +69,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | Collector restart dengan skema v2 → `collector.py status`: `Bar 1h: 20 simbol, 57620 bar, 13 Jun → 11 Okt`; weight tick 282 → 191 → 91 | ✅ |
 | 2b | `hermes cron list` memuat `pemindai-tiket` (1-59/5) & `evaluasi-harian` (55 23); `hermes cron run pemindai-tiket` → `pemindai_run` wake=0 "sudah 2 order tiket hidup", `api_calls` tetap 16 | ✅ |
 | 2b | Scheduler gateway menjalankan `pemindai-tiket` sendiri: run 16:46:25 WIB tercatat di `pemindai_run` (wake=0), `api_calls` tetap 16 | ✅ |
-| 2b | Jalur positif: wake alami → order `plan_id=K<id>` / SKIP + jurnal; 23:55 evaluasi harian tiba; apakah gate-off sampai ke Telegram | ⬜ menunggu kejadian / user |
+| 2b | Gate off tidak mengirim apa pun ke Telegram: `cron/executions.db` `delivery_outcome=suppressed`, output run "Script gate returned wakeAgent=false — agent skipped" | ✅ |
+| 2b | Jalur positif: wake alami → order `plan_id=K<id>` / SKIP + jurnal; 23:55 evaluasi harian tiba | ⬜ menunggu kejadian |
 
 ## Keputusan yang berlaku
 
@@ -87,11 +88,11 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
   perintah `hermes` dijalankan lewat `explorer.exe "<path>\hermes\setup_hermes.cmd"` / `run_logged.cmd` (lihat OPERASI).
 - Proxy menolak budget habis / kill switch dengan 403 (bukan 429) agar SDK tidak mengulang.
 - `hermes cron create --script` harus path **relatif** terhadap `HERMES_HOME\scripts` (`pemindai_cron.py`); path absolut ditolak.
+- Run cron dengan `{"wakeAgent": false}` tidak dikirim ke Telegram (`delivery_outcome=suppressed`). Jejak run:
+  `%LOCALAPPDATA%\hermes\cron\output\<job_id>\<waktu>.md` dan `cron\executions.db`.
 - Repo GitHub `rafcnzo/ai-trade-assistant`; `data/`, `logs/`, `jurnal/`, `laporan/`, `pasar/harian`, `pasar/komunitas`, `referensi/buku/` tidak di-commit.
 
 ## Pertanyaan terbuka
 
-- Apakah Hermes mengirim stdout skrip cron ke Telegram saat `{"wakeAgent": false}` (tiap 5 menit dua baris)? Jika ya,
-  kecilkan output gate-off menjadi satu baris atau pakai `--deliver` lain. Dicek setelah cron terpasang.
-- `platform_toolsets.cron` dan nama tool `mcp_paper_*` sudah terkonfirmasi bekerja (Telegram/CLI); untuk cron dikonfirmasi
-  saat wake pertama.
+- Saat wake pertama: apakah agent di konteks cron memakai tool `mcp_paper_*` dan `plan_id` persis `K<id>`
+  (cek `paper_engine.py orders` dan `jurnal/agent/<hari>.md`). Jika agent mengarang ID, perketat prompt di `hermes/cron.cmd`.

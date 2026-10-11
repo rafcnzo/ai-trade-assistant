@@ -314,7 +314,7 @@ Dari Telegram: `/status` (field `pemindai`), atau minta "kandidat terbaru".
 
 | Gejala | Tindakan |
 |---|---|
-| Tiap 5 menit Telegram menerima "tidak membangunkan agent" | Hermes meneruskan stdout saat gate off; kecilkan output (hanya baris gate) atau ubah `--deliver` |
+| Ingin melihat run cron yang tidak membangunkan agent | Tidak ada pesan Telegram (`delivery_outcome=suppressed`); lihat `%LOCALAPPDATA%\hermes\cron\output\<job_id>\*.md`, `cron\executions.db`, atau `pemindai_run` di `data/kandidat.sqlite` (`/status` di Telegram) |
 | `pemindai gagal (exit 1)` di Telegram/log | `pemindai.py --once` di terminal untuk melihat traceback; `logs/pemindai.log` |
 | Selalu `data basi` | Collector mati/tersendat: `collector.py status`, `logs/collector.log` |
 | Tidak pernah ada kandidat | Normal di pasar datar; di tabel `--once` banyak `skor 2 < 3` = dekat level tanpa penolakan. Ubah `score_min` hanya setelah beberapa hari data |
