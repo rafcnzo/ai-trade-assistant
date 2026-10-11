@@ -373,6 +373,30 @@ class PaperEngine:
             p.append(account)
         return [dict(r) for r in self.conn.execute(q + " ORDER BY id", p)]
 
+    def history(self, day: Optional[str] = None, account: Optional[str] = None, limit: int = 50) -> list[dict]:
+        """Posisi yang ditutup + order entry yang EXPIRED/REJECTED/CANCELED pada hari WIB tertentu (default hari ini)."""
+        day = day or day_wib(self.clock())
+        out: list[dict] = []
+        q = "SELECT * FROM positions WHERE status='CLOSED' AND day_wib=?"
+        p: list = [day]
+        if account:
+            q += " AND account=?"
+            p.append(account)
+        for r in self.conn.execute(q + " ORDER BY id DESC LIMIT ?", p + [limit]):
+            d = dict(r)
+            d["jenis"] = "posisi"
+            out.append(d)
+        q = "SELECT * FROM orders WHERE reduce_only=0 AND status IN ('EXPIRED','REJECTED','CANCELED') AND day_wib=?"
+        p = [day]
+        if account:
+            q += " AND account=?"
+            p.append(account)
+        for r in self.conn.execute(q + " ORDER BY id DESC LIMIT ?", p + [limit]):
+            d = dict(r)
+            d["jenis"] = "order"
+            out.append(d)
+        return out
+
     def budget_status(self, account: str = TIKET, day: Optional[str] = None) -> dict:
         day = day or day_wib(self.clock())
         if account == TIKET:

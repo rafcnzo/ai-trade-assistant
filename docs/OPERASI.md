@@ -9,8 +9,12 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/collector.py` | Mengambil kline 1m (harga terakhir + mark), funding, snapshot mark, peringkat volume; memanggil mesin tiap menit | `data/pasar.sqlite` |
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
+| `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
+| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 22 tool (data pasar, order paper, laporan, jurnal, hipotesis) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
+| `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
-| `run_collector.cmd` | Pembungkus untuk Task Scheduler (tanpa jendela konsol) | — |
+| `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
+| `run_collector.cmd`, `run_budget_proxy.cmd` | Pembungkus untuk Task Scheduler (tanpa jendela konsol) | — |
 
 Semua perintah dijalankan dari folder proyek dengan interpreter venv:
 
@@ -149,6 +153,86 @@ Semua tes berjalan tanpa jaringan (pasar sintetis `tests/fixtures.py`).
   order nyata; `TIDAK_TERISI` adalah hasil yang sah dan dipantau.
 - Interval funding per simbol dibaca dari `fundingInfo` (ada yang 4 jam / 1 jam), tapi
   settlement memakai riwayat `fundingRate` yang sebenarnya, jadi tidak bergantung pada asumsi 8 jam.
+
+## Hermes Agent (otak asisten)
+
+Asisten sehari-hari berjalan di **Hermes Agent** (Nous Research) native Windows; Claude Code hanya membangun proyek.
+Rantainya: Telegram/CLI → Hermes → `mcp_server.py` (satu-satunya pintu ke mesin paper) dan → `budget_proxy.py` → Anthropic.
+
+### 1. Instalasi Hermes (dari terminal Anda sendiri, bukan dari Claude Code)
+Proses yang dijalankan dari dalam aplikasi Claude melihat folder `AppData` yang tervirtualisasi, sehingga
+instalasi dari sana gagal/tidak terlihat oleh Task Scheduler. Jalankan di PowerShell biasa (bukan admin):
+
+```powershell
+$env:GIT_CONFIG_COUNT=1; $env:GIT_CONFIG_KEY_0='core.longpaths'; $env:GIT_CONFIG_VALUE_0='true'; iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+`core.longpaths` hanya berlaku di sesi itu; tanpa ini `git` gagal pada dokumen i18n Hermes ("Filename too long").
+Setelah selesai: buka terminal baru, `hermes --version`, `hermes doctor`. Lokasi: `%LOCALAPPDATA%\hermes`
+(`config.yaml`, `.env`, `SOUL.md`, `skills\`, `scripts\`, `cron\`).
+
+### 2. Rahasia (jalankan sendiri; jangan pernah lewat chat atau repo)
+```bash
+setx ANTHROPIC_API_KEY <key-dari-console-anthropic>
+```
+```bash
+hermes config set TELEGRAM_BOT_TOKEN <token-dari-BotFather>
+```
+```bash
+hermes config set TELEGRAM_ALLOWED_USERS <user-id-telegram-anda>
+```
+`ANTHROPIC_API_KEY` dibaca hanya oleh `budget_proxy.py` (buka terminal baru setelah `setx`). Hermes memegang key dummy.
+Pasang juga spend limit di workspace Console Anthropic (mis. $200/bulan) sebagai lapis kedua.
+
+### 3. Proxy budget
+```bash
+schtasks /Create /TN "crypto-analyst budget proxy" /TR "\"C:\Users\hp\crypto-analyst\run_budget_proxy.cmd\"" /SC ONLOGON /RL LIMITED /F
+```
+```bash
+schtasks /Run /TN "crypto-analyst budget proxy"
+```
+Pengaturan tugas sama seperti collector (lihat atas) + "If the task fails, restart every 1 minute". Cek:
+`curl http://127.0.0.1:8585/healthz`. Log: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya).
+Budget habis → Hermes menerima HTTP 429 `budget_guard: ...`; kill switch `data/STOP_AGENT` memblokir semua panggilan.
+
+### 4. Aset dan konfigurasi Hermes
+```bash
+.venv/Scripts/python.exe hermes/sync.py
+```
+Menyalin `SOUL.md`, skill, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`, lalu mencetak snippet `config.yaml`
+(model → proxy, toolset per platform tanpa terminal/file, `mcp_servers.paper` dengan whitelist 22 tool) dan dua
+perintah `hermes cron create`. Gabungkan snippet ke `%LOCALAPPDATA%\hermes\config.yaml`. Lalu:
+```bash
+hermes mcp test paper
+```
+harus menampilkan 22 tool. `hermes tools` untuk memastikan toolset cron/telegram tidak memuat terminal/file.
+`hermes/sync.py --check` mengembalikan 1 jika aset di HERMES_HOME tertinggal dari repo (jalankan setelah `git pull`).
+
+### 5. Gateway, Telegram, cron
+```bash
+hermes gateway install
+```
+mendaftarkan Task Scheduler `Hermes_Gateway` (saat login, tanpa jendela). `hermes gateway status|start|stop|restart`.
+Cron (dari `hermes/cron.cmd` setelah path diisi `sync.py`): `pemindai-tiket` tiap 5 menit (skrip tanpa LLM;
+agent hanya dibangunkan bila ada kandidat) dan `evaluasi-harian` 23:55 WIB. `hermes cron list`, `hermes cron run <nama>`
+untuk uji manual, `hermes cron pause <nama>`.
+
+### 6. Uji cepat
+- `hermes -z "jam dan budget tiket sekarang?"` → jawaban memuat umur tick collector.
+- Telegram: "posisi dan order" → sama dengan `paper_engine.py posisi` / `orders`.
+- Telegram: "pasang tiket BTC LONG limit <harga> 100x TP <harga>" → `paper_engine.py orders` memuat `created_by=hermes`.
+- "jalankan perintah shell" → agent menjawab tidak punya tool itu.
+- `budget_guard.py status` menunjukkan panggilan Opus dengan biaya; `logs/budget_proxy.log` berisi barisnya.
+
+### 7. Troubleshooting
+| Gejala | Penyebab / tindakan |
+|---|---|
+| Hermes: error 429 `budget_guard` | Cap tercapai atau kill switch; `budget_guard.py status`; hapus `data/STOP_AGENT` bila sengaja |
+| Hermes: koneksi ke 127.0.0.1:8585 ditolak | Proxy mati: `schtasks /Run /TN "crypto-analyst budget proxy"`; lihat `logs/budget_proxy.out.log` |
+| Proxy: `env ANTHROPIC_API_KEY tidak diset` | `setx` lalu buka terminal baru / login ulang agar Task Scheduler membaca env user |
+| `hermes mcp test paper` gagal start | Cek `logs/mcp_server.log`; pastikan `command` menunjuk `.venv\Scripts\python.exe`; tambahkan `SYSTEMROOT: C:\Windows` di `env` jika Python mengeluh soal random |
+| Tool menjawab `status_data: BASI` | Collector mati; `collector.py status`; jalankan tugas collector |
+| Agent memasang order padahal kandidat jelek | Periksa `jurnal/agent/<hari>.md`; sesuaikan aturan di `hermes/skills/tiket/SKILL.md`, `sync.py`, uji lagi |
+| Proses `python.exe` MCP tertinggal | Gateway dihentikan paksa; tutup lewat Task Manager (`idle_timeout_seconds` membersihkan yang idle) |
 
 ## Milestone berikutnya
 

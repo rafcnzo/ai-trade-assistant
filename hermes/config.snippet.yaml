@@ -1,0 +1,57 @@
+# Potongan config.yaml Hermes untuk proyek crypto-analyst.
+# Dicetak oleh `hermes/sync.py` dengan path nyata; digabung ke HERMES_HOME/config.yaml.
+# Key/token TIDAK ada di sini: ANTHROPIC_API_KEY hanya di env proxy; Telegram lewat `hermes config set`.
+
+model:
+  default: claude-opus-5-5
+  provider: custom
+  base_url: http://127.0.0.1:8585          # budget_proxy.py → api.anthropic.com
+  api_mode: anthropic_messages
+  api_key: sk-ant-proxy-dummy-000          # dibuang oleh proxy; bukan key asli
+
+agent:
+  reasoning_effort: low
+  disabled_toolsets: [terminal, file, browser, code_execution, delegation, cronjob]
+
+platform_toolsets:
+  cli: [mcp-paper, memory, skills, clarify]
+  telegram: [mcp-paper, memory, skills, clarify]
+  cron: [mcp-paper, memory, skills]
+
+cron:
+  catch_up_missed: false
+  allow_agent_scheduling: false
+
+mcp_servers:
+  paper:
+    command: "{{VENV_PY}}"
+    args: ["{{PROJECT_ROOT}}/scripts/mcp_server.py"]
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+    tools:
+      include:
+        - waktu_sekarang
+        - harga
+        - simbol_info
+        - top_volume
+        - tabel_tiket
+        - ohlcv
+        - kandidat_terbaru
+        - status_sistem
+        - pasang_order
+        - batal_order
+        - tutup_posisi
+        - posisi
+        - order_menunggu
+        - riwayat
+        - budget_tiket
+        - laporan_paper
+        - biaya_api
+        - tulis_jurnal
+        - baca_memori
+        - tulis_catatan_harian
+        - tulis_hipotesis
+        - usul_pelajaran
+    timeout: 60
+    connect_timeout: 30

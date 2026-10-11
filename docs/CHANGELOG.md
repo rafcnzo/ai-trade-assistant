@@ -3,6 +3,38 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (sore) — laptop Windows — Milestone 2a: integrasi Hermes Agent (kode selesai)
+
+**Apa:** `scripts/budget_proxy.py` (proxy 127.0.0.1:8585 → api.anthropic.com; cap lewat `BudgetGuard`; stream SSE
+diteruskan sambil dibaca; key asli hanya dari env `ANTHROPIC_API_KEY`), `scripts/analisis.py` (resample, EMA/RSI/ATR
+Wilder, swing, klaster level, jejak psikologi, tabel leverage §17.3, top volume §17.7), `scripts/mcp_server.py`
+(FastMCP stdio, 22 tool whitelist untuk Hermes), `PaperEngine.history()`, `scripts/schema_kandidat.sql`,
+`hermes/` (SOUL.md, skill `tiket` & `evaluasi-harian`, `scripts/pemindai_cron.py`, `config.snippet.yaml`, `cron.cmd`,
+`sync.py`), `run_budget_proxy.cmd`, 31 tes baru (total 74), `mcp==1.30.0` di `requirements.txt`, CLAUDE.md dan
+OPERASI.md (bagian "Hermes Agent").
+
+**Kenapa:** user memutuskan otak asisten adalah Hermes Agent (native Windows, Telegram + CLI), bukan Claude Code.
+Hermes memanggil model sendiri, jadi cap $10/hari hanya bisa ditegakkan oleh proxy di depan Anthropic. Mesin paper
+diekspos lewat MCP agar agent tidak pernah menyentuh DB/skrip langsung.
+
+**Keputusan dan temuan:**
+- Installer Hermes **harus dijalankan dari terminal user**, bukan dari Claude Code: proses di dalam aplikasi Claude
+  (paket MSIX) melihat `AppData` tervirtualisasi, sehingga `uv` gagal ("Missing expected target directory") dan hasil
+  instalasi tidak akan terlihat oleh Task Scheduler. Juga butuh `core.longpaths=true` (env sesi) karena dokumen i18n
+  Hermes melampaui 260 karakter.
+- Paket MCP dipin `mcp==1.30.0` (`FastMCP`); 2.x mengganti API (`MCPServer`) dan belum diverifikasi.
+- Proxy mencatat biaya **sebelum** mengirim respons (non-stream) / sebelum penutup chunked (stream), supaya klien tidak
+  pernah melihat jawaban yang belum tercatat.
+- Jarak likuidasi BTC 150x yang persis: `1 − (1−1/150)/(1−0,004) = 0,2678%` (dokumen menulis 0,27%).
+- Tool MCP memberi label `BASI` bila tick collector > 90 detik (collector 60 detik), menyimpang dari §3.3 (5 menit).
+
+**Belum (menunggu user):** instalasi Hermes dari terminal sendiri, `setx ANTHROPIC_API_KEY`, token/allowlist Telegram,
+Task Scheduler proxy, gabung snippet config, `hermes mcp test paper`, `hermes gateway install`. Lihat `STATUS.md`.
+
+**File:** `scripts/budget_proxy.py`, `scripts/analisis.py`, `scripts/mcp_server.py`, `scripts/paper_engine.py`,
+`scripts/schema_kandidat.sql`, `hermes/*`, `tests/test_{budget_proxy,analisis,mcp_server,hermes_sync}.py`,
+`run_budget_proxy.cmd`, `requirements.txt`, `CLAUDE.md`, `docs/OPERASI.md`, `docs/STATUS.md`, `docs/rencana-asisten-crypto.md`.
+
 ## 2026-10-11 (siang) — laptop Windows — weight tick dan saringan BAR_REVISED
 
 **Apa:** `collector.py`: (1) `kline_limit()` — jumlah bar yang diminta mengikuti kebutuhan, bukan selalu 1500;

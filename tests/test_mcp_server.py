@@ -1,0 +1,211 @@
+"""Tes mcp_server.py (M1–M9): tool dipanggil langsung lewat Tools dengan FixtureMarket; tanpa Hermes, tanpa jaringan."""
+from __future__ import annotations
+
+import asyncio
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+import common as C  # noqa: E402
+from budget_guard import BudgetGuard  # noqa: E402
+from common import MINUTE_MS, connect  # noqa: E402
+from fixtures import BTC, CN, DAY, DAY_MS, FixtureMarket, t  # noqa: E402
+from mcp_server import TOOL_NAMES, Ctx, Tools, register  # noqa: E402
+from paper_engine import PaperEngine  # noqa: E402
+
+
+class Base(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.root = Path(self.tmp.name)
+        self.clock = [t("10:03", sec=27)]
+        self.market = FixtureMarket().set_mark(BTC, 82800.0, t("10:03")).set_mark(CN, 2.0, t("10:03"))
+        # 24 jam bar 1m konstan untuk BTC (range 2) + 1 jam untuk CN
+        start = t("10:03") - 24 * C.HOUR_MS
+        for i in range(24 * 60):
+            self.market.add_bar(BTC, start + i * MINUTE_MS, 82800, 82801, 82799, 82800)
+        for i in range(60):
+            self.market.add_bar(CN, t("09:03") + i * MINUTE_MS, 2.0, 2.01, 1.99, 2.0)
+        self.engine = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock[0])
+        self.pasar = connect(self.root / "pasar.sqlite")
+        C.init_schema(self.pasar, C.SCRIPTS_DIR / "schema_pasar.sql", "1")
+        with C.tx(self.pasar):
+            C.meta_set(self.pasar, "last_tick_ms", t("10:03"))
+            self.pasar.execute("INSERT INTO mark_snapshot(symbol,ts,mark,index_price,last_funding_rate,next_funding_time) VALUES(?,?,?,?,?,?)",
+                               (BTC, t("10:03"), 82800.0, 82790.0, 0.0001, t("15:00")))
+            self.pasar.execute("INSERT INTO symbol_info(symbol,status,contract_type,quote_asset,onboard_date,liq_fee) VALUES(?,?,?,?,?,?)",
+                               (BTC, "TRADING", "PERPETUAL", "USDT", t("10:00") - 2000 * C.DAY_MS, 0.0125))
+        self.kand = self.root / "kandidat.sqlite"
+        self.ctx = Ctx(engine=self.engine, market=self.market, pasar=self.pasar, root=self.root, clock=lambda: self.clock[0],
+                       guard_factory=lambda: BudgetGuard(self.root / "budget.sqlite", clock=lambda: self.clock[0], kill_file=self.root / "STOP"),
+                       kandidat_path=self.kand, proxy_health=None)
+        self.tools = Tools(ctx=self.ctx)
+
+    def tearDown(self):
+        self.pasar.close()
+        self.engine.conn.close()
+        self.tmp.cleanup()
+
+    def js(self, obj):
+        return json.loads(json.dumps(obj, ensure_ascii=False))
+
+
+class TestOrders(Base):
+    def test_m1_pasang_order_ok_and_reject(self):
+        r = self.tools.pasang_order("tiket", BTC, "LONG", 0.001, 100, harga=82700.0, tp=83500.0, plan_id="K1", pola="uji")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["order_id"], 1)
+        self.assertIn("OK order #1", r["pesan"])
+        self.assertIn("activate_ts_wib", r)
+        self.js(r)
+        row = self.engine.orders()[0]
+        self.assertEqual(row["created_by"], "hermes")
+        r2 = self.tools.pasang_order("tiket", BTC, "LONG", 0.001, 200, harga=82700.0)
+        self.assertFalse(r2["ok"])
+        self.assertEqual(r2["reject_code"], "LEVERAGE_CAP")
+        r3 = self.tools.pasang_order("tiket", BTC, "SIDEWAYS", 0.001, 100, harga=82700.0)
+        self.assertFalse(r3["ok"])
+
+    def test_m2_batal_tutup(self):
+        r = self.tools.pasang_order("tiket", BTC, "LONG", 0.001, 100, harga=82700.0)
+        self.assertTrue(self.tools.batal_order(r["order_id"])["ok"])
+        self.assertFalse(self.tools.batal_order(r["order_id"])["ok"])
+        self.assertFalse(self.tools.tutup_posisi(99)["ok"])
+        r = self.tools.pasang_order("tiket", BTC, "LONG", 0.001, 100, harga=82700.0)
+        self.market.add_bar(BTC, t("10:04"), 82790, 82800, 82650, 82700)
+        self.clock[0] = t("10:06")
+        self.engine.step()
+        self.assertEqual(self.tools.posisi()["n"], 1)
+        self.assertTrue(self.tools.tutup_posisi(1)["ok"])
+        self.assertEqual(self.tools.order_menunggu(termasuk_reduce_only=True)["n"], 1)
+        self.assertEqual(self.tools.order_menunggu()["n"], 0)
+
+    def test_m3_non_latin_roundtrip(self):
+        r = self.tools.pasang_order("tiket", CN, "SHORT", 4, 10, harga=2.1, tp=2.0)
+        self.assertTrue(r["ok"], r)
+        out = self.js(self.tools.order_menunggu())
+        self.assertEqual(out["order"][0]["symbol"], CN)
+        self.assertIn("expire_ts_wib", out["order"][0])
+        b = self.tools.budget_tiket()
+        self.assertAlmostEqual(b["tiket"]["reserved"], 0.84 + 8.4 * 0.0002, places=6)
+        self.assertEqual(b["swing"]["open"], 0)
+        self.assertIn(CN, self.tools.laporan_paper()["markdown"])
+        self.assertEqual(self.tools.riwayat()["n"], 0)
+
+
+class TestMarketTools(Base):
+    def test_m4_tabel_tiket(self):
+        tab = self.tools.tabel_tiket(BTC, "LONG", entry=82700.0)
+        self.assertNotIn("error", tab, tab)
+        rows = {r["leverage"]: r for r in tab["baris"]}
+        self.assertAlmostEqual(rows[150]["jarak_liq_pct"], 0.2678, places=3)
+        self.assertAlmostEqual(rows[150]["fee_pct_tiket"], 6.0, places=6)
+        self.assertIn("tidak bisa", rows[75]["keterangan"])
+        self.assertAlmostEqual(tab["atr"]["1m"], 2.0, places=6)
+        self.assertIsNotNone(tab["atr"]["5m"])
+        self.assertEqual(tab["sumber_entry"], "input")
+        self.assertEqual(tab["budget"]["remaining"], 1.0)
+        self.js(tab)
+        one = self.tools.tabel_tiket(BTC, "SHORT", leverage=100, target_pct=1.0)
+        self.assertEqual([r["leverage"] for r in one["baris"]], [100])
+        self.assertEqual(one["sumber_entry"], "mark terakhir")
+
+    def test_m5_harga_fresh_and_stale(self):
+        h = self.tools.harga(BTC)
+        self.assertEqual((h["mark"], h["status"], h["funding_terakhir"]), (82800.0, "OK", 0.0001))
+        self.assertIn("mark_ts_wib", h)
+        self.clock[0] = t("10:10")
+        self.assertEqual(self.tools.harga(BTC)["status"], "BASI")
+        w = self.tools.waktu_sekarang()
+        self.assertEqual((w["status_data"], w["hari_wib"]), ("BASI", DAY))
+        self.assertEqual(self.tools.harga("NOPEUSDT")["status"], "tidak tersedia")
+        info = self.tools.simbol_info(BTC)
+        self.assertEqual((info["tick_size"], info["umur_listing_hari"], info["bracket"][0]["max_leverage"]), ("0.1", 2000, 150))
+
+    def test_m5b_ohlcv_and_status(self):
+        o = self.tools.ohlcv(BTC, "5m", 10)
+        self.assertEqual(o["tf"], "5m")
+        self.assertEqual(len(o["bars"]), 10)
+        self.assertAlmostEqual(o["atr14"], 2.0, places=6)
+        self.assertIn("bar_terakhir_wib", o)
+        self.assertEqual(self.tools.ohlcv(BTC, "7m")["ok"], False)
+        self.assertEqual(self.tools.ohlcv(CN, "1h")["status"], "tidak tersedia")
+        s = self.tools.status_sistem()
+        self.assertEqual((s["collector"]["status"], s["kill_switch"], s["pemindai"]), ("OK", False, "tidak tersedia"))
+        tv = self.tools.top_volume(5)
+        self.assertIn("catatan", tv)
+
+
+class TestNotes(Base):
+    def test_m6_jurnal_path_from_clock(self):
+        r = self.tools.tulis_jurnal("keputusan", "../../x SKIP BTC", "alasan: jauh dari level", symbol=BTC, kandidat_id=7)
+        self.assertEqual(r["path"], f"jurnal/agent/{DAY}.md")
+        txt = (self.root / "jurnal" / "agent" / f"{DAY}.md").read_text(encoding="utf-8")
+        self.assertIn("10:03 WIB — keputusan — ../../x SKIP BTC", txt)
+        self.assertIn("kandidat=7", txt)
+        self.assertFalse((self.root / "x").exists())
+        self.assertEqual(self.tools.tulis_jurnal("salah", "a", "b")["ok"], False)
+        m = self.tools.baca_memori("jurnal")
+        self.assertTrue(m["ada"])
+        self.assertIn("SKIP BTC", m["isi"])
+        self.assertFalse(self.tools.baca_memori("pelajaran")["ada"])
+
+    def test_m7_hipotesis_limit_and_pola(self):
+        for i in range(3):
+            r = self.tools.tulis_hipotesis("breakout-gagal", f"kondisi {i}", "prediksi | pipa", batas_hari=3, symbol=BTC)
+            self.assertTrue(r["ok"], r)
+            self.assertEqual(r["id"], f"H-{i + 1:04d}")
+        self.assertEqual(r["batas"], C.day_wib(t("10:03") + 3 * C.DAY_MS))
+        r4 = self.tools.tulis_hipotesis("breakout-gagal", "k", "p")
+        self.assertFalse(r4["ok"])
+        self.assertIn("3 hipotesis", r4["error"])
+        self.assertFalse(self.tools.tulis_hipotesis("pola-ngawur", "k", "p")["ok"])
+        txt = (self.root / "pasar" / "hipotesis.md").read_text(encoding="utf-8")
+        self.assertIn("| H-0003 |", txt)
+        self.assertIn("prediksi / pipa", txt)
+        u = self.tools.usul_pelajaran("kompresi", "ringkas", "bukti", 12)
+        self.assertEqual((u["id"], u["status"]), ("U-001", "uji"))
+        c = self.tools.tulis_catatan_harian("kerumunan long", jejak_grafik="WICK di 82650", rezim="range")
+        self.assertTrue(c["ok"])
+        txt = (self.root / "pasar" / "harian" / f"{DAY}.md").read_text(encoding="utf-8")
+        self.assertIn("rezim: range", txt)
+        self.tools.tulis_catatan_harian("revisi")
+        self.assertIn("## Revisi", (self.root / "pasar" / "harian" / f"{DAY}.md").read_text(encoding="utf-8"))
+
+    def test_m8_kandidat_terbaru(self):
+        self.assertEqual(self.tools.kandidat_terbaru()["kandidat"], [])
+        k = connect(self.kand)
+        C.init_schema(k, C.SCRIPTS_DIR / "schema_kandidat.sql", "1")
+        with C.tx(k):
+            k.execute("INSERT INTO pemindai_run(ts,day_wib,n_symbols,n_kandidat,wake,alasan,ok) VALUES(?,?,?,?,?,?,?)", (t("10:00"), DAY, 20, 1, 1, "ada kandidat", 1))
+            k.execute("INSERT INTO kandidat(run_ts,day_wib,symbol,arah_dugaan,mark,level,score,flags,lev_layak) VALUES(?,?,?,?,?,?,?,?,?)",
+                      (t("10:00"), DAY, BTC, "LONG", 82800.0, 82650.0, 4, json.dumps(["WICK", "VOL"]), json.dumps([{"leverage": 100}])))
+        k.close()
+        r = self.tools.kandidat_terbaru()
+        self.assertEqual(r["kandidat"][0]["flags"], ["WICK", "VOL"])
+        self.assertEqual(r["kandidat"][0]["lev_layak"][0]["leverage"], 100)
+        self.assertEqual(r["run"]["wake"], 1)
+        s = self.tools.status_sistem()
+        self.assertEqual(s["pemindai"]["wake_hari_ini"], 1)
+
+
+class TestRegistration(unittest.TestCase):
+    def test_m9_register_fastmcp(self):
+        from mcp.server.fastmcp import FastMCP
+        mcp = FastMCP("paper-uji")
+        names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
+        self.assertEqual(len(names), 22)
+        listed = asyncio.run(mcp.list_tools())
+        self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
+        po = [x for x in listed if x.name == "pasang_order"][0]
+        self.assertEqual(set(po.inputSchema["required"]), {"akun", "symbol", "sisi", "qty", "leverage"})
+        self.assertIn("PAPER", po.description)
+
+
+if __name__ == "__main__":
+    unittest.main()

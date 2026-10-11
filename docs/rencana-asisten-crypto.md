@@ -3,6 +3,18 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.4 (11 Okt 2026)
+- **Otak asisten = Hermes Agent** (Nous Research, native Windows), bukan Claude Code. Claude Code hanya membangun.
+  §19.8 pilihan dibuat; §19.3 arsitektur menjadi: Task Scheduler → collector + `budget_proxy.py` + Hermes gateway
+  (cron pemindai tiap 5 menit dengan gate `{"wakeAgent": false}`, cron evaluasi 23:55 WIB, Telegram) → MCP `paper`
+  (`scripts/mcp_server.py`, 22 tool whitelist) sebagai satu-satunya pintu ke mesin.
+- §19.5 penegak budget = proxy lokal `budget_proxy.py` di depan `api.anthropic.com` (Hermes memegang key dummy);
+  kill switch `data/STOP_AGENT` memblokir semua panggilan model.
+- §6 draft CLAUDE.md menjadi `hermes/SOUL.md`; §5/§11 slash command menjadi skill Hermes (`tiket`, `evaluasi-harian`).
+- §3.3 aturan #7: untuk tool agent, label BASI bila tick collector > 90 detik (collector 60 detik).
+- §17.3: jarak likuidasi 150x yang persis 0,2678% (ditulis 0,27%).
+- Panduan operasi Hermes: `docs/OPERASI.md`. Keadaan terkini: `docs/STATUS.md`.
+
 ### Perubahan v1.3
 - Bagian baru: agent yang belajar lewat paper trading di laptop, dengan data pasar asli (§19).
 - Budget API: $10 per hari selama laptop menyala, pengaman bulanan $190.
@@ -1550,7 +1562,7 @@ rencananya tidak dipakai untuk uang sungguhan.
 | Pilihan | Kelebihan | Kekurangan |
 |---|---|---|
 | Skrip Python + Claude API (default) | Kontrol penuh atas budget dan integritas; paling transparan | Memori dan jadwal dibangun sendiri (sebagian besar sudah dirancang di §16) |
-| Hermes Agent (Nous Research, open source) | Memori, skill, cron, dan koneksi chat sudah jadi; mendukung Claude | Framework tambahan yang harus diamankan; skill yang ditulis sendiri tidak teruji |
+| **Hermes Agent (Nous Research, open source) — DIPILIH v1.4** | Memori, skill, cron (gate tanpa LLM), MCP, Telegram, Task Scheduler sudah jadi; native Windows | Framework tambahan yang harus diamankan (toolset terminal/file dimatikan; agent hanya lewat MCP); cap biaya butuh proxy lokal |
 | Claude Managed Agents | Jalan di cloud, ada jadwal dan batas biaya dalam dolar per sesi | Sandbox kemungkinan di AS; **Binance memblokir request dari AS**. Harus diuji dulu |
 
 ### 19.9 Urutan pembangunan
