@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+logs/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+jurnal/
+laporan/
+referensi/buku/
+pasar/harian/
+pasar/komunitas/
+.claude/settings.local.json
