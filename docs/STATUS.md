@@ -36,7 +36,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
-| 3c | Referensi buku & playbook (§15): `konversi_buku.py`, `referensi.py`, tool `cari_referensi`/`baca_referensi`, `/referensi`, `referensi/indeks.md`, `referensi/playbook.md` v1, aturan SOUL "Referensi", playbook di skill tiket | **Kode selesai** (122 tes; 3 buku terkonversi). Deploy: lihat verifikasi 3c |
+| 3c | Referensi buku & playbook (§15): `konversi_buku.py`, `referensi.py`, tool `cari_referensi`/`baca_referensi`, `/referensi`, `referensi/indeks.md`, `referensi/playbook.md` v1, aturan SOUL "Referensi", playbook di skill tiket | **Selesai & terpasang** (122 tes; 3 buku terkonversi; MCP 26 tool; `/referensi` di menu) |
 
 ## Yang harus dilakukan user
 
@@ -96,7 +96,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3c | `test_referensi` R1–R5 (heuristik judul pada PDF sintetis, potongan halaman, perlu_ocr, cari/baca/daftar, slug aman), M13, M9 → 26 | ✅ 122 tes |
 | 3c | Konversi nyata: mastering-trading-psychology 14 bab (hal 1–408), panduan-analisis-crypto 9 bab, goodcrypto-pola-chart 3 bab; `referensi/buku/` tidak ter-commit | ✅ |
 | 3c | `indeks.md` terisi untuk 3 buku; `playbook.md` v1: aturan aktif (ditegakkan mesin/skill) + usulan `uji` dari buku dengan rujukan bab | ✅ |
-| 3c | Sync skill `referensi`, menu Telegram (`/referensi` menggantikan `/model`), gateway restart, `hermes mcp test paper` → 26 tool | ⬜ deploy |
+| 3c | Sync skill `referensi` + SOUL + menu (`/referensi` menggantikan `/model`), gateway restart PID 27388, `hermes mcp test paper` → 26 tool, menu Telegram 14 perintah | ✅ |
 | 3c | `/referensi fomo` dari Telegram; `/cek` menyebut playbook; pemilik memutuskan status aturan `uji` | ⬜ user |
 
 ## Keputusan yang berlaku
