@@ -211,10 +211,44 @@ async function loadPsikologi() {
   const p = await api(`/api/psikologi?symbol=${state.ps}`);
   if (p.status === "tidak tersedia") { $("#ps-info").textContent = "Belum ada data — " + p.alasan; $("#tbl-panel").innerHTML = ""; $("#ps-divergensi").innerHTML = '<div class="empty">—</div>'; return; }
   $("#ps-info").textContent = `Diperbarui ${p.waktu} WIB (${p.status === "OK" ? "segar" : "sudah lama"}) · ${p.takut_ekstrem} indikator sangat takut, ${p.serakah_ekstrem} sangat serakah, ${p.tidak_tersedia} tidak tersedia · ambang: ${p.mode_zona === "awal" ? "standar awal" : "dari data sendiri"}`;
+  $("#ps-bacaan").innerHTML = bacaanPasar(p);
+  const ai = await api("/api/teks?jenis=harian"); let aiTxt = ai.isi || "";
+  if (!aiTxt) { const kemarin = new Date(Date.now() - 86400000).toISOString().slice(0, 10); aiTxt = (await api(`/api/teks?jenis=harian&hari=${kemarin}`)).isi || ""; }
+  $("#ps-ai").textContent = aiTxt ? aiTxt.replace(/^---[\s\S]*?---
+*/, "").trim() : "Belum ada catatan harian dari AI (ditulis tiap 23:55 WIB).";
   const f = (ind, v) => v === null ? "—" : ["funding", "premium_coinbase", "premium_idr"].includes(ind) ? (v * 100).toFixed(4) + "%" : ["oi_24h", "harga_24h", "stablecoin_7d"].includes(ind) ? pct(v) : ind.startsWith("liq") ? v : ind === "fng" ? v.toFixed(0) : v.toFixed(2);
   const zona = (z) => z === "takut_ekstrem" ? '<span class="tag takut">sangat takut</span>' : z === "serakah_ekstrem" ? '<span class="tag serakah">sangat serakah</span>' : z === "netral" ? '<span class="tag">biasa</span>' : '<span class="tag na">tidak tersedia</span>';
   table($("#tbl-panel"), [["Indikator", r => `<b>${r.label}</b><div class="s dim">${ARTI[r.indikator] || ""}</div>`], ["Nilai", r => f(r.indikator, r.nilai), "num"], ["Vs 24 jam lalu", r => p.perubahan_24j[r.indikator] !== undefined ? f(r.indikator, p.perubahan_24j[r.indikator]) : "—", "num"], ["Suasana", r => zona(r.zona)], ["Catatan", r => `<span class="dim">${esc(r.catatan)}</span>`]], p.indikator || []);
   $("#ps-divergensi").innerHTML = (p.divergensi || []).length ? p.divergensi.map(d => `<div class="item"><div class="l"><div class="t">⚠ ${esc(d)}</div></div></div>`).join("") : '<div class="empty">Tidak ada yang bertentangan saat ini.</div>';
+}
+
+function bacaanPasar(p) {
+  // Bacaan mekanis berbahasa manusia (bukan saran beli/jual): siapa dominan, siapa terjebak, apa yang perlu diwaspadai.
+  const v = {}; (p.indikator || []).forEach(r => v[r.indikator] = r.nilai);
+  const z = {}; (p.indikator || []).forEach(r => z[r.indikator] = r.zona);
+  const L = [];
+  if (v.fng != null) L.push(v.fng >= 75 ? "Ritel sedang serakah (Fear & Greed " + v.fng.toFixed(0) + "): euforia biasanya rawan koreksi." : v.fng <= 25 ? "Ritel sedang ketakutan (Fear & Greed " + v.fng.toFixed(0) + "): sering muncul di dekat dasar, tapi bisa lebih dalam dulu." : "Sentimen ritel biasa-biasa saja (Fear & Greed " + v.fng.toFixed(0) + ").");
+  if (v.funding != null) L.push(v.funding > 0.0003 ? "Posisi long membayar funding mahal: yang long sudah ramai dan terjepit kalau harga turun." : v.funding < -0.0001 ? "Posisi short yang membayar: short sudah ramai, rawan squeeze ke atas." : "Funding netral: tidak ada sisi yang terlalu penuh.");
+  if (v.oi_24h != null && v.harga_24h != null) {
+    const oi = v.oi_24h, h = v.harga_24h;
+    if (oi > 0.02 && h > 0.01) L.push("Harga naik dan posisi terbuka bertambah: uang baru ikut naik (tren didukung).");
+    else if (oi < -0.02 && h > 0.01) L.push("Harga naik tapi posisi terbuka berkurang: naiknya karena short menutup posisi, bukan pembeli baru — mudah layu.");
+    else if (oi > 0.02 && h < -0.01) L.push("Harga turun tapi posisi terbuka bertambah: short baru masuk mengejar harga — rawan berbalik mendadak.");
+    else if (oi < -0.05 && h < -0.03) L.push("Posisi terbuka dan harga turun tajam bersamaan: banyak yang dipaksa keluar (kapitulasi).");
+    else L.push("Posisi terbuka dan harga 24 jam tidak banyak berubah: pasar menunggu.");
+  }
+  if (v.ls_akun != null && v.ls_top != null) L.push(v.ls_akun > 1.5 && v.ls_top < 1 ? "Ritel mayoritas long, trader besar justru short: kerumunan melawan uang besar." : v.ls_akun < 0.8 && v.ls_top > 1.2 ? "Ritel mayoritas short, trader besar long: kerumunan bisa jadi bahan bakar naik." : v.ls_akun > 1.3 ? "Lebih banyak akun ritel yang long daripada short; kalau harga turun, merekalah yang terjebak." : "Posisi ritel dan trader besar relatif seimbang.");
+  if (v.taker != null) L.push(v.taker > 1.2 ? "Pembeli agresif (market buy) mendominasi." : v.taker < 0.8 ? "Penjual agresif (market sell) mendominasi." : "Pembeli dan penjual agresif seimbang.");
+  if (v.liq_long_24h != null && v.liq_short_24h != null) L.push(v.liq_short_24h > 2 * Math.max(v.liq_long_24h, 1) ? "Lebih banyak short yang dipaksa tutup 24 jam terakhir: harga sempat menekan ke atas." : v.liq_long_24h > 2 * Math.max(v.liq_short_24h, 1) ? "Lebih banyak long yang dipaksa tutup: harga sempat menekan ke bawah." : "Likuidasi long dan short seimbang (sampel OKX terbatas).");
+  if (v.premium_coinbase != null) L.push(v.premium_coinbase > 0.001 ? "Harga di Coinbase lebih mahal: permintaan spot AS kuat." : v.premium_coinbase < -0.001 ? "Harga di Coinbase lebih murah: spot AS sedang lemah." : "Harga Coinbase dan Binance sejajar.");
+  if (v.stablecoin_7d != null) L.push(v.stablecoin_7d > 0.01 ? "Suplai stablecoin naik seminggu ini: ada dana baru siap masuk." : v.stablecoin_7d < -0.01 ? "Suplai stablecoin turun: dana keluar dari ekosistem." : "Suplai stablecoin stabil.");
+  const n = (p.takut_ekstrem || 0) + (p.serakah_ekstrem || 0);
+  let ringkas = n === 0 ? "Tidak ada indikator di zona ekstrem: pasar sedang 'biasa', setup tiket mengandalkan level dan penolakan harga, bukan sentimen." :
+    p.serakah_ekstrem > p.takut_ekstrem ? `${p.serakah_ekstrem} indikator sangat serakah: yang terjebak kalau harga berbalik turun adalah pembeli telat — waspadai setup beli yang mengejar harga.` :
+    `${p.takut_ekstrem} indikator sangat takut: yang terjebak kalau harga berbalik naik adalah penjual telat — waspadai setup jual yang mengejar harga.`;
+  if ((p.divergensi || []).length) ringkas += " Ada sinyal yang tidak nyambung (lihat bawah) — itu yang paling perlu dicermati.";
+  return `<div class="item"><div class="l"><div class="t">Ringkasnya</div><div class="s">${esc(ringkas)}</div></div></div>` + L.map(t => `<div class="item"><div class="l"><div class="s">• ${esc(t)}</div></div></div>`).join("") +
+    `<div class="item"><div class="l"><div class="s dim">Bacaan ini dihitung aturan sederhana dari angka di tabel, bukan saran beli/jual. Keputusan uang sungguhan ada di Anda.</div></div></div>`;
 }
 
 // ---------------------------------------------------------------- catatan AI
