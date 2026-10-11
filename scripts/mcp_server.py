@@ -28,6 +28,7 @@ import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
 import psikologi as PSI  # noqa: E402
+import referensi as RF  # noqa: E402
 from budget_guard import BudgetGuard  # noqa: E402
 from paper_engine import LONG, SHORT, SWING, TIKET, OrderRequest, PaperEngine, SqliteMarket  # noqa: E402
 
@@ -43,7 +44,7 @@ MS_FIELDS = {"ts", "open_time", "funding_time", "opened_ts", "closed_ts", "creat
 TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
-    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi",
+    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi",
 )
 
 
@@ -419,6 +420,17 @@ class Tools:
         """Panel psikologi pasar (§16.2) snapshot terakhir (cron tiap jam): Fear & Greed, funding, Δ OI 24j + Δ harga 24j (kapitulasi/penumpukan), L/S akun vs top trader, taker buy/sell, likuidasi OKX (sampel terbatas), premium Coinbase & IDR, suplai stablecoin 7 hari — masing-masing dengan zona takut_ekstrem|netral|serakah_ekstrem, hitungan ekstrem, divergensi, perubahan 24 jam. Tidak ada skor gabungan; 'tidak tersedia' = sumber gagal/diblokir."""
         return self._call("panel_psikologi", lambda: self._panel(symbol))
 
+    def cari_referensi(self, kata_kunci: str, n: int = 5, slug: Optional[str] = None, salah_satu: bool = False) -> dict:
+        """Cari kata kunci (bahasa Inggris, 1–3 kata; semua harus muncul kecuali salah_satu=true) di bab buku referensi pemilik; hasil: judul buku, bab, judul bab, halaman, path, skor, cuplikan ≤ 320 karakter. Kutip persis dari cuplikan; jangan mengarang kutipan. Daftar buku ada di field `buku`."""
+        def run():
+            return {"kata_kunci": kata_kunci, "hasil": RF.cari(self.ctx.root, kata_kunci, int(n), slug=slug, salah_satu=bool(salah_satu)),
+                    "buku": RF.daftar(self.ctx.root), "catatan": "isi buku untuk pemakaian pribadi; kutipan langsung ≤ 15 kata"}
+        return self._call("cari_referensi", run)
+
+    def baca_referensi(self, slug: str, bab: int, mulai: int = 0) -> dict:
+        """Baca satu bab buku referensi (≤ 12.000 karakter per panggilan; lanjutkan dengan mulai=lanjut_dari). slug dari cari_referensi/daftar."""
+        return self._call("baca_referensi", lambda: RF.baca(self.ctx.root, slug, bab, mulai=int(mulai)))
+
     def statistik_lulus(self, sejak: Optional[str] = None) -> dict:
         """Statistik kelulusan §19.7 per akun (tiket, swing, acak = bayangan acak yang dibuat mesin sebagai pembanding): sampel, expectancy/trade setelah fee, per bulan, win rate, stabilitas tanpa 5% trade terbaik, kepatuhan aturan tiket, tiket vs acak (uji permutasi + sign test). Nilai 'tidak tersedia' bila sampel < 10 — laporkan apa adanya, jangan menafsirkan."""
         def run():
@@ -436,26 +448,28 @@ class Tools:
         return p
 
     def tulis_jurnal(self, jenis: str, judul: str, isi: str, symbol: Optional[str] = None, kandidat_id: Optional[int] = None,
-                     order_id: Optional[int] = None, position_id: Optional[int] = None) -> dict:
-        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP."""
+                     order_id: Optional[int] = None, position_id: Optional[int] = None, aturan_dilanggar: Optional[str] = None) -> dict:
+        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP. aturan_dilanggar: ID playbook (mis. "P-03,P-07") bila rencana melanggar aturan playbook."""
         def run():
             if jenis not in ("keputusan", "catatan"):
                 raise ValueError("jenis harus keputusan|catatan")
             now = self.ctx.clock()
-            meta = " ".join(f"{k}={v}" for k, v in (("symbol", symbol), ("kandidat", kandidat_id), ("order", order_id), ("posisi", position_id)) if v)
+            meta = " ".join(f"{k}={v}" for k, v in (("symbol", symbol), ("kandidat", kandidat_id), ("order", order_id), ("posisi", position_id),
+                                                 ("aturan_dilanggar", aturan_dilanggar)) if v)
             block = f"\n## {C.to_wib(now).strftime('%H:%M')} WIB — {jenis} — {judul.strip()}\n" + (f"_{meta}_\n\n" if meta else "\n") + isi.strip() + "\n"
             p = self._append(f"jurnal/agent/{C.day_wib(now)}.md", block)
             return {"ok": True, "path": p.relative_to(self.ctx.root).as_posix(), "bytes": len(block.encode('utf-8'))}
         return self._call("tulis_jurnal", run)
 
     def baca_memori(self, jenis: str, hari: Optional[str] = None) -> dict:
-        """Baca pelajaran (pasar/pelajaran.md), hipotesis (pasar/hipotesis.md), catatan harian (pasar/harian/<hari>.md), atau jurnal agent (jurnal/agent/<hari>.md)."""
+        """Baca pelajaran (pasar/pelajaran.md), hipotesis, catatan harian (pasar/harian/<hari>.md), jurnal agent (jurnal/agent/<hari>.md), pelajaran-usulan, playbook (referensi/playbook.md: aturan trading pemilik, status aktif/uji/pensiun), atau indeks (referensi/indeks.md: peta bab buku + kata kunci)."""
         def run():
             day = hari or C.day_wib(self.ctx.clock())
             rel = {"pelajaran": "pasar/pelajaran.md", "hipotesis": "pasar/hipotesis.md", "harian": f"pasar/harian/{day}.md",
-                   "jurnal": f"jurnal/agent/{day}.md", "pelajaran-usulan": "pasar/pelajaran-usulan.md"}.get(jenis)
+                   "jurnal": f"jurnal/agent/{day}.md", "pelajaran-usulan": "pasar/pelajaran-usulan.md",
+                   "playbook": "referensi/playbook.md", "indeks": "referensi/indeks.md"}.get(jenis)
             if rel is None:
-                raise ValueError("jenis harus pelajaran|hipotesis|harian|jurnal|pelajaran-usulan")
+                raise ValueError("jenis harus pelajaran|hipotesis|harian|jurnal|pelajaran-usulan|playbook|indeks")
             jl = self.ctx.root / "pasar" / "hipotesis.jsonl"
             if jenis == "hipotesis" and jl.exists():   # tabel dirender dari jsonl + hasil penilaian skrip
                 hasil = {h["id"]: h for h in H.load_jsonl(self.ctx.root / "pasar" / "hipotesis-hasil.jsonl")}

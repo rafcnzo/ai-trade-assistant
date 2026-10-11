@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 18:02 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-11 18:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -13,7 +13,7 @@ Folder Startup user (login, tanpa jendela)
  ├─ crypto-analyst_collector.vbs → run_collector.cmd     data pasar + mesin paper            (JALAN)
  ├─ crypto-analyst_proxy.vbs     → run_budget_proxy.cmd  127.0.0.1:8585 → Anthropic, cap $10/hari (JALAN, key_set)
  └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron
-      ├─ MCP "paper"               scripts/mcp_server.py, 24 tool  (+statistik_lulus, panel_psikologi; tulis_hipotesis terstruktur)
+      ├─ MCP "paper"               scripts/mcp_server.py, 26 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi)
       ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM);
       │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
       ├─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
@@ -36,10 +36,12 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
-| 3c | Referensi buku & playbook (§15) — menunggu ebook | Belum mulai |
+| 3c | Referensi buku & playbook (§15): `konversi_buku.py`, `referensi.py`, tool `cari_referensi`/`baca_referensi`, `/referensi`, `referensi/indeks.md`, `referensi/playbook.md` v1, aturan SOUL "Referensi", playbook di skill tiket | **Kode selesai** (122 tes; 3 buku terkonversi). Deploy: lihat verifikasi 3c |
 
 ## Yang harus dilakukan user
 
+0. **Playbook:** buka `referensi/playbook.md`, baca aturan berstatus `uji` (usulan dari buku), ubah ke `aktif` yang Anda setujui
+   atau hapus. Hanya Anda yang mengubah status. Tambah ebook lain ke `referensi/buku/` lalu minta konversi + indeks.
 1. Uji Telegram pertama **lolos** (posisi/order benar, shell ditolak, `/cek SOL LONG` → SKIP beralasan + jurnal).
    Berikutnya: tutup-buka chat bot, cek menu `/` berisi 14 perintah proyek, coba `/posisi`, `/budget`, `/status`;
    laporkan apakah tebal/daftar sudah dirender.
@@ -91,6 +93,11 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3b | `psikologi.py --once` nyata 17:55 WIB: 20 indikator, 0 tidak tersedia (FNG 61, funding −0,0017%, L/S akun 1,45, top 1,52, taker 1,09, likuidasi short 86 vs long 14 → serakah, premium ≈ 0, stablecoin −0,3%) | ✅ |
 | 3b | Cron `psikologi` 85f32aac4251 (7 * * * *, no-agent) terdaftar; gateway restart PID 21172; menu Telegram 14 perintah termasuk `/psikologi`; `hermes mcp test paper` → 24 tool; `cron run psikologi` 17:59 → `panel_run` ok 20/0, `delivery_outcome=suppressed`, `api_calls` tetap 29 | ✅ |
 | 3b | `/psikologi` dari Telegram (user); catatan harian 23:55 punya frontmatter `fng`/`funding_btc` | ⬜ user / menunggu |
+| 3c | `test_referensi` R1–R5 (heuristik judul pada PDF sintetis, potongan halaman, perlu_ocr, cari/baca/daftar, slug aman), M13, M9 → 26 | ✅ 122 tes |
+| 3c | Konversi nyata: mastering-trading-psychology 14 bab (hal 1–408), panduan-analisis-crypto 9 bab, goodcrypto-pola-chart 3 bab; `referensi/buku/` tidak ter-commit | ✅ |
+| 3c | `indeks.md` terisi untuk 3 buku; `playbook.md` v1: aturan aktif (ditegakkan mesin/skill) + usulan `uji` dari buku dengan rujukan bab | ✅ |
+| 3c | Sync skill `referensi`, menu Telegram (`/referensi` menggantikan `/model`), gateway restart, `hermes mcp test paper` → 26 tool | ⬜ deploy |
+| 3c | `/referensi fomo` dari Telegram; `/cek` menyebut playbook; pemilik memutuskan status aturan `uji` | ⬜ user |
 
 ## Keputusan yang berlaku
 
@@ -104,6 +111,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
   Watchlist = **top 30 volume 24 jam** (bukan daftar tetap); maks 5 kandidat skor tertinggi per wake (`top_k`).
 - Panel psikologi: tanpa skor gabungan; zona awal §16.2 lalu persentil 10/90 setelah 90 hari; likuidasi dari OKX (Binance
   `allForceOrders` diblokir ISP); premium IDR via USDT/IDR Indodax. Host Coinbase/OKX lewat DoH.
+- Referensi: tanpa vector DB; Hermes mencari lewat tool MCP (bukan `@path`/Grep seperti spesifikasi lama). Isi buku tidak
+  pernah ke chat/repo (cuplikan ≤ 320 karakter, kutipan ≤ 15 kata). Playbook: status diubah hanya oleh pemilik.
 - `kandidat_terbaru` = run terakhir yang membangunkan agent; `plan_id` order tiket = `K<id>` dari kandidat (`MANUAL` bila dari pemilik).
 - Agent hanya lewat MCP (23 tool whitelist); toolset terminal/file/browser dimatikan di cron, telegram, cli.
 - `mcp==1.30.0` (FastMCP). Hermes diinstal dari terminal user, bukan dari Claude Code.

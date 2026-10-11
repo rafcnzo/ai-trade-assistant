@@ -11,11 +11,12 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/notifikasi.py` | Notifikasi kejadian paper (terisi, TP, STOP, likuidasi, kedaluwarsa, batal) ke Telegram tiap menit lewat cron Hermes `--no-agent` (tanpa LLM) | `data/notif.json` |
 | `scripts/evaluasi.py` | Statistik kelulusan §19.7 (expectancy, stabilitas, kepatuhan, tiket vs akun `acak`); baca saja | — |
 | `scripts/psikologi.py` | Panel psikologi pasar §16.2 tiap jam (FNG, funding, OI, L/S, taker, likuidasi OKX, premium Coinbase/IDR, stablecoin) dengan zona & divergensi; cron Hermes `--no-agent` | `data/psikologi.sqlite` |
+| `scripts/konversi_buku.py`, `scripts/referensi.py` | Konversi ebook → `referensi/buku/<slug>/bab-NN.md`; pencarian kata kunci & pembacaan bab untuk tool MCP | `referensi/buku/<slug>/` |
 | `scripts/hipotesis.py`, `scripts/uji_hipotesis.py` | Hipotesis terstruktur: skema/penilaian/baseline (murni) dan skrip harian 23:40 yang menilai, menghitung baseline, mengelola pelajaran | `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/pelajaran.{jsonl,md}` |
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
-| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 24 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
+| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 26 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi, referensi buku) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
 | `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
 | `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
@@ -196,11 +197,11 @@ Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
 1. `hermes/sync.py` — menyalin `SOUL.md`, skill `tiket` & `evaluasi-harian`, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`;
 2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
    `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
-   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (24 tool whitelist);
+   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (26 tool whitelist);
 3. menaruh launcher `crypto-analyst_proxy.vbs` dan `crypto-analyst_collector.vbs` di folder **Startup** user
    (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
 4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
-   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 24 tool), `hermes cron list`.
+   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 26 tool), `hermes cron list`.
 
 Log: `logs/hermes_setup.log`. Cek proxy: `curl http://127.0.0.1:8585/healthz` (`key_set` harus `true`).
 Log proxy: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya). Budget habis → Hermes menerima
@@ -244,8 +245,9 @@ tenggelam di antara ±120 perintah bawaan Hermes. Pesan kaya (`rich_messages: tr
 | `/batal <id>` · `/batal semua` · `/batal posisi <id>` | Batalkan order / minta tutup posisi |
 | `/status` | Kesehatan collector, proxy, pemindai, kill switch |
 | `/psikologi` | Panel psikologi pasar BTC/ETH: zona takut/serakah per indikator, divergensi, siapa yang terjebak |
+| `/referensi <kata kunci>` | Cari & kutip buku referensi (judul, bab, halaman, kutipan ≤ 15 kata) |
 | `/tiket`, `/evaluasi-harian` | Skill inti (dipakai cron; bisa dipanggil manual) |
-| `/help`, `/new`, `/usage`, `/commands`, `/model` | Bawaan Hermes (`/whoami` keluar dari menu agar muat 14) |
+| `/help`, `/new`, `/usage`, `/commands` | Bawaan Hermes (`/whoami`, `/model` keluar dari menu agar muat 14; tetap bisa diketik) |
 
 Setiap perintah adalah satu sesi agent (≈ $0,02–0,10 lewat proxy). Chat bebas juga bisa; agent memilih skill sendiri.
 Jika menu tidak terlihat: tutup dan buka lagi chat bot (klien Telegram men-cache menu), atau ketik `/commands`.
@@ -452,7 +454,36 @@ Retensi 400 hari. Weight Binance: 8 permintaan/jam (weight 1) — tidak memengar
 | Likuidasi selalu 0 | Endpoint OKX hanya memberi ±100 order terakhir; bila semuanya > 24 jam, nilainya 0 — baca `catatan` |
 | `/psikologi` menjawab BASI | Cron `psikologi` tidak jalan > 3 jam: `hermes cron list`, `logs/psikologi_cron.log` |
 
+## Referensi buku & playbook (`scripts/konversi_buku.py`, `scripts/referensi.py`)
+
+Ebook (PDF/EPUB yang dibeli resmi / gratis legal) ditaruh di `referensi/buku/` (gitignored). Konversi per bab:
+```bash
+.venv/Scripts/python.exe scripts/konversi_buku.py referensi/buku/Buku.pdf slug-buku --judul "Judul" --penulis "Penulis"
+```
+Hasil: `referensi/buku/<slug>/bab-NN.md` (frontmatter `judul_buku, penulis, bab, judul_bab, halaman, sumber, metode`) + `_meta.json`.
+Bab dari bookmark PDF bila ada; tanpa bookmark → heuristik judul berfont besar (3–80 kandidat); gagal → potong tiap `--per-halaman`
+(default 10; `--paksa-halaman` memaksa). PDF hasil scan (tanpa lapisan teks) → `_meta.json` `perlu_ocr`, exit 2: OCR dulu di luar
+proyek. Judul bab hasil heuristik bisa terpotong — rapikan di `referensi/indeks.md`, bukan di file bab.
+
+- `referensi/indeks.md` (di-commit): peta bab per buku — judul, ringkasan 1 kalimat, kata kunci — ditulis Claude Code setelah
+  membaca hasil konversi; `mcp_paper_baca_memori("indeks")`.
+- `referensi/playbook.md` (di-commit): aturan pribadi berstatus `aktif` (wajib; sebagian ditegakkan mesin/skill tiket), `uji`
+  (usulan dari buku; dipertimbangkan), `pensiun`. **Hanya pemilik yang mengubah status.** Agent membacanya di skill `tiket`
+  (langkah 4b) dan mencatat pelanggaran di jurnal (`aturan_dilanggar=P-xx`). Maks 25 aturan.
+- Tool: `mcp_paper_cari_referensi(kata_kunci, n)` (semua kata harus muncul; skor = jumlah kemunculan; cuplikan ≤ 320 karakter),
+  `mcp_paper_baca_referensi(slug, bab, mulai)` (≤ 12k karakter per panggilan). Tanpa embedding/vector DB (§15.1).
+- Telegram: `/referensi <kata kunci>`; aturan SOUL "Referensi": konsep psikologi/risiko/pola → cari & kutip judul + bab.
+
+Buku saat ini: `mastering-trading-psychology` (14 bab heuristik; bab 1–4 adalah halaman depan), `panduan-analisis-crypto`
+(9 bab), `goodcrypto-pola-chart` (3 bab). Menambah buku: taruh file, jalankan konversi, minta Claude Code menambah entri indeks.
+
+| Gejala | Tindakan |
+|---|---|
+| Bab terlalu banyak/sedikit | `--per-halaman 15` atau `--paksa-halaman`; konversi ulang menimpa bab lama |
+| `cari_referensi` kosong | Kata kunci bahasa Inggris, 1–3 kata; coba `salah_satu=true`; cek `indeks.md` untuk istilah buku |
+| `perlu_ocr` | Jalankan OCR (mis. ocrmypdf) di luar proyek, lalu konversi ulang |
+
 ## Milestone berikutnya
 
-- **3c** referensi buku & playbook (§15): `konversi_buku.py`, `indeks.md`, `playbook.md`, tool `cari_referensi` (butuh ebook).
+- Referensi: tambah buku prioritas §15.3 (Douglas, Tharp, Brooks, Volman) saat tersedia; OCR untuk PDF scan.
 - Tuning pemindai dari data nyata (`lookback_h` 96 untuk level 15m, `score_min`, bobot VOL, `leverages`).

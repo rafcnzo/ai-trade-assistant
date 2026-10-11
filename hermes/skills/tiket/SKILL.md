@@ -26,6 +26,8 @@ metadata:
    - `mcp_paper_ohlcv` tf 15m lalu 5m: tren, level terdekat (`level_atas`/`level_bawah`, sentuhan), ATR, jejak
      (WICK, VOL, BREAKOUT_GAGAL, IMPULS, KOMPRESI),
    - `mcp_paper_tabel_tiket` untuk sisi yang dipertimbangkan, `entry` = level yang dituju.
+4b. `mcp_paper_baca_memori("playbook")`: periksa rencana terhadap aturan berstatus `aktif` (wajib) dan `uji` (pertimbangan).
+   Melanggar aturan aktif → SKIP; melanggar aturan uji tapi tetap masuk → sebutkan ID-nya di `aturan_dilanggar` saat menulis jurnal.
 5. Uji aturan (semua harus lolos, kalau tidak → SKIP dengan alasan):
    - entry adalah limit di/dekat level dengan ≥ 2 sentuhan, searah tren 15m atau pada penolakan yang jelas (WICK/BREAKOUT_GAGAL);
    - ada leverage di tabel dengan `x_atr.5m` ≥ 2,0 dan `fee_pct_tiket` ≤ 6;
@@ -38,7 +40,7 @@ metadata:
    Jangan mengarang ID; tanpa kandidat pemindai (permintaan pemilik) pakai `plan_id="MANUAL"`.
    Kode tolak: `LIMIT_CROSSES` → harga sudah lewat level, nilai ulang sekali atau SKIP (jangan `market=true`);
    `BUDGET_TIKET`/`TIKET_EOD` → SKIP; lainnya → laporkan apa adanya.
-8. **Selalu** `mcp_paper_tulis_jurnal(jenis="keputusan", judul, isi=<rencana + alasan>, symbol, kandidat_id, order_id)`, termasuk saat SKIP.
+8. **Selalu** `mcp_paper_tulis_jurnal(jenis="keputusan", judul, isi=<rencana + alasan>, symbol, kandidat_id, order_id, aturan_dilanggar=<ID playbook atau kosong>)`, termasuk saat SKIP.
 9. Balasan Telegram ≤ 12 baris: keputusan per kandidat, id order, alasan utama, risiko, satu kalimat
    "ini paper trading; untuk uang sungguhan keputusan ada di Anda".
 

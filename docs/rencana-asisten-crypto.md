@@ -3,6 +3,14 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.7 (11 Okt 2026, Milestone 3c)
+- **§15.2** tanpa `@path`/Grep Claude Code: Hermes mengakses referensi lewat tool MCP `cari_referensi` (kata kunci, skor, cuplikan
+  ≤ 320 karakter) dan `baca_referensi` (bab berpotongan 12k); `playbook.md` & `indeks.md` lewat `baca_memori`. Tetap tanpa vector DB.
+- **§15.4** `konversi_buku.py`: bookmark → heuristik judul (font besar) → potongan halaman; PDF scan ditandai `perlu_ocr`.
+- **§15.5–15.6** playbook v1: aturan `aktif` = yang sudah ditegakkan mesin/skill tiket; usulan dari buku masuk `uji`; status hanya
+  diubah pemilik; pelanggaran dicatat agent di jurnal (`aturan_dilanggar`). `/cek-setup` & `/review-trade` → skill `tiket`/`cek` dan
+  `evaluasi-harian` (usulan lewat `usul_pelajaran`).
+
 ### Perubahan v1.6 (11 Okt 2026, Milestone 3b)
 - **§16.2 panel psikologi** terealisasi sebagai `scripts/psikologi.py` (cron Hermes tiap jam, tanpa LLM) → `data/psikologi.sqlite`,
   tool MCP `panel_psikologi`, perintah `/psikologi`. Likuidasi memakai OKX `liquidation-orders` (±100 order terakhir; Binance

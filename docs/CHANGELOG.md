@@ -3,6 +3,22 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-11 (malam, 18:45) — laptop Windows — Milestone 3c: referensi buku, playbook, tool cari/baca_referensi
+
+**Apa:** `scripts/konversi_buku.py` (pymupdf/ebooklib: bab dari bookmark → heuristik judul berfont besar → potongan halaman;
+PDF scan → `perlu_ocr`), `scripts/referensi.py` (daftar, cari kata kunci dengan skor & cuplikan, baca bab berpotongan, playbook,
+indeks). Tool MCP `cari_referensi`, `baca_referensi` (26 tool); `baca_memori` jenis `playbook` & `indeks`; `tulis_jurnal`
+parameter `aturan_dilanggar`. Skill `referensi` (`/referensi`, menu menggantikan `/model`), aturan SOUL "Referensi", skill
+`tiket` langkah 4b membaca playbook. `referensi/indeks.md` (3 buku) dan `referensi/playbook.md` v1 (aturan aktif yang sudah
+ditegakkan mesin/skill + usulan `uji` dari buku dengan rujukan bab) di-commit; `referensi/buku/` tetap gitignored.
+`requirements.txt` + pymupdf 1.28.2, EbookLib 0.20, beautifulsoup4 4.15.0.
+
+**Kenapa:** §15 — konsistensi aliran, kutipan yang bisa dicek (judul + bab + path), dan playbook pribadi. Spesifikasi lama memakai
+`@path` + Grep oleh Claude Code; dengan Hermes tanpa tool file, akses lewat MCP. Tiga PDF user tidak punya bookmark → heuristik.
+
+**Tes:** R1–R5, M13, M9 → 26 (122 hijau). Konversi nyata: 14 + 9 + 3 bab. **File:** `scripts/{konversi_buku,referensi,mcp_server}.py`,
+`hermes/{SOUL.md,merge_config.py,skills/referensi,skills/tiket}`, `referensi/{indeks,playbook}.md`, `tests/*`, `requirements.txt`, docs, CLAUDE.md.
+
 ## 2026-10-11 (petang, 18:05) — laptop Windows — Milestone 3b: panel psikologi pasar; watchlist top 30 / 5 kandidat
 
 **Apa:** `scripts/psikologi.py` (penulis tunggal `data/psikologi.sqlite`, `schema_psikologi.sql`): 12 indikator §16.2 untuk BTC/ETH/

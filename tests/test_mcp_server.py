@@ -251,7 +251,7 @@ class TestHipotesisStatistik(Base):
         self.assertTrue(str(s["akun"]["tiket"]["expectancy"]).startswith("tidak tersedia"))
         self.assertIn("# Statistik kelulusan", s["markdown"])
         self.assertIn("statistik_lulus", TOOL_NAMES)
-        self.assertEqual(len(TOOL_NAMES), 24)
+        self.assertEqual(len(TOOL_NAMES), 26)
 
 
 class TestPanelPsikologi(Base):
@@ -280,12 +280,37 @@ class TestPanelPsikologi(Base):
         self.assertIn("panel_psikologi", TOOL_NAMES)
 
 
+class TestReferensi(Base):
+    def test_m13_cari_baca_playbook_jurnal(self):
+        d = self.root / "referensi" / "buku" / "zone"
+        d.mkdir(parents=True)
+        (d / "bab-01.md").write_text("---\njudul_buku: \"Zone\"\npenulis: \"Douglas\"\nbab: 01\njudul_bab: \"Trapped\"\nhalaman: 1-9\n---\n\n# Trapped\n\nTrapped traders fuel reversals.\n", encoding="utf-8")
+        (d / "_meta.json").write_text(json.dumps({"judul_buku": "Zone", "penulis": "Douglas", "status": "siap"}), encoding="utf-8")
+        (self.root / "referensi" / "playbook.md").write_text("# Playbook\n\n| ID | Aturan | Kategori | Sumber | Status | Sejak |\n|---|---|---|---|---|---|\n| P-01 | Tidak entry tanpa stop | risiko | Tharp | aktif | 2026-10-11 |\n", encoding="utf-8")
+        r = self.tools.cari_referensi("trapped")
+        self.assertEqual((len(r["hasil"]), r["hasil"][0]["judul_buku"], r["buku"][0]["slug"]), (1, "Zone", "zone"))
+        self.assertIn("Trapped traders fuel", r["hasil"][0]["cuplikan"])
+        self.assertEqual(self.tools.cari_referensi("nothinghere")["hasil"], [])
+        b = self.tools.baca_referensi("zone", 1)
+        self.assertEqual((b["judul_bab"], b["lanjut_dari"]), ("Trapped", None))
+        self.assertFalse(self.tools.baca_referensi("../zone", 1)["ok"])
+        self.assertFalse(self.tools.baca_referensi("zone", 7)["ok"])
+        pb = self.tools.baca_memori("playbook")
+        self.assertTrue(pb["ada"])
+        self.assertIn("P-01", pb["isi"])
+        self.assertFalse(self.tools.baca_memori("indeks")["ada"])
+        self.tools.tulis_jurnal("keputusan", "K9 BTC SKIP", "melanggar P-01", symbol=BTC, aturan_dilanggar="P-01")
+        txt = (self.root / "jurnal" / "agent" / f"{DAY}.md").read_text(encoding="utf-8")
+        self.assertIn("aturan_dilanggar=P-01", txt)
+        self.assertIn("cari_referensi", TOOL_NAMES)
+
+
 class TestRegistration(unittest.TestCase):
     def test_m9_register_fastmcp(self):
         from mcp.server.fastmcp import FastMCP
         mcp = FastMCP("paper-uji")
         names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
-        self.assertEqual(len(names), 24)
+        self.assertEqual(len(names), 26)
         listed = asyncio.run(mcp.list_tools())
         self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
         po = [x for x in listed if x.name == "pasang_order"][0]
