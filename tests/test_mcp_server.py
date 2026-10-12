@@ -305,6 +305,16 @@ class TestReferensi(Base):
         self.assertIn("cari_referensi", TOOL_NAMES)
 
 
+class TestSusulan(Base):
+    def test_m14_catatan_harian_untuk_hari_lain(self):
+        r = self.tools.tulis_catatan_harian("evaluasi susulan", rezim="range", hari="2026-10-09")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["path"], "pasar/harian/2026-10-09.md")
+        self.assertIn("tanggal: 2026-10-09", (self.root / "pasar" / "harian" / "2026-10-09.md").read_text(encoding="utf-8"))
+        self.assertFalse(self.tools.tulis_catatan_harian("x", hari="2026-12-31")["ok"])     # masa depan
+        self.assertFalse(self.tools.tulis_catatan_harian("x", hari="kemarin")["ok"])
+
+
 class TestRegistration(unittest.TestCase):
     def test_m9_register_fastmcp(self):
         from mcp.server.fastmcp import FastMCP

@@ -87,6 +87,28 @@ class TestSync(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip().splitlines(), ["halo", '{"wakeAgent":true}'])
 
+    def test_h6_susulan_gate(self):
+        sync.apply(sync.plan(SRC, self.home))
+        wrapper = self.home / "scripts" / "susulan_cron.py"
+        root = self.home / "proyek"
+        (root / "data").mkdir(parents=True)
+        (root / "data" / "paper.sqlite").write_text("", encoding="utf-8")
+        env = {**os.environ, "SUSULAN_ROOT": str(root)}
+        import datetime
+        now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
+        r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        lines = r.stdout.strip().splitlines()
+        if now.hour < 7:
+            self.assertEqual(lines[-1], '{"wakeAgent": false}')
+            return
+        self.assertEqual(lines[-1], '{"wakeAgent": true}')
+        kemarin = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        self.assertIn(kemarin, lines[0])
+        (root / "pasar" / "harian").mkdir(parents=True)
+        (root / "pasar" / "harian" / f"{kemarin}.md").write_text("ada", encoding="utf-8")
+        r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        self.assertEqual(r.stdout.strip(), '{"wakeAgent": false}')
+
     def test_h5_notif_wrapper_silent_on_failure(self):
         sync.apply(sync.plan(SRC, self.home))
         wrapper = self.home / "scripts" / "notif_cron.py"

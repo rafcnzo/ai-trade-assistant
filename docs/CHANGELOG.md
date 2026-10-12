@@ -3,6 +3,18 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-12 (pagi, 08:50) — laptop Windows — evaluasi susulan bila laptop mati pukul 23:55
+
+**Apa:** cron Hermes `evaluasi-susulan` (`20 8-21/3 * * *`, skill evaluasi-harian) dengan gate `hermes/scripts/susulan_cron.py`: bangun
+hanya bila `pasar/harian/<kemarin>.md` belum ada (dan sudah lewat 07:00) → agent mengevaluasi TANGGAL KEMARIN. `tulis_catatan_harian`
+mendapat parameter `hari` (YYYY-MM-DD, tidak boleh masa depan); skill evaluasi-harian v1.3 bagian "Evaluasi susulan". Tes M14, H6 (130 hijau).
+
+**Kenapa:** semalam laptop mati ±22:03 sehingga uji hipotesis 23:40 dan evaluasi 23:55 tidak pernah jalan; `catch_up_missed=false` sengaja
+(agar pemindai tidak dikejar), jadi butuh mekanisme susulan khusus evaluasi. Verifikasi pagi: collector mengisi celah, posisi SOL #1 diproses
+dari bar historis (HANGUS −$0,99 di 23:xx), notifikasi terkirim 08:30, radar membangunkan agent 08:31 (2 SKIP, $0,55).
+
+**File:** `hermes/scripts/susulan_cron.py`, `hermes/cron.cmd`, `hermes/skills/evaluasi-harian/SKILL.md`, `scripts/mcp_server.py`, tests, docs.
+
 ## 2026-10-11 (malam, 19:25) — laptop Windows — dashboard: trailing drawdown + desain ulang untuk trader awam
 
 **Apa:** `dashboard.ekuitas_drawdown()` (ekuitas kumulatif, puncak, trailing drawdown, drawdown maks + waktunya) per akun di `/api/ekuitas`;

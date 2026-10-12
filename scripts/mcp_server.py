@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 import sqlite3
 import sys
 import threading
@@ -496,11 +497,15 @@ class Tools:
                 f"fng: {fmt(nilai.get('fng'))}\nfunding_btc: {fmt(nilai.get('funding'))}\npanel_ts: {pn['waktu']}\n")
 
     def tulis_catatan_harian(self, ringkasan_psikologi: str, jejak_grafik: str = "", reaksi_berita: str = "",
-                             rezim: str = "tidak tersedia", catatan: str = "") -> dict:
-        """Tulis catatan pasar harian pasar/harian/YYYY-MM-DD.md (§16.4). Jika sudah ada, ditambahkan sebagai revisi berjam."""
+                             rezim: str = "tidak tersedia", catatan: str = "", hari: Optional[str] = None) -> dict:
+        """Tulis catatan pasar harian pasar/harian/YYYY-MM-DD.md (§16.4). Jika sudah ada, ditambahkan sebagai revisi berjam. hari (YYYY-MM-DD, opsional, tidak boleh di masa depan): untuk evaluasi susulan hari sebelumnya."""
         def run():
             now = self.ctx.clock()
             day = C.day_wib(now)
+            if hari:
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", hari) or hari > day:
+                    raise ValueError("hari harus YYYY-MM-DD dan tidak di masa depan")
+                day = hari
             p = self.ctx.root / "pasar" / "harian" / f"{day}.md"
             tick, umur, status = self._tick()
             if not p.exists():

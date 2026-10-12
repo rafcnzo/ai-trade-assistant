@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-11 19:10 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-12 08:50 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -22,8 +22,9 @@ Folder Startup user (login, tanpa jendela)
       │                            kejadian paper (terisi/TP/STOP/likuidasi/kedaluwarsa/batal) → Telegram, kosong = diam
       ├─ cron uji-hipotesis        40 23 * * * --no-agent → uji_cron.py → scripts/uji_hipotesis.py --cron (tanpa LLM):
       │                            nilai hipotesis jatuh tempo + baseline + pelajaran → Telegram bila ada hasil
-      └─ cron psikologi            7 * * * * --no-agent → psikologi_cron.py → scripts/psikologi.py --cron (diam):
-                                   12 indikator §16.2 BTC/ETH/pasar → data/psikologi.sqlite; agent: panel_psikologi, pemilik: /psikologi
+      ├─ cron psikologi            7 * * * * --no-agent → psikologi_cron.py → scripts/psikologi.py --cron (diam):
+      │                            12 indikator §16.2 BTC/ETH/pasar → data/psikologi.sqlite; agent: panel_psikologi, pemilik: /psikologi
+      └─ cron evaluasi-susulan     20 8-21/3 * * * → susulan_cron.py (gate: pasar/harian/<kemarin>.md belum ada) → evaluasi kemarin
 ```
 Mesin paper v2: setiap order tiket agent mendapat bayangan acak di akun `acak` (pembanding §19.7, dibuat mesin, tidak dinotifikasi).
 Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga mengisi `kline_1h` (120 hari) untuk konteks 1h/4h/1d.
@@ -56,10 +57,11 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 
 - Collector, proxy, dan gateway Hermes jalan di luar sandbox (launcher Startup). Cek: `collector.py status`,
   `curl 127.0.0.1:8585/healthz`, `hermes gateway status`.
-- Order paper uji #1/#2 (tiket) dibatalkan 16:50 WIB atas permintaan user; #3 swing ETH SHORT 10x @ 2.511,3 masih ACTIVE.
+- 11 Okt: tiket #1 SOL SHORT 75x (K3) HANGUS −$0,99 (diproses saat laptop nyala 12 Okt pagi); swing #3 ETH SHORT terisi → posisi swing #2 terbuka.
+- Laptop mati 11 Okt ±22:03 → evaluasi 23:55 tidak jalan; mekanisme `evaluasi-susulan` ditambahkan 12 Okt.
 - **Posisi tiket pertama dari agent sendiri**: #1 SOLUSDT SHORT 0,67 @ 109,41 75x (K3), liq 110,317, TP 109,14 (order #8),
   terisi 16:53 WIB. Hasilnya menentukan budget tiket hari ini. Status: `paper_engine.py posisi` / `/posisi` di Telegram.
-- Cron Hermes aktif sejak 16:43 WIB: `pemindai-tiket` tiap 5 menit (`1-59/5`), `evaluasi-harian` 23:55. `hermes cron list`.
+- Cron Hermes: `pemindai-tiket` 1-59/5, `notif-paper` tiap menit, `psikologi` tiap jam, `uji-hipotesis` 23:40, `evaluasi-harian` 23:55, `evaluasi-susulan` 08:20/11:20/…/20:20 (hanya bila kemarin belum dievaluasi). `hermes cron list`.
 - Collector skema v2: `kline_1h` 20 simbol × 120 hari (57.620 bar) terisi dalam 4 tick; weight tick kembali ±91.
 - Biaya API hari ini: ≈ $1,62 (25 panggilan: uji Telegram/CLI + wake pemindai pertama). Laporan: `budget_guard.py laporan`.
 

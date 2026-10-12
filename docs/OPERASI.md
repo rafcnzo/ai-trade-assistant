@@ -229,6 +229,8 @@ tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `eval
 tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM), serta `uji-hipotesis`
 23:40 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 23:55), dan `psikologi` menit ke-7 tiap jam
 (`--no-agent`, diam; mengisi `data/psikologi.sqlite`).
+`evaluasi-susulan` (08:20, 11:20, 14:20, 17:20, 20:20) hanya membangunkan agent bila catatan harian kemarin belum ada — pengganti
+evaluasi 23:55 yang terlewat karena laptop mati. Cron lain yang terlewat **tidak** dikejar (`catch_up_missed=false`).
 `hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
 + `base_url` tetap berfungsi, jadi ini opsional.

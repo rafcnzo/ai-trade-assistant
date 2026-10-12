@@ -1,5 +1,5 @@
 @echo off
-rem Lima cron job Hermes untuk crypto-analyst. Dicetak oleh hermes/sync.py --snippet.
+rem Enam cron job Hermes untuk crypto-analyst. Dicetak oleh hermes/sync.py --snippet.
 rem --script harus path RELATIF terhadap HERMES_HOME\scripts (Hermes menolak path absolut).
 rem Jalankan sekali setelah `hermes gateway install`. Cek: hermes cron list
 
@@ -12,3 +12,5 @@ hermes cron create "* * * * *" --name notif-paper --no-agent --script notif_cron
 hermes cron create "40 23 * * *" --name uji-hipotesis --no-agent --script uji_cron.py --deliver telegram --failure-deliver local
 
 hermes cron create "7 * * * *" --name psikologi --no-agent --script psikologi_cron.py --deliver telegram --failure-deliver local
+
+hermes cron create "20 8-21/3 * * *" "Pesan ini dari gate evaluasi susulan: evaluasi harian untuk tanggal yang disebut belum dibuat karena laptop mati pukul 23:55. Jalankan skill evaluasi-harian untuk TANGGAL ITU (bukan hari ini): pakai parameter hari pada laporan_paper, riwayat, biaya_api, baca_memori jurnal, dan tulis_catatan_harian(hari=...). Awali balasan dengan 'Evaluasi susulan <tanggal>'. Ringkas untuk Telegram (maks 20 baris). Paper trading." --name evaluasi-susulan --skill evaluasi-harian --script susulan_cron.py --deliver telegram --model claude-opus-5-5 --reasoning-effort low
