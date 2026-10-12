@@ -86,7 +86,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | Scheduler gateway menjalankan `pemindai-tiket` sendiri: run 16:46:25 WIB tercatat di `pemindai_run` (wake=0), `api_calls` tetap 16 | ✅ |
 | 2b | Gate off tidak mengirim apa pun ke Telegram: `cron/executions.db` `delivery_outcome=suppressed`, output run "Script gate returned wakeAgent=false — agent skipped" | ✅ |
 | 2b | Jalur positif 16:51 WIB: pemindai bangun dengan 3 kandidat (K1 XRP SHORT, K2 BTC LONG, K3 SOL SHORT, skor 3); agent memasang order #7 SOL SHORT 75x @ 109,41 TP 109,14 `plan_id=K3` (persis), SKIP K1/K2 dengan alasan di jurnal; 2 panggilan Opus ≈ $0,30; order terisi 16:53 → posisi #1 | ✅ |
-| 2b | 23:55 evaluasi harian tiba di Telegram | ⬜ menunggu |
+| 2b | 23:55 evaluasi harian tiba di Telegram | ⬜ (11 Okt terlewat: laptop mati 22:03; dikerjakan lewat `evaluasi-susulan` 12 Okt 08:38 → `pasar/harian/2026-10-11.md` terbentuk) |
+| S | Cron `evaluasi-susulan` 4186108ae29c terdaftar; `cron run` → agent mengevaluasi 11 Okt dengan `hari=`, catatan harian kemarin terbentuk, gate kembali false | ✅ |
 | 2b+ | `test_notifikasi` N1–N3 (init sunyi, order/terisi/TP, batal/kedaluwarsa, likuidasi, batas 20, CLI), `test_hermes_sync` H5 | ✅ |
 | 2b+ | Cron `notif-paper` 4c19f528cc31 terdaftar (mode no-agent); `hermes cron run notif-paper` 17:01 WIB mengirim 2 kejadian (#6 order SOL, #7 terisi) → `delivery_outcome=delivered`, kursor #7; tanpa panggilan API | ✅ |
 | 3a | `test_paper_engine` T20–T23 (bayangan acak: dibuat, terisi+TP relatif+EOD, dilewati tanpa merusak order asli, deterministik/ACAK_EOD), `test_evaluasi` E1–E3, `test_uji_hipotesis` U1–U5, `test_mcp_server` M11 + M9 (23 tool), `test_notifikasi` N4 | ✅ 109 tes |
