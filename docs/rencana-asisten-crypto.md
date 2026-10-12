@@ -3,6 +3,13 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.8 (12 Okt 2026)
+- **§17.2 budget tiket** menjadi saldo harian bergulir: mulai $1 per hari WIB, hasil bersih posisi yang ditutup hari itu menambah/
+  mengurangi saldo; satu tiket ≤ $1; di bawah $0,50 tidak ada tiket baru sampai besok. Tujuan: lebih banyak sampel pada hari yang baik
+  tanpa menambah risiko awal. Akun pembanding acak mengikuti aturan sama.
+- **§17.3 pengaman breakeven (P-18):** setelah harga menempuh ≥ 80% jalan ke TP, stop dipindah ke harga masuk (mesin).
+- **§19.6 autopsi posisi** mekanis (`autopsi_posisi`) wajib dalam evaluasi harian; evaluasi susulan bila laptop mati pukul 23:55.
+
 ### Perubahan v1.7 (11 Okt 2026, Milestone 3c)
 - **§15.2** tanpa `@path`/Grep Claude Code: Hermes mengakses referensi lewat tool MCP `cari_referensi` (kata kunci, skor, cuplikan
   ≤ 320 karakter) dan `baca_referensi` (bab berpotongan 12k); `playbook.md` & `indeks.md` lewat `baca_memori`. Tetap tanpa vector DB.

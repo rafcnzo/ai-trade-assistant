@@ -22,7 +22,7 @@ import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
 import psikologi as PSI  # noqa: E402
-from paper_engine import ACAK, LONG, SWING, TIKET, EngineConfig, SqliteMarket  # noqa: E402
+from paper_engine import ACAK, LONG, SWING, TIKET, EngineConfig, SqliteMarket, budget_harian  # noqa: E402
 
 STATIC_DIR = C.ROOT / "dashboard"
 KANDIDAT_DB = C.DATA_DIR / "kandidat.sqlite"
@@ -58,13 +58,8 @@ class Data:
         if paper is None:
             return {"account": account, "status": "tidak tersedia"}
         if account in (TIKET, ACAK):
-            used = paper.execute(
-                "SELECT COALESCE(SUM(margin_initial + COALESCE((SELECT fee_usdt FROM fills f WHERE f.order_id=p.entry_order_id), 0)), 0) "
-                "FROM positions p WHERE account=? AND day_wib=?", (account, day)).fetchone()[0]
-            res = paper.execute("SELECT COALESCE(SUM(margin_usdt + COALESCE(fee_reserved,0)), 0) FROM orders WHERE account=? AND reduce_only=0 "
-                                "AND status IN ('NEW','ACTIVE') AND day_wib=?", (account, day)).fetchone()[0]
             total = self.cfg.tiket_budget if account == TIKET else self.cfg.acak_budget
-            return {"account": account, "day": day, "budget": total, "used": float(used), "reserved": float(res), "remaining": max(0.0, total - used - res)}
+            return budget_harian(paper, account, day, total, self.cfg.tiket_min_saldo, self.cfg.tiket_max_per_order)
         n_open = paper.execute("SELECT COUNT(*) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
         n_pend = paper.execute("SELECT COUNT(*) FROM orders WHERE account='swing' AND reduce_only=0 AND status IN ('NEW','ACTIVE')").fetchone()[0]
         return {"account": SWING, "margin_per_trade": self.cfg.swing_margin, "open": n_open, "pending": n_pend, "max_open": self.cfg.swing_max_open}

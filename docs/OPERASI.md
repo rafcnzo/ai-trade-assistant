@@ -91,6 +91,13 @@ yang belum diproses dalam urutan waktu. Funding, tutup paksa 23:50 WIB, dan perg
 terjadi pada bar historis yang benar. Hasilnya sama persis dengan seandainya laptop terus menyala
 (diuji di `tests/test_paper_engine.py::TestCatchUpAndDeterminism`).
 
+## Saldo tiket harian (bergulir)
+
+Tiap hari WIB saldo tiket mulai $1. Hasil bersih posisi tiket yang ditutup hari itu **menambah/mengurangi** saldo (TP → jatah bertambah,
+hangus → berkurang). Yang bisa dipakai = saldo − terkunci (margin + fee posisi terbuka) − tereservasi (order hidup). Aturan:
+satu tiket ≤ $1 (`tiket_max_per_order`), dan bila saldo < $0,50 (`tiket_min_saldo`) tidak ada tiket baru sampai besok. Akun `acak`
+mengikuti aturan sama. Lihat `paper_engine.py budget` (`saldo`, `remaining`, `boleh_buka`, `maks_order_sekarang`).
+
 ## Order paper manual
 
 ```bash

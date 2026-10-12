@@ -3,6 +3,17 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-12 (pagi, 09:45) — laptop Windows — saldo tiket harian bergulir (TP menambah jatah)
+
+**Apa:** `paper_engine.budget_harian()` (murni, dipakai engine & dashboard): saldo = $1 + Σ net posisi ditutup hari itu; bisa dipakai =
+saldo − terkunci (posisi terbuka) − tereservasi (order); `boleh_buka` bila saldo ≥ `tiket_min_saldo` (0,50); satu order ≤ `tiket_max_per_order`
+(1,00). `BUDGET_TIKET` punya tiga alasan (minimum, per tiket, sisa). Pemindai G3 memakai `boleh_buka` + maks per order; laporan, dashboard,
+skill tiket, SOUL, playbook P-01 diperbarui. Tes T10 disesuaikan, T26 baru (TP → tiket kedua boleh; hangus kedua → berhenti; besok reset).
+
+**Kenapa:** keputusan user: plafon $1/hari membatasi sampel; dengan saldo bergulir, hari yang bagus memberi lebih banyak trade (lebih banyak
+sampel untuk belajar) tanpa menambah risiko di luar $1 awal + hasil hari itu. **File:** `scripts/{paper_engine,dashboard,pemindai}.py`,
+`dashboard/*`, `hermes/{SOUL.md,skills/tiket}`, `referensi/playbook.md`, tests, docs.
+
 ## 2026-10-12 (pagi, 09:20) — laptop Windows — autopsi posisi + pengaman breakeven (P-18)
 
 **Apa:** `PaperEngine.autopsi(id)` + tool MCP `autopsi_posisi` (27 tool): MFE/MAE dalam persen jalan ke TP/liq, waktu, menit di sisi

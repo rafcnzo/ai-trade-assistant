@@ -132,7 +132,7 @@ class TestGates(Base):
         self.engine.budget_status = lambda account, day=None: {"remaining": 0.05}
         res = self.p.run()
         self.assertFalse(res.wake)
-        self.assertIn("budget tiket habis", res.alasan)
+        self.assertIn("saldo tiket habis", res.alasan)
         self.assertEqual(res.n_symbols, 0)   # tidak memindai sama sekali
 
     def test_s5_stale_tick(self):
@@ -212,12 +212,12 @@ class TestGates(Base):
 class TestHangus(Base):
     def test_s11_gate_hangus_beruntun(self):
         self.seed()
-        def tutup(pid, reason, ts):
+        def tutup(pid, reason, ts, net=-0.3):   # net kecil agar saldo bergulir tetap ≥ $0,50 (yang diuji di sini adalah G9, bukan saldo)
             with C.tx(self.engine.conn):
                 self.engine.conn.execute("INSERT INTO positions(account,symbol,side,qty,entry_price,leverage,status,close_reason,closed_ts,day_wib,opened_ts,net_result) "
-                                         "VALUES('tiket',?,'LONG',0.01,100,100,'CLOSED',?,?,?,?,-0.5)", (f"X{pid}USDT", reason, ts, C.day_wib(ts), ts - 60_000))
+                                         "VALUES('tiket',?,'LONG',0.01,100,100,'CLOSED',?,?,?,?,?)", (f"X{pid}USDT", reason, ts, C.day_wib(ts), ts - 60_000, net))
         tutup(1, "HANGUS", t("08:00"))
-        tutup(2, "TP", t("08:30"))
+        tutup(2, "TP", t("08:30"), net=0.9)
         self.assertEqual(self.engine.hangus_beruntun(DAY), 0)
         self.assertTrue(self.p.run().wake)                     # 1 HANGUS lalu TP → masih boleh
         tutup(3, "HANGUS", t("09:00"))

@@ -20,7 +20,7 @@ Kategori: risiko · psikologi · price action · proses · fundamental. Sumber `
 
 | ID | Aturan | Kategori | Sumber | Status | Sejak |
 |---|---|---|---|---|---|
-| P-01 | Tiket: margin + fee masuk ≤ $1 per hari WIB; tidak ada tiket baru setelah 22:30, semua ditutup 23:50 | risiko | mesin (`BUDGET_TIKET`, `TIKET_EOD`) | aktif | 2026-10-11 |
+| P-01 | Tiket: saldo harian bergulir mulai $1 (untung menambah, hangus mengurangi); satu tiket ≤ $1 (margin + fee); di bawah $0,50 tidak ada tiket baru sampai besok; tidak ada tiket baru setelah 22:30, semua ditutup 23:50 | risiko | mesin (`BUDGET_TIKET`, `TIKET_EOD`) | aktif | 2026-10-12 |
 | P-02 | Tiket: leverage dipilih agar jarak likuidasi ≥ 2×ATR 5m; tidak menaikkan leverage demi muat budget | risiko | mesin + skill tiket | aktif | 2026-10-11 |
 | P-03 | Entry hanya limit di/dekat level ≥ 2 sentuhan, searah tren 15m atau pada penolakan jelas (WICK/BREAKOUT_GAGAL); tanpa market order kecuali pemilik minta | price action | skill tiket | aktif | 2026-10-11 |
 | P-04 | Setiap order punya TP; tiket: TP ≤ 1,5×ATR 15m dan untung bersih ≥ 3× fee bolak-balik; level invalidasi disebut sebelum order | proses | skill tiket | aktif | 2026-10-11 |
@@ -52,3 +52,4 @@ Status: `uji` (baru, sedang diuji) · `aktif` (wajib; terbukti membantu / ditega
 - 2026-10-11 (malam): pemilik mengaktifkan P-09, P-11, P-15 (uji → aktif).
 - 2026-10-11 (malam): P-09 ditegakkan mekanis oleh pemindai (gate G9) atas permintaan pemilik.
 - 2026-10-12: P-18 (breakeven setelah 80% jalan ke TP) ditambahkan dari autopsi SOL #1; ditegakkan mesin.
+- 2026-10-12: P-01 diubah pemilik: saldo harian bergulir (TP menambah jatah, minimum $0,50), bukan plafon $1/hari.

@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-12 09:20 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-12 09:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -111,7 +111,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 ## Keputusan yang berlaku
 
 - Jaringan rumah memblokir DNS Binance → DoH di dalam skrip; DNS Windows tidak diubah.
-- Budget tiket `margin + fee masuk ≤ $1`/hari WIB; order tiket kedaluwarsa & posisi ditutup paksa 23:50 WIB; tidak ada tiket baru setelah 22:30.
+- Saldo tiket harian bergulir (12 Okt, keputusan user): mulai $1, TP menambah, hangus mengurangi, minimum $0,50 untuk buka tiket baru,
+  satu tiket ≤ $1 (margin + fee); kedaluwarsa & tutup paksa 23:50; tidak ada tiket baru setelah 22:30. Akun acak mengikuti aturan yang sama.
 - Ambiguitas intrabar pesimis (liq → SL → TP), ditandai `ambiguous`.
 - Budget API: $10/hari, $190/bulan, $1/panggilan, ditegakkan `budget_proxy.py`; kill switch `data/STOP_AGENT`.
 - Model agent: `claude-opus-5-5`, effort `low`; pemindai mekanis (tanpa LLM) membangunkan agent hanya bila ada kandidat.

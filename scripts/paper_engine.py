@@ -58,7 +58,9 @@ class EngineConfig:
     fee_maker: float = 0.0002
     fee_taker: float = 0.0005
     slippage: dict = field(default_factory=lambda: {"mayor": 0.0002, "large": 0.0005, "small": 0.0010})
-    tiket_budget: float = 1.00
+    tiket_budget: float = 1.00             # saldo awal tiap hari WIB; TP menambah, hangus mengurangi (bergulir)
+    tiket_min_saldo: float = 0.50          # di bawah ini tidak boleh buka tiket baru sampai besok
+    tiket_max_per_order: float = 1.00      # satu tiket tidak boleh memakai lebih dari ini walau saldo tumbuh
     tiket_fee_from_budget: bool = True      # margin + fee masuk ≤ budget (wallet $1 nyata tidak bisa buka margin $1)
     tiket_eod_wib: str = "23:50"            # posisi tiket ditutup paksa, order entry tiket kedaluwarsa
     swing_margin: float = 10.00
@@ -72,6 +74,25 @@ class EngineConfig:
     acak_seed: str = "acak-v1"             # sisi acak = Random(f"{seed}:{order_id}") → deterministik, bisa diverifikasi
     acak_budget: float = 1.00
     tiket_breakeven_mfe: float = 0.8   # tiket/acak: setelah harga menempuh >= 80% jalan ke TP, SL dipindah ke harga masuk (pengaman; 0 = mati)
+
+
+# --------------------------------------------------------------------------- budget harian bergulir
+def budget_harian(conn, account: str, day: str, budget: float, min_saldo: float, max_per_order: float) -> dict:
+    """Saldo tiket/acak hari WIB `day`: mulai `budget`, ditambah hasil bersih posisi yang ditutup hari itu (TP menambah,
+    hangus mengurangi), dikurangi yang terkunci (margin+fee posisi terbuka) dan tereservasi (order hidup).
+    Boleh buka tiket baru bila saldo ≥ min_saldo; satu order ≤ max_per_order."""
+    realisasi = conn.execute("SELECT COALESCE(SUM(net_result),0) FROM positions WHERE account=? AND day_wib=? AND status='CLOSED'", (account, day)).fetchone()[0]
+    terkunci = conn.execute(
+        "SELECT COALESCE(SUM(margin_initial + COALESCE((SELECT fee_usdt FROM fills f WHERE f.order_id=p.entry_order_id), 0)), 0) "
+        "FROM positions p WHERE account=? AND day_wib=? AND status='OPEN'", (account, day)).fetchone()[0]
+    reserved = conn.execute(
+        "SELECT COALESCE(SUM(margin_usdt + COALESCE(fee_reserved,0)), 0) FROM orders WHERE account=? AND reduce_only=0 AND status IN ('NEW','ACTIVE') AND day_wib=?",
+        (account, day)).fetchone()[0]
+    saldo = budget + float(realisasi)
+    remaining = max(0.0, saldo - float(terkunci) - float(reserved))
+    return {"account": account, "day": day, "budget": budget, "realisasi": float(realisasi), "used": float(terkunci), "reserved": float(reserved),
+            "saldo": saldo, "remaining": remaining, "min_saldo": min_saldo, "max_per_order": max_per_order,
+            "boleh_buka": saldo >= min_saldo, "maks_order_sekarang": min(remaining, max_per_order)}
 
 
 # --------------------------------------------------------------------------- data pasar
@@ -445,17 +466,8 @@ class PaperEngine:
     def budget_status(self, account: str = TIKET, day: Optional[str] = None) -> dict:
         day = day or day_wib(self.clock())
         if account in DAILY_ACCOUNTS:
-            used = self.conn.execute(
-                "SELECT COALESCE(SUM(margin_initial + COALESCE((SELECT fee_usdt FROM fills f WHERE f.order_id=p.entry_order_id), 0)), 0) "
-                "FROM positions p WHERE account=? AND day_wib=?", (account, day)
-            ).fetchone()[0]
-            reserved = self.conn.execute(
-                "SELECT COALESCE(SUM(margin_usdt + COALESCE(fee_reserved,0)), 0) FROM orders "
-                "WHERE account=? AND reduce_only=0 AND status IN ('NEW','ACTIVE') AND day_wib=?", (account, day)
-            ).fetchone()[0]
             total = self.cfg.tiket_budget if account == TIKET else self.cfg.acak_budget
-            return {"account": account, "day": day, "budget": total, "used": float(used), "reserved": float(reserved),
-                    "remaining": max(0.0, total - float(used) - float(reserved))}
+            return budget_harian(self.conn, account, day, total, self.cfg.tiket_min_saldo, self.cfg.tiket_max_per_order)
         n_open = self.conn.execute("SELECT COUNT(*) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
         n_pending = self.conn.execute(
             "SELECT COUNT(*) FROM orders WHERE account='swing' AND reduce_only=0 AND status IN ('NEW','ACTIVE')"
@@ -530,8 +542,12 @@ class PaperEngine:
                 raise Reject(f"{tag}_EOD", f"sudah lewat jam tutup tiket {self.cfg.tiket_eod_wib} WIB")
             bs = self.budget_status(req.account, day_wib(now))
             need = margin + (fee_in if self.cfg.tiket_fee_from_budget else 0.0)
+            if not bs["boleh_buka"]:
+                raise Reject(f"BUDGET_{tag}", f"saldo {req.account} hari ini ${bs['saldo']:.4f} < minimum ${bs['min_saldo']:.2f}; tidak ada tiket baru sampai besok")
+            if need > bs["max_per_order"] + 1e-9:
+                raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} > maksimum per tiket ${bs['max_per_order']:.2f}")
             if need > bs["remaining"] + 1e-9:
-                raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} (margin {margin:.4f} + fee {fee_in:.4f}), sisa budget {req.account} hari ini ${bs['remaining']:.4f}")
+                raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} (margin {margin:.4f} + fee {fee_in:.4f}), sisa saldo {req.account} hari ini ${bs['remaining']:.4f}")
         else:
             if margin > self.cfg.swing_margin + 1e-9:
                 raise Reject("BUDGET_SWING", f"margin ${margin:.2f} > ${self.cfg.swing_margin:.2f} per trade")
@@ -1087,7 +1103,8 @@ class PaperEngine:
         day = day or day_wib(self.clock())
         lines = [f"# Laporan paper {day}", ""]
         bs = self.budget_status(TIKET, day)
-        lines.append(f"Budget tiket: ${bs['budget']:.2f} | terpakai ${bs['used']:.4f} | tereservasi ${bs['reserved']:.4f} | sisa ${bs['remaining']:.4f}")
+        lines.append(f"Saldo tiket (mulai ${bs['budget']:.2f}, hasil hari ini {bs['realisasi']:+.4f}) = ${bs['saldo']:.4f} | terkunci ${bs['used']:.4f} | "
+                     f"tereservasi ${bs['reserved']:.4f} | bisa dipakai ${bs['remaining']:.4f}{'' if bs['boleh_buka'] else ' | DI BAWAH MINIMUM, tidak ada tiket baru'}")
         sw = self.budget_status(SWING)
         lines.append(f"Swing: {sw['open']} posisi terbuka, {sw['pending']} order menunggu (maks {sw['max_open']}, margin ${sw['margin_per_trade']:.2f}/trade)")
         ak = self.budget_status(ACAK, day)

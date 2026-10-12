@@ -300,9 +300,11 @@ class TestBudgetAndValidation(Base):
         self.run_bar(t("10:05"))
         self.assertEqual(self.pos()["close_reason"], "HANGUS")
         bs = self.eng.budget_status("tiket", DAY)
-        self.assertAlmostEqual(bs["used"], 82.7 / 150 + 82.7 * 0.0002, places=6)
+        self.assertAlmostEqual(bs["saldo"], 1.0 - (82.7 / 150 + 82.7 * 0.0002), places=6)   # hangus mengurangi saldo bergulir
+        self.assertFalse(bs["boleh_buka"])                                                 # 0.43 < minimum 0.50
         d = self.tiket_long(lev=100)
         self.assertEqual(d.reject_code, "BUDGET_TIKET")
+        self.assertIn("minimum", d.reject_reason)
         # hari berikutnya: budget baru
         self.at(t("09:00", C.day_start_wib_ms(DAY2)))
         self.assertAlmostEqual(self.eng.budget_status("tiket")["remaining"], 1.0)
@@ -610,3 +612,33 @@ class TestBreakevenAutopsi(Base):
         self.assertIn("OPEN", [k["type"] for k in a["kejadian"]])
         with self.assertRaises(ValueError):
             self.eng.autopsi(99)
+
+
+class TestSaldoBergulir(Base):
+    def test_t26_tp_adds_to_rolling_balance(self):
+        a = self.tiket_long(lev=100, tp=83000.0)                     # kunci 0.8435
+        self.assertTrue(a.ok)
+        self.market.add_bar(BTC, t("10:04"), 82790, 82800, 82650, 82700)
+        self.run_bar(t("10:04"))
+        self.market.add_bar(BTC, t("10:05"), 82700, 83100, 82690, 83050)   # TP +0.2669 net
+        self.run_bar(t("10:05"))
+        bs = self.eng.budget_status("tiket", DAY)
+        self.assertAlmostEqual(bs["saldo"], 1.2669, places=3)
+        self.assertAlmostEqual(bs["remaining"], 1.2669, places=3)
+        self.assertEqual((bs["boleh_buka"], bs["maks_order_sekarang"]), (True, 1.0))   # boleh lagi, tapi maks $1 per tiket
+        self.at(t("10:08"))
+        b = self.tiket_long(lev=100, tp=83000.0)                     # tiket kedua di hari yang sama: boleh
+        self.assertTrue(b.ok, str(b))
+        big = self.eng.place_order(OrderRequest(account="tiket", symbol=BTC, side=LONG, qty=0.002, leverage=100, price=82600.0))   # 1.65 + fee > maks per order
+        self.assertEqual(big.reject_code, "BUDGET_TIKET")
+        self.assertIn("maksimum per tiket", big.reject_reason)
+        # hangus kedua → saldo 1.2669 − 0.8435 = 0.4234 < 0.5 → berhenti sampai besok
+        self.market.add_bar(BTC, t("10:09"), 82790, 82800, 82650, 82700)
+        self.run_bar(t("10:09"))
+        self.market.add_bar(BTC, t("10:10"), 82700, 82750, 82150, 82300)
+        self.run_bar(t("10:10"))
+        bs = self.eng.budget_status("tiket", DAY)
+        self.assertFalse(bs["boleh_buka"])
+        self.assertEqual(self.tiket_long(lev=100).reject_code, "BUDGET_TIKET")
+        self.at(t("09:00", C.day_start_wib_ms(DAY2)))
+        self.assertTrue(self.eng.budget_status("tiket")["boleh_buka"])

@@ -328,7 +328,7 @@ class Pemindai:
         if hhmm < cfg.jam_mulai or hhmm >= cfg.jam_akhir:
             return f"di luar jam {cfg.jam_mulai}–{cfg.jam_akhir} WIB"
         if budget_sisa < cfg.budget_min:
-            return f"budget tiket habis (sisa ${budget_sisa:.2f})"
+            return f"saldo tiket habis (bisa dipakai ${budget_sisa:.2f})"
         if live_tiket >= cfg.max_live_tiket:
             return f"sudah {live_tiket} order tiket hidup"
         hb = self.engine.hangus_beruntun(day)
@@ -403,7 +403,9 @@ class Pemindai:
         res = RunResult(ts=now, day_wib=day, data_tick_ts=tick)
         try:
             bs = self.engine.budget_status(TIKET, day)
-            res.budget_sisa = float(bs["remaining"])
+            res.budget_sisa = float(min(bs["remaining"], bs.get("max_per_order", bs["remaining"])))
+            if not bs.get("boleh_buka", True):
+                res.budget_sisa = 0.0
             res.wake_hari_ini = self.wake_hari_ini(day)
             live = [o for o in self.engine.orders(TIKET) if not o.get("reduce_only")]
             gate = self.gate_awal(now, tick, res.budget_sisa, len(live), day)
