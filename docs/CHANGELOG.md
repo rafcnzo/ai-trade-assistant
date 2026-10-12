@@ -3,6 +3,19 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-12 (pagi, 09:20) — laptop Windows — autopsi posisi + pengaman breakeven (P-18)
+
+**Apa:** `PaperEngine.autopsi(id)` + tool MCP `autopsi_posisi` (27 tool): MFE/MAE dalam persen jalan ke TP/liq, waktu, menit di sisi
+untung/rugi, kembali ke entry setelah MFE, kejadian, pelajaran mekanis; skill evaluasi-harian v1.4 wajib memanggilnya per posisi ditutup.
+`EngineConfig.tiket_breakeven_mfe=0.8`: posisi tiket/acak dengan TP tanpa SL mendapat SL di harga masuk setelah mark menempuh ≥ 80%
+jalan ke TP (event `BREAKEVEN`). Playbook P-18 (aktif, mesin). Tes T24–T25.
+
+**Kenapa:** user bertanya kenapa SOL #1 hangus tanpa evaluasi. Autopsi: SHORT 109,41 → 109,17 (89% ke TP 109,14) dalam 47 menit, kembali ke
+entry 18:08, chop 4 jam, hangus 22:40 oleh impuls pasar. Evaluasi sebelumnya hanya menulis "HANGUS" karena tidak ada data MFE; sekarang
+mekanis. Pengaman breakeven mengubah kasus seperti ini dari −$0,99 menjadi −$0,03.
+
+**File:** `scripts/paper_engine.py`, `scripts/mcp_server.py`, `hermes/skills/evaluasi-harian/SKILL.md`, `referensi/playbook.md`, tests, docs.
+
 ## 2026-10-12 (pagi, 08:50) — laptop Windows — evaluasi susulan bila laptop mati pukul 23:55
 
 **Apa:** cron Hermes `evaluasi-susulan` (`20 8-21/3 * * *`, skill evaluasi-harian) dengan gate `hermes/scripts/susulan_cron.py`: bangun

@@ -71,6 +71,7 @@ class EngineConfig:
     acak_enabled: bool = True              # setiap order tiket (bukan dari mesin) dibuatkan bayangan acak di akun `acak`
     acak_seed: str = "acak-v1"             # sisi acak = Random(f"{seed}:{order_id}") → deterministik, bisa diverifikasi
     acak_budget: float = 1.00
+    tiket_breakeven_mfe: float = 0.8   # tiket/acak: setelah harga menempuh >= 80% jalan ke TP, SL dipindah ke harga masuk (pengaman; 0 = mati)
 
 
 # --------------------------------------------------------------------------- data pasar
@@ -751,6 +752,18 @@ class PaperEngine:
                 self._close_position(p, px, reason, False, "MARKET_OPEN", bar, order_id=manual["id"] if manual else None)
                 rep["closes"] += 1
                 continue
+            # 3b0. pengaman breakeven (playbook P-18): tiket/acak dengan TP tanpa SL, setelah >= k x jalan ke TP tercapai
+            if self.cfg.tiket_breakeven_mfe and p["account"] in DAILY_ACCOUNTS and p["tp_price"] and not p["sl_price"]:
+                best = mark.high if p["side"] == LONG else mark.low
+                if p["best_mark"] is not None:
+                    best = max(best, p["best_mark"]) if p["side"] == LONG else min(best, p["best_mark"])
+                jarak_tp = abs(p["tp_price"] - p["entry_price"])
+                tempuh = (best - p["entry_price"]) if p["side"] == LONG else (p["entry_price"] - best)
+                if jarak_tp > 0 and tempuh / jarak_tp >= self.cfg.tiket_breakeven_mfe:
+                    self.conn.execute("UPDATE positions SET sl_price=? WHERE id=?", (p["entry_price"], p["id"]))
+                    p["sl_price"] = p["entry_price"]
+                    self.event("INFO", "BREAKEVEN", f"{p['symbol']} {p['side']} menempuh {tempuh / jarak_tp:.0%} jalan ke TP {p['tp_price']:.6g}; "
+                                                    f"SL dipindah ke harga masuk {p['entry_price']:.6g}", position_id=p["id"], ts=ot)
             # 3b. likuidasi (mark) → SL (mark) → TP (last)
             tp_fill = limit_fill(p["side"] == SHORT, p["tp_price"], bar) if p["tp_price"] else None
             sl_fill = stop_trigger(p["side"], p["sl_price"], mark, bar, slip) if p["sl_price"] else None
@@ -954,6 +967,59 @@ class PaperEngine:
                    f"{p['symbol']} {p['side']} keluar {px:.6g} ({rule}) pnl {realized:+.4f} fee {fees_total:.4f} funding {p['funding_total']:+.4f} net {net:+.4f}"
                    + (f" [AMBIGU: alternatif {alt}]" if ambiguous else ""), position_id=p["id"], ts=ts)
         p["status"] = "CLOSED"
+
+    # ---- autopsi posisi (baca saja)
+    def autopsi(self, position_id: int) -> dict:
+        """Rekonstruksi mekanis satu posisi: seberapa jauh harga menempuh jalan ke TP (MFE), seberapa dekat ke likuidasi (MAE),
+        kapan, berapa lama, dan apa yang terjadi — bahan evaluasi, bukan opini."""
+        r = self.conn.execute("SELECT * FROM positions WHERE id=?", (position_id,)).fetchone()
+        if r is None:
+            raise ValueError(f"posisi #{position_id} tidak ada")
+        p = dict(r)
+        sign = 1 if p["side"] == LONG else -1
+        end = p["closed_ts"] or self.clock()
+        pairs = self.market.bars(p["symbol"], p["opened_ts"] - MINUTE_MS, end + MINUTE_MS)
+        bars = [b for b, _ in pairs]
+        marks = [m for _, m in pairs if m is not None]
+        out = {"id": p["id"], "account": p["account"], "symbol": p["symbol"], "side": p["side"], "leverage": p["leverage"], "entry": p["entry_price"],
+               "tp": p["tp_price"], "sl": p["sl_price"], "liq": p["liq_price"], "dibuka": fmt_wib(p["opened_ts"]),
+               "ditutup": fmt_wib(p["closed_ts"]) if p["closed_ts"] else None, "durasi_menit": (end - p["opened_ts"]) // 60000,
+               "hasil": p["close_reason"] or "TERBUKA", "net": p["net_result"], "n_bar": len(bars)}
+        if not bars:
+            out["catatan"] = "tidak ada bar 1m tersimpan untuk rentang ini (retensi / simbol tidak dipantau)"
+            return out
+        fav = max(bars, key=lambda b: (b.high if sign > 0 else -b.low))
+        best_px = fav.high if sign > 0 else fav.low
+        adv = max(marks, key=lambda m: (m.high if sign < 0 else -m.low)) if marks else None
+        worst_px = (adv.high if sign < 0 else adv.low) if adv else None
+        jarak_tp = abs(p["tp_price"] - p["entry_price"]) if p["tp_price"] else None
+        jarak_liq = abs(p["liq_price"] - p["entry_price"]) if p["liq_price"] else None
+        out["mfe"] = {"harga": best_px, "pada": fmt_wib(fav.open_time), "menit_sejak_buka": (fav.open_time - p["opened_ts"]) // 60000,
+                      "persen_jalan_ke_tp": round((best_px - p["entry_price"]) * sign / jarak_tp * 100, 1) if jarak_tp else None,
+                      "sisa_ke_tp": round(abs(p["tp_price"] - best_px), 8) if p["tp_price"] else None}
+        out["mae"] = {"harga": worst_px, "pada": fmt_wib(adv.open_time) if adv else None,
+                      "persen_jalan_ke_liq": round((p["entry_price"] - worst_px) * sign / jarak_liq * 100, 1) if (jarak_liq and worst_px is not None) else None}
+        untung = sum(1 for b in bars if (b.close - p["entry_price"]) * sign > 0)
+        out["menit_di_sisi_untung"] = untung
+        out["menit_di_sisi_rugi"] = len(bars) - untung
+        after = [b for b in bars if b.open_time > fav.open_time]
+        back = next((b for b in after if (b.close - p["entry_price"]) * sign <= 0), None)
+        out["kembali_ke_entry_setelah_mfe"] = fmt_wib(back.open_time) if back else None
+        ev = self.conn.execute("SELECT ts, type, msg FROM events WHERE position_id=? ORDER BY id", (position_id,)).fetchall()
+        out["kejadian"] = [{"ts": fmt_wib(int(e[0])), "type": e[1], "msg": e[2]} for e in ev]
+        pel = []
+        m = out["mfe"]["persen_jalan_ke_tp"]
+        if m is not None and m >= 80 and p["close_reason"] in ("HANGUS", "FUNDING_LIQ", "EOD", "STOP"):
+            pel.append(f"harga sudah menempuh {m:.0f}% jalan ke TP ({out['mfe']['menit_sejak_buka']} menit setelah buka) lalu berbalik: "
+                       "TP terlalu rapat untuk dijangkau atau perlu pengaman (breakeven) setelah MFE besar")
+        if out["durasi_menit"] > 180 and p["close_reason"] in ("HANGUS", "EOD"):
+            pel.append(f"posisi hidup {out['durasi_menit']} menit tanpa mencapai TP: tesis intraday basi; pertimbangkan batas waktu")
+        if m is not None and m < 30 and p["close_reason"] in ("HANGUS", "FUNDING_LIQ"):
+            pel.append("harga hampir tidak pernah ke arah tesis: level/arah salah sejak awal, bukan soal manajemen")
+        if p["close_reason"] == "TP":
+            pel.append("rencana berjalan sesuai tesis")
+        out["pelajaran_mekanis"] = pel or ["tidak ada pola khusus"]
+        return out
 
     # ---- ringkasan harian / ekspor
     def day_counts(self, account: str, day: str) -> dict:

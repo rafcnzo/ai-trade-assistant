@@ -1,7 +1,7 @@
 ---
 name: evaluasi-harian
 description: Evaluasi harian paper trading pukul 23:55 WIB: laporan hasil, biaya API, catatan psikologi pasar, maksimal 3 hipotesis terukur, dan usulan pelajaran. Dipakai oleh cron evaluasi-harian atau saat pemilik minta "evaluasi hari ini".
-version: 1.3.0
+version: 1.4.0
 metadata:
   hermes:
     tags: [trading, paper, evaluasi, memori-pasar]
@@ -16,7 +16,10 @@ metadata:
 3. Baca memori: `mcp_paper_baca_memori("pelajaran")` (pelajaran yang sudah dinilai skrip — pakai sebagai konteks),
    `mcp_paper_baca_memori("hipotesis")` (hasil uji hipotesis 23:40 malam ini: benar/salah/ambigu + baseline),
    `mcp_paper_statistik_lulus` (sampel, expectancy, tiket vs akun `acak`, kepatuhan; tulis "tidak tersedia" apa adanya).
-   Lalu keputusan sendiri: `mcp_paper_baca_memori("jurnal")`. Per keputusan: rencana vs hasil
+   Lalu keputusan sendiri: `mcp_paper_baca_memori("jurnal")`. **Untuk setiap posisi yang ditutup hari itu panggil
+   `mcp_paper_autopsi_posisi(id)`** dan tulis 2–3 kalimat per posisi: seberapa dekat ke TP (`persen_jalan_ke_tp`, kapan), kapan
+   berbalik, apa yang benar dan apa yang salah (level? waktu? TP terlalu rapat? pengaman BREAKEVEN bekerja?), bukan sekadar "HANGUS".
+   Per keputusan: rencana vs hasil
    (`TP` / `HANGUS` / `TIDAK_TERISI` / `SKIP` / `MANUAL`), apakah aturan skill tiket dipatuhi, berapa yang
    `ambiguous` (hasil ditentukan aturan pesimis).
 4. Konteks pasar: `mcp_paper_panel_psikologi("BTCUSDT")` dan `("ETHUSDT")` (zona takut/serakah per indikator, divergensi,

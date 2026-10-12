@@ -45,7 +45,7 @@ MS_FIELDS = {"ts", "open_time", "funding_time", "opened_ts", "closed_ts", "creat
 TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
-    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi",
+    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi",
 )
 
 
@@ -431,6 +431,10 @@ class Tools:
     def baca_referensi(self, slug: str, bab: int, mulai: int = 0) -> dict:
         """Baca satu bab buku referensi (≤ 12.000 karakter per panggilan; lanjutkan dengan mulai=lanjut_dari). slug dari cari_referensi/daftar."""
         return self._call("baca_referensi", lambda: RF.baca(self.ctx.root, slug, bab, mulai=int(mulai)))
+
+    def autopsi_posisi(self, position_id: int) -> dict:
+        """Autopsi mekanis satu posisi (terbuka/tertutup): entry/TP/liq, MFE (seberapa jauh menempuh jalan ke TP dan kapan), MAE (seberapa dekat ke likuidasi), menit di sisi untung/rugi, apakah kembali ke entry setelah MFE, kejadian mesin (termasuk BREAKEVEN), dan pelajaran mekanis. Wajib dipanggil saat evaluasi untuk setiap posisi yang ditutup hari itu."""
+        return self._call("autopsi_posisi", lambda: self.ctx.engine.autopsi(int(position_id)))
 
     def statistik_lulus(self, sejak: Optional[str] = None) -> dict:
         """Statistik kelulusan §19.7 per akun (tiket, swing, acak = bayangan acak yang dibuat mesin sebagai pembanding): sampel, expectancy/trade setelah fee, per bulan, win rate, stabilitas tanpa 5% trade terbaik, kepatuhan aturan tiket, tiket vs acak (uji permutasi + sign test). Nilai 'tidak tersedia' bila sampel < 10 — laporkan apa adanya, jangan menafsirkan."""

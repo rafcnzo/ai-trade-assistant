@@ -566,3 +566,47 @@ class TestAcak(unittest.TestCase):
         r = self.eng.place_order(OrderRequest(account="acak", symbol=BTC, side=LONG, qty=0.001, leverage=100, type="MARKET", post_only=False,
                                               shadow_of=1, created_by="engine"))
         self.assertEqual(r.reject_code, "ACAK_EOD")
+
+
+class TestBreakevenAutopsi(Base):
+    """T24–T25: pengaman breakeven setelah ≥ 80% jalan ke TP (P-18) dan autopsi mekanis."""
+
+    def test_t24_breakeven_after_mfe(self):
+        self.tiket_long(tp=83000.0)                                   # entry 82700, TP +300 → 80% = 82940
+        self.market.add_bar(BTC, t("10:04"), 82790, 82800, 82650, 82700)   # terisi
+        self.run_bar(t("10:04"))
+        self.market.add_bar(BTC, t("10:05"), 82700, 82950, 82690, 82900)   # high 82950 = 83% jalan → SL dipindah ke 82700
+        self.run_bar(t("10:05"))
+        p = self.pos()
+        self.assertEqual((p["status"], p["sl_price"]), ("OPEN", 82700.0))
+        self.assertIn("BREAKEVEN", [e[0] for e in self.eng.conn.execute("SELECT type FROM events WHERE position_id=1")])
+        self.market.add_bar(BTC, t("10:06"), 82900, 82910, 82600, 82650)   # kembali menembus entry → STOP di 82700, bukan hangus
+        self.run_bar(t("10:06"))
+        p = self.pos()
+        self.assertEqual(p["close_reason"], "STOP")
+        self.assertGreater(p["net_result"], -0.1)                       # rugi hanya fee + slippage, bukan −$0.83
+        # tanpa pengaman (cfg 0): tidak ada SL
+        eng2 = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock_ms[0], cfg=EngineConfig(acak_enabled=False, tiket_breakeven_mfe=0))
+        self.at(t("10:03", sec=27))
+        eng2.place_order(OrderRequest(account="tiket", symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82700.0, tp_price=83000.0))
+        self.at(t("10:07")); eng2.step()
+        self.assertIsNone(dict(eng2.conn.execute("SELECT * FROM positions WHERE id=1").fetchone())["sl_price"])
+
+    def test_t25_autopsi(self):
+        self.tiket_long(tp=83000.0)
+        self.market.add_bar(BTC, t("10:04"), 82790, 82800, 82650, 82700)
+        self.run_bar(t("10:04"))
+        self.market.add_bar(BTC, t("10:05"), 82700, 82880, 82690, 82850)   # 60% jalan (belum breakeven)
+        self.run_bar(t("10:05"))
+        self.market.add_bar(BTC, t("10:06"), 82850, 82860, 82190, 82300)   # likuidasi
+        self.run_bar(t("10:06"))
+        a = self.eng.autopsi(1)
+        self.assertEqual((a["hasil"], a["side"], a["n_bar"]), ("HANGUS", "LONG", 3))
+        self.assertAlmostEqual(a["mfe"]["persen_jalan_ke_tp"], 60.0, places=1)
+        self.assertEqual((a["mfe"]["harga"], a["mfe"]["menit_sejak_buka"]), (82880.0, 0))   # dibuka 10:04:30, MFE bar 10:05
+        self.assertGreater(a["mae"]["persen_jalan_ke_liq"], 100)
+        self.assertEqual(a["kembali_ke_entry_setelah_mfe"], C.fmt_wib(t("10:06")))
+        self.assertTrue(any("level/arah salah" in x or "tidak ada pola" in x or "berbalik" in x for x in a["pelajaran_mekanis"]))
+        self.assertIn("OPEN", [k["type"] for k in a["kejadian"]])
+        with self.assertRaises(ValueError):
+            self.eng.autopsi(99)

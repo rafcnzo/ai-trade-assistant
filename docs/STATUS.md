@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-12 08:50 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-12 09:20 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -14,7 +14,7 @@ Folder Startup user (login, tanpa jendela)
  ├─ crypto-analyst_proxy.vbs     → run_budget_proxy.cmd  127.0.0.1:8585 → Anthropic, cap $10/hari (JALAN, key_set)
  ├─ crypto-analyst_dashboard.vbs → run_dashboard.cmd     http://127.0.0.1:8586 dashboard baca-saja (chart + riwayat) (JALAN)
  └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron
-      ├─ MCP "paper"               scripts/mcp_server.py, 26 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi)
+      ├─ MCP "paper"               scripts/mcp_server.py, 27 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi, autopsi_posisi)
       ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM);
       │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
       ├─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
@@ -59,6 +59,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
   `curl 127.0.0.1:8585/healthz`, `hermes gateway status`.
 - 11 Okt: tiket #1 SOL SHORT 75x (K3) HANGUS −$0,99 (diproses saat laptop nyala 12 Okt pagi); swing #3 ETH SHORT terisi → posisi swing #2 terbuka.
 - Laptop mati 11 Okt ±22:03 → evaluasi 23:55 tidak jalan; mekanisme `evaluasi-susulan` ditambahkan 12 Okt.
+- Autopsi SOL #1: 89% jalan ke TP dalam 47 menit (109,17 vs TP 109,14), kembali ke entry 18:08, chop 4 jam, hangus 22:40 oleh
+  impuls pasar. Tindak lanjut: P-18 pengaman breakeven (mesin) + tool `autopsi_posisi` wajib di evaluasi harian.
 - **Posisi tiket pertama dari agent sendiri**: #1 SOLUSDT SHORT 0,67 @ 109,41 75x (K3), liq 110,317, TP 109,14 (order #8),
   terisi 16:53 WIB. Hasilnya menentukan budget tiket hari ini. Status: `paper_engine.py posisi` / `/posisi` di Telegram.
 - Cron Hermes: `pemindai-tiket` 1-59/5, `notif-paper` tiap menit, `psikologi` tiap jam, `uji-hipotesis` 23:40, `evaluasi-harian` 23:55, `evaluasi-susulan` 08:20/11:20/…/20:20 (hanya bila kemarin belum dievaluasi). `hermes cron list`.
@@ -87,6 +89,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | Gate off tidak mengirim apa pun ke Telegram: `cron/executions.db` `delivery_outcome=suppressed`, output run "Script gate returned wakeAgent=false — agent skipped" | ✅ |
 | 2b | Jalur positif 16:51 WIB: pemindai bangun dengan 3 kandidat (K1 XRP SHORT, K2 BTC LONG, K3 SOL SHORT, skor 3); agent memasang order #7 SOL SHORT 75x @ 109,41 TP 109,14 `plan_id=K3` (persis), SKIP K1/K2 dengan alasan di jurnal; 2 panggilan Opus ≈ $0,30; order terisi 16:53 → posisi #1 | ✅ |
 | 2b | 23:55 evaluasi harian tiba di Telegram | ⬜ (11 Okt terlewat: laptop mati 22:03; dikerjakan lewat `evaluasi-susulan` 12 Okt 08:38 → `pasar/harian/2026-10-11.md` terbentuk) |
+| A | T24 breakeven (SL ke entry setelah 83% jalan → STOP kecil, bukan hangus; cfg 0 = mati), T25 autopsi, M9/M11 → 27 tool | ✅ |
 | S | Cron `evaluasi-susulan` 4186108ae29c terdaftar; `cron run` → agent mengevaluasi 11 Okt dengan `hari=`, catatan harian kemarin terbentuk, gate kembali false | ✅ |
 | 2b+ | `test_notifikasi` N1–N3 (init sunyi, order/terisi/TP, batal/kedaluwarsa, likuidasi, batas 20, CLI), `test_hermes_sync` H5 | ✅ |
 | 2b+ | Cron `notif-paper` 4c19f528cc31 terdaftar (mode no-agent); `hermes cron run notif-paper` 17:01 WIB mengirim 2 kejadian (#6 order SOL, #7 terisi) → `delivery_outcome=delivered`, kursor #7; tanpa panggilan API | ✅ |

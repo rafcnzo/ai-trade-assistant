@@ -16,7 +16,7 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
-| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 26 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi, referensi buku) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
+| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 27 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi, referensi buku) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
 | `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
 | `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
@@ -161,6 +161,12 @@ Semua tes berjalan tanpa jaringan (pasar sintetis `tests/fixtures.py`).
   selalu dari kalkulator exchange.
 - Limit terisi hanya jika harga *menembus* level. Ini masih sedikit optimis dibanding antrean
   order nyata; `TIDAK_TERISI` adalah hasil yang sah dan dipantau.
+- **Pengaman breakeven (P-18):** posisi tiket/acak yang punya TP dan belum punya SL, begitu mark menempuh ≥ 80% jalan ke TP
+  (`EngineConfig.tiket_breakeven_mfe`), mendapat SL di harga masuk (event `BREAKEVEN`). Hasilnya STOP kecil (fee + slippage),
+  bukan hangus, bila harga berbalik. Berlaku sama untuk akun acak supaya perbandingan adil.
+- **Autopsi posisi:** `paper_engine.autopsi(id)` / tool `mcp_paper_autopsi_posisi(id)`: MFE (persen jalan ke TP, kapan), MAE (persen
+  jalan ke likuidasi), menit di sisi untung/rugi, kembali ke entry setelah MFE, kejadian, pelajaran mekanis. Skill evaluasi-harian
+  wajib memanggilnya untuk tiap posisi yang ditutup.
 - Interval funding per simbol dibaca dari `fundingInfo` (ada yang 4 jam / 1 jam), tapi
   settlement memakai riwayat `fundingRate` yang sebenarnya, jadi tidak bergantung pada asumsi 8 jam.
 
@@ -198,11 +204,11 @@ Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
 1. `hermes/sync.py` — menyalin `SOUL.md`, skill `tiket` & `evaluasi-harian`, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`;
 2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
    `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
-   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (26 tool whitelist);
+   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (27 tool whitelist);
 3. menaruh launcher `crypto-analyst_proxy.vbs`, `crypto-analyst_collector.vbs`, dan `crypto-analyst_dashboard.vbs` di folder **Startup** user
    (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
 4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
-   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 26 tool), `hermes cron list`.
+   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 27 tool), `hermes cron list`.
 
 Log: `logs/hermes_setup.log`. Cek proxy: `curl http://127.0.0.1:8585/healthz` (`key_set` harus `true`).
 Log proxy: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya). Budget habis → Hermes menerima
