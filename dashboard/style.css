@@ -50,7 +50,7 @@ select,input,.btn{background:var(--bg2);color:var(--text);border:1px solid var(-
 .seg button{background:var(--bg2);color:var(--muted);border:0;padding:7px 11px;cursor:pointer;font:inherit;font-size:13px}
 .seg button.active{background:var(--acc);color:#0b0e14;font-weight:600}
 .toggle{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
-#chart{height:520px;width:100%}#chart-ekuitas{height:240px;width:100%;margin-top:10px}#chart-drawdown{height:150px;width:100%;margin-top:6px}
+#chart{height:520px;width:100%}#chart-arena{height:260px;width:100%}#chart-ekuitas{height:240px;width:100%;margin-top:10px}#chart-drawdown{height:150px;width:100%;margin-top:6px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);padding:8px 2px 0;font-size:12.5px}
 .sw{font-style:normal;font-weight:700;margin-right:4px}.sw.up{color:var(--up)}.sw.down{color:var(--down)}.sw.tp{color:var(--tp)}.sw.liq{color:var(--liq)}.sw.grey{color:var(--grey)}.sw.warn{color:var(--warn)}.sw.line{color:var(--acc)}
 .body{font-size:13px}.empty{color:var(--dim);padding:6px 0}

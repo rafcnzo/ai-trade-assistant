@@ -23,6 +23,7 @@
 <nav class="tabs" aria-label="Bagian">
   <button data-tab="chart" class="active">Chart</button>
   <button data-tab="riwayat">Riwayat & hasil</button>
+  <button data-tab="arena">Arena</button>
   <button data-tab="statistik">Rapor</button>
   <button data-tab="kandidat">Radar</button>
   <button data-tab="psikologi">Suasana pasar</button>
@@ -72,18 +73,26 @@
   <section id="tab-riwayat" class="tab">
     <div class="panel">
       <div class="panel-head"><div><h2>Perjalanan modal</h2><p class="hint">Garis = untung/rugi kumulatif dari semua trade yang sudah selesai. Area merah di bawahnya = <b>trailing drawdown</b>: seberapa jauh modal turun dari titik tertingginya. Semakin dalam, semakin sakit.</p></div>
-        <div class="controls"><div class="seg" id="eq-group"><button data-acc="tiket" class="active">Tiket ($1/hari)</button><button data-acc="swing">Swing</button><button data-acc="acak">Pembanding acak</button></div></div></div>
+        <div class="controls"><div class="seg" id="eq-group"></div></div></div>
       <div id="dd-cards" class="cards"></div>
       <div id="chart-ekuitas"></div>
       <div id="chart-drawdown"></div>
     </div>
     <div class="panel">
       <div class="panel-head"><div><h2>Trade yang sudah selesai</h2><p class="hint">Setiap baris satu trade. Klik untuk melihatnya di grafik.</p></div>
-        <div class="controls"><select id="f-akun"><option value="">semua akun</option><option value="tiket">tiket</option><option value="swing">swing</option><option value="acak">pembanding acak</option></select><input id="f-hari" type="date"><input id="f-symbol" placeholder="koin, mis. BTCUSDT"><button id="f-apply" class="btn">Terapkan</button></div></div>
+        <div class="controls"><select id="f-akun"><option value="">semua akun</option></select><input id="f-hari" type="date"><input id="f-symbol" placeholder="koin, mis. BTCUSDT"><button id="f-apply" class="btn">Terapkan</button></div></div>
       <div class="tablewrap"><table id="tbl-posisi"></table></div>
     </div>
     <div class="panel"><h2>Order yang tidak jadi</h2><p class="hint">Harga tidak pernah menyentuh order (kedaluwarsa), dibatalkan, atau ditolak mesin karena melanggar aturan.</p><div class="tablewrap"><table id="tbl-order"></table></div></div>
     <div class="panel"><h2>Rekap per hari</h2><div class="tablewrap"><table id="tbl-harian"></table></div></div>
+  </section>
+
+  <!-- ARENA -->
+  <section id="tab-arena" class="tab">
+    <div class="panel"><h2>Arena: empat gaya trading bersaing</h2><p class="hint">Setiap persona punya saldo $1/hari sendiri dan kembaran acaknya sendiri. Juara hanya diakui setelah ≥ 30 trade; yang kalah dari acaknya (≥ 30 trade, ≥ 30 hari) dipensiunkan skrip tiap Senin pagi. Anda bisa menghidupkannya lagi lewat <code>paper_engine.py akun aktif &lt;nama&gt;</code>.</p>
+      <div id="arena-juara" class="cards"></div>
+      <div class="tablewrap"><table id="tbl-arena"></table></div></div>
+    <div class="panel"><h2>Perjalanan modal semua persona</h2><p class="hint">Satu garis per persona (kumulatif hasil bersih).</p><div id="chart-arena"></div></div>
   </section>
 
   <!-- RAPOR -->

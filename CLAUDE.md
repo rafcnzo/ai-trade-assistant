@@ -32,7 +32,9 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 - Satu penulis per database/berkas:
   - `data/pasar.sqlite` ← hanya `scripts/collector.py`
   - `data/paper.sqlite` ← hanya `scripts/paper_engine.py` (dipanggil collector, CLI, atau `mcp_server.py`); akun `acak`
-    (bayangan acak per order tiket) hanya dibuat mesin, tidak pernah lewat CLI/MCP
+    (bayangan acak per order tiket) hanya dibuat mesin, tidak pernah lewat CLI/MCP. Akun persona arena (`tiket`, `fade`,
+    `breakout`, `rentang`) didefinisikan di tabel `account`; status `aktif/pensiun` hanya lewat `paper_engine.py akun` atau
+    `evaluasi.py --nilai-arena` (skrip), tidak pernah oleh agent
   - `data/budget.sqlite` ← hanya `scripts/budget_guard.py` (dipanggil `budget_proxy.py`)
   - `data/kandidat.sqlite` ← hanya `scripts/pemindai.py`
   - `data/notif.json` ← hanya `scripts/notifikasi.py` (kursor kejadian yang sudah dikirim ke Telegram)
@@ -61,7 +63,7 @@ scripts/   common.py, collector.py, paper_engine.py, budget_guard.py, budget_pro
            mcp_server.py, pemindai.py, notifikasi.py, evaluasi.py, hipotesis.py, uji_hipotesis.py, psikologi.py,
            referensi.py, konversi_buku.py, dashboard.py (baca saja, 127.0.0.1:8586),
            schema_{pasar,paper,budget,kandidat,psikologi}.sql
-hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron,uji_cron,psikologi_cron}.py, config.snippet.yaml, cron.cmd, sync.py
+hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron,uji_cron,psikologi_cron,susulan_cron,arena_cron}.py, config.snippet.yaml, cron.cmd, sync.py
 tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)
 data/      sqlite (gitignored)        logs/   log UTF-8 (gitignored)
 docs/      spesifikasi, operasi, STATUS, CHANGELOG      jurnal/ laporan/ pasar/ (gitignored sebagian)

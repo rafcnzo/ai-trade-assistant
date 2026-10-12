@@ -518,11 +518,11 @@ class TestAcak(unittest.TestCase):
         self.assertEqual(self.row("orders", 1)["status"], "EXPIRED")
         self.assertEqual(self.row("positions", 1)["close_reason"], "EOD")
         rows = self.eng.rollover_day(DAY)
-        self.assertEqual([r["account"] for r in rows], ["tiket", "swing", "acak"])
-        self.assertEqual((rows[0]["tidak_terisi_n"], rows[2]["filled_n"], rows[2]["other_close_n"]), (1, 1, 1))
+        self.assertEqual([r["account"] for r in rows], ["tiket", "breakout", "fade", "rentang", "acak", "swing"])
+        self.assertEqual((rows[0]["tidak_terisi_n"], rows[4]["filled_n"], rows[4]["other_close_n"]), (1, 1, 1))
         rep = self.eng.report(DAY)
-        self.assertIn("Tiket vs acak", rep)
-        self.assertIn("| acak | 1 | 0 | 0 | 1 | 0 |", rep)
+        self.assertIn("Arena hari ini", rep)
+        self.assertIn("| acak | aktif | 1 | 0 | 0 | 1 | 0 |", rep)
         self.assertIn("Acak (bayangan pembanding", rep)
 
     def test_t22_shadow_skip_never_breaks_order(self):
@@ -642,3 +642,38 @@ class TestSaldoBergulir(Base):
         self.assertEqual(self.tiket_long(lev=100).reject_code, "BUDGET_TIKET")
         self.at(t("09:00", C.day_start_wib_ms(DAY2)))
         self.assertTrue(self.eng.budget_status("tiket")["boleh_buka"])
+
+
+class TestArenaAkun(Base):
+    """T27: akun persona dinamis, bayangan acak per persona, pensiun ditolak, saldo per akun."""
+
+    def test_t27_arena_accounts(self):
+        self.assertEqual(self.eng.accounts("tiket"), ["tiket", "breakout", "fade", "rentang"])
+        self.assertEqual(self.eng.accounts(), ["tiket", "breakout", "fade", "rentang", "acak", "swing"])
+        self.assertTrue(self.eng.is_daily("fade") and self.eng.is_daily("acak") and not self.eng.is_daily("swing"))
+        eng = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock_ms[0], cfg=EngineConfig())   # bayangan aktif
+        r1 = eng.place_order(OrderRequest(account="fade", symbol=BTC, side=SHORT, qty=0.001, leverage=100, price=82900.0, tp_price=82600.0, plan_id="K1"))
+        self.assertTrue(r1.ok, str(r1))
+        self.assertIsNotNone(r1.shadow_order_id)                                   # persona lain pun dapat bayangan acak
+        sh = dict(eng.conn.execute("SELECT * FROM orders WHERE id=?", (r1.shadow_order_id,)).fetchone())
+        self.assertEqual((sh["account"], sh["plan_id"]), ("acak", f"ACAK:{r1.order_id}"))
+        r2 = eng.place_order(OrderRequest(account="breakout", symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82700.0, tp_price=83000.0))
+        self.assertTrue(r2.ok, str(r2))
+        # saldo per akun terpisah
+        self.assertAlmostEqual(eng.budget_status("fade")["remaining"], 1.0 - (0.829 + 82.9 * 0.0002), places=6)
+        self.assertAlmostEqual(eng.budget_status("rentang")["remaining"], 1.0, places=9)
+        self.assertEqual(eng.budget_status("fade")["kind"], "tiket")
+        # pensiun → tolak order baru, posisi/bayangan tetap jalan
+        self.assertTrue(eng.set_account_status("fade", "pensiun", "uji"))
+        r3 = eng.place_order(OrderRequest(account="fade", symbol=BTC, side=SHORT, qty=0.001, leverage=100, price=82950.0))
+        self.assertEqual(r3.reject_code, "ACCOUNT_PENSIUN")
+        self.assertFalse(eng.budget_status("fade")["boleh_buka"])
+        self.assertFalse(eng.set_account_status("swing", "pensiun"))
+        self.assertFalse(eng.set_account_status("fade", "mati"))
+        self.assertTrue(eng.set_account_status("fade", "aktif"))
+        self.assertEqual(eng.account_info("fade")["status"], "aktif")
+        self.assertEqual(eng.place_order(OrderRequest(account="ninja", symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82700.0)).reject_code, "ACCOUNT")
+        self.assertIn("AKUN_STATUS", [e[0] for e in eng.conn.execute("SELECT type FROM events")])
+        rep = eng.report(DAY)
+        self.assertIn("| fade | aktif |", rep)
+        self.assertEqual([r["account"] for r in eng.rollover_day(DAY)], ["tiket", "breakout", "fade", "rentang", "acak", "swing"])

@@ -56,7 +56,7 @@ class PemindaiConfig:
     jam_akhir: str = "22:30"
     max_wake_per_day: int = 12
     cooldown_min: int = 30
-    max_live_tiket: int = 2
+    max_live_tiket: int = 2        # per akun persona (arena)
     max_hangus_beruntun: int = 2   # playbook P-09: setelah 2 tiket HANGUS beruntun, tidak ada tiket baru hari itu
     retention_days: int = 30
 
@@ -102,6 +102,8 @@ class RunResult:
     wake: bool = False
     alasan: str = ""
     budget_sisa: Optional[float] = None
+    akun_aktif: list = field(default_factory=list)   # [{akun, sisa}] persona yang boleh buka saat ini
+    akun_ditahan: list = field(default_factory=list)  # [{akun, alasan}]
     wake_hari_ini: int = 0
     duration_ms: int = 0
     ok: int = 1
@@ -264,6 +266,9 @@ def format_text(res: RunResult, cfg: PemindaiConfig, verbose: bool = False) -> s
         lines.append(f"{k.plan_id} {k.ringkasan}")
     if res.ditahan:
         lines.append("Ditahan: " + "; ".join(f"{d['symbol']} ({d['alasan']})" for d in res.ditahan))
+    if res.akun_aktif or res.akun_ditahan:
+        lines.append("Akun aktif: " + (", ".join(f"{a['akun']} (sisa ${a['sisa']:.2f})" for a in res.akun_aktif) or "-")
+                     + ("; ditahan: " + ", ".join(f"{d['akun']} ({d['alasan']})" for d in res.akun_ditahan) if res.akun_ditahan else ""))
     if verbose:
         lines.append("| simbol | mark | level | jarak×ATR5m | skor | flag | lev layak | keterangan |")
         lines.append("|---|---|---|---|---|---|---|---|")
@@ -272,7 +277,7 @@ def format_text(res: RunResult, cfg: PemindaiConfig, verbose: bool = False) -> s
                          f"{','.join(d.get('flags', [])) or '-'} | {d.get('n_lev', '-')} | {d.get('keterangan', '')} |")
     if res.wake:
         ids = ", ".join(k.plan_id for k in res.kandidat)
-        lines.append(f"Tindakan: jalankan skill tiket, nilai {ids}; pakai plan_id persis \"{res.kandidat[0].plan_id}\" dst. Paper trading.")
+        lines.append(f"Tindakan: jalankan skill arena, nilai {ids} untuk SETIAP akun aktif di atas; pakai plan_id persis \"{res.kandidat[0].plan_id}\" dst. Paper trading.")
     lines.append(GATE_ON if res.wake else GATE_OFF)
     return "\n".join(lines)
 
@@ -318,7 +323,29 @@ class Pemindai:
         return (float(t[0]) if t and t[0] is not None else None), (float(m[0]) if m and m[0] is not None else None)
 
     # ---- gate
-    def gate_awal(self, now: int, tick: Optional[int], budget_sisa: float, live_tiket: int, day: str) -> Optional[str]:
+    def persona(self, day: str) -> tuple[list[dict], list[dict]]:
+        """Persona tiket yang boleh buka saat ini vs yang ditahan (saldo, order hidup, hangus beruntun P-09, pensiun)."""
+        cfg = self.cfg
+        aktif, ditahan = [], []
+        names = self.engine.accounts("tiket") if hasattr(self.engine, "accounts") else [TIKET]
+        for acc in names:
+            bs = self.engine.budget_status(acc, day)
+            if bs.get("status", "aktif") != "aktif":
+                ditahan.append({"akun": acc, "alasan": "pensiun"}); continue
+            sisa = float(min(bs["remaining"], bs.get("max_per_order", bs["remaining"])))
+            if not bs.get("boleh_buka", True) or sisa < cfg.budget_min:
+                ditahan.append({"akun": acc, "alasan": f"saldo habis (bisa dipakai ${sisa:.2f})"}); continue
+            live = [o for o in self.engine.orders(acc) if not o.get("reduce_only")]
+            if len(live) >= cfg.max_live_tiket:
+                ditahan.append({"akun": acc, "alasan": f"sudah {len(live)} order hidup"}); continue
+            hb = self.engine.hangus_beruntun(day, acc)
+            if hb >= cfg.max_hangus_beruntun:
+                ditahan.append({"akun": acc, "alasan": f"{hb} HANGUS beruntun (P-09)"}); continue
+            aktif.append({"akun": acc, "sisa": round(sisa, 4)})
+        return aktif, ditahan
+
+    def gate_awal(self, now: int, tick: Optional[int], budget_sisa: float, live_tiket: int, day: str, akun_aktif: Optional[list] = None,
+                  akun_ditahan: Optional[list] = None) -> Optional[str]:
         cfg = self.cfg
         if tick is None:
             return "data tidak tersedia (collector belum pernah tick)"
@@ -327,13 +354,17 @@ class Pemindai:
         hhmm = C.to_wib(now).strftime("%H:%M")
         if hhmm < cfg.jam_mulai or hhmm >= cfg.jam_akhir:
             return f"di luar jam {cfg.jam_mulai}–{cfg.jam_akhir} WIB"
-        if budget_sisa < cfg.budget_min:
-            return f"saldo tiket habis (bisa dipakai ${budget_sisa:.2f})"
-        if live_tiket >= cfg.max_live_tiket:
-            return f"sudah {live_tiket} order tiket hidup"
-        hb = self.engine.hangus_beruntun(day)
-        if hb >= cfg.max_hangus_beruntun:
-            return f"{hb} tiket HANGUS beruntun hari ini (playbook P-09): berhenti sampai besok"
+        if akun_aktif is not None:
+            if not akun_aktif:
+                return "tidak ada persona yang boleh buka: " + "; ".join(f"{d['akun']} ({d['alasan']})" for d in (akun_ditahan or []))
+        else:
+            if budget_sisa < cfg.budget_min:
+                return f"saldo tiket habis (bisa dipakai ${budget_sisa:.2f})"
+            if live_tiket >= cfg.max_live_tiket:
+                return f"sudah {live_tiket} order tiket hidup"
+            hb = self.engine.hangus_beruntun(day)
+            if hb >= cfg.max_hangus_beruntun:
+                return f"{hb} tiket HANGUS beruntun hari ini (playbook P-09): berhenti sampai besok"
         w = self.wake_hari_ini(day)
         if w >= cfg.max_wake_per_day:
             return f"cap {cfg.max_wake_per_day} wake/hari tercapai"
@@ -402,13 +433,10 @@ class Pemindai:
         tick = self.tick_ts()
         res = RunResult(ts=now, day_wib=day, data_tick_ts=tick)
         try:
-            bs = self.engine.budget_status(TIKET, day)
-            res.budget_sisa = float(min(bs["remaining"], bs.get("max_per_order", bs["remaining"])))
-            if not bs.get("boleh_buka", True):
-                res.budget_sisa = 0.0
+            res.akun_aktif, res.akun_ditahan = self.persona(day)
+            res.budget_sisa = max((a["sisa"] for a in res.akun_aktif), default=0.0)
             res.wake_hari_ini = self.wake_hari_ini(day)
-            live = [o for o in self.engine.orders(TIKET) if not o.get("reduce_only")]
-            gate = self.gate_awal(now, tick, res.budget_sisa, len(live), day)
+            gate = self.gate_awal(now, tick, res.budget_sisa, 0, day, res.akun_aktif, res.akun_ditahan)
             if gate and not scan_even_if_gated:
                 res.alasan = gate
             else:

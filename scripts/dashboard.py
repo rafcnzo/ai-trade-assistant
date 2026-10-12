@@ -23,6 +23,7 @@ import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
 import psikologi as PSI  # noqa: E402
 from paper_engine import ACAK, LONG, SWING, TIKET, EngineConfig, SqliteMarket, budget_harian  # noqa: E402
+from evaluasi import daftar_akun, papan_arena  # noqa: E402
 
 STATIC_DIR = C.ROOT / "dashboard"
 KANDIDAT_DB = C.DATA_DIR / "kandidat.sqlite"
@@ -57,9 +58,15 @@ class Data:
     def budget(self, paper, account: str, day: str) -> dict:
         if paper is None:
             return {"account": account, "status": "tidak tersedia"}
-        if account in (TIKET, ACAK):
-            total = self.cfg.tiket_budget if account == TIKET else self.cfg.acak_budget
-            return budget_harian(paper, account, day, total, self.cfg.tiket_min_saldo, self.cfg.tiket_max_per_order)
+        info = next((a for a in daftar_akun(paper) if a["name"] == account), None)
+        kind = info["kind"] if info else account
+        if kind in ("tiket", "acak"):
+            total = self.cfg.tiket_budget if kind == "tiket" else self.cfg.acak_budget
+            out = budget_harian(paper, account, day, total, self.cfg.tiket_min_saldo, self.cfg.tiket_max_per_order)
+            out["kind"], out["status"] = kind, (info["status"] if info else "aktif")
+            if out["status"] != "aktif":
+                out["boleh_buka"] = False
+            return out
         n_open = paper.execute("SELECT COUNT(*) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
         n_pend = paper.execute("SELECT COUNT(*) FROM orders WHERE account='swing' AND reduce_only=0 AND status IN ('NEW','ACTIVE')").fetchone()[0]
         return {"account": SWING, "margin_per_trade": self.cfg.swing_margin, "open": n_open, "pending": n_pend, "max_open": self.cfg.swing_max_open}
@@ -143,7 +150,9 @@ class Data:
             return {
                 "sekarang": self.clock(), "sekarang_wib": C.fmt_wib(self.clock()), "hari": day,
                 "collector": self.tick(pasar),
-                "budget": {a: self.budget(paper, a, day) for a in (TIKET, SWING, ACAK)},
+                "akun": daftar_akun(paper) if paper else [],
+                "budget": ({a["name"]: self.budget(paper, a["name"], day) for a in daftar_akun(paper)} if paper
+                           else {a: {"account": a, "status": "tidak tersedia"} for a in (TIKET, SWING, ACAK)}),
                 "posisi": self.positions(paper, market), "order": self.orders(paper),
                 "pemindai": self.pemindai(), "biaya": self.biaya(), "cron": self.cron(),
                 "kill_switch": (self.root / "data" / "STOP_AGENT").exists(),
@@ -259,10 +268,19 @@ class Data:
             return {}
         try:
             out: dict[str, dict] = {}
-            for acc in (TIKET, SWING, ACAK):
+            for acc in [a["name"] for a in daftar_akun(paper)]:
                 out[acc] = ekuitas_drawdown([(int(r[0]), float(r[1])) for r in paper.execute(
                     "SELECT closed_ts, net_result FROM positions WHERE account=? AND status='CLOSED' AND net_result IS NOT NULL ORDER BY closed_ts, id", (acc,))])
             return out
+        finally:
+            paper.close()
+
+    def arena(self) -> dict:
+        paper = self._ro(self.paper_p)
+        if paper is None:
+            return {"status": "tidak tersedia", "persona": []}
+        try:
+            return papan_arena(paper, self.clock())
         finally:
             paper.close()
 
@@ -382,6 +400,7 @@ def make_app(data: Optional[Data] = None, static_dir: Path = STATIC_DIR):
         Route("/api/riwayat", guard(lambda r: d.riwayat(qp(r, "akun"), qp(r, "hari"), qp(r, "symbol"), int(qp(r, "limit", 200))))),
         Route("/api/ekuitas", guard(lambda r: d.ekuitas())),
         Route("/api/statistik", guard(lambda r: d.statistik())),
+        Route("/api/arena", guard(lambda r: d.arena())),
         Route("/api/psikologi", guard(lambda r: d.psikologi(qp(r, "symbol", "BTCUSDT")))),
         Route("/api/kandidat", guard(lambda r: d.kandidat())),
         Route("/api/teks", guard(lambda r: d.teks(qp(r, "jenis", "jurnal"), qp(r, "hari")))),

@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-12 09:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-12 17:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -14,8 +14,8 @@ Folder Startup user (login, tanpa jendela)
  ├─ crypto-analyst_proxy.vbs     → run_budget_proxy.cmd  127.0.0.1:8585 → Anthropic, cap $10/hari (JALAN, key_set)
  ├─ crypto-analyst_dashboard.vbs → run_dashboard.cmd     http://127.0.0.1:8586 dashboard baca-saja (chart + riwayat) (JALAN)
  └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron
-      ├─ MCP "paper"               scripts/mcp_server.py, 27 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi, autopsi_posisi)
-      ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM);
+      ├─ MCP "paper"               scripts/mcp_server.py, 28 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi, autopsi_posisi, papan_arena)
+      ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM) → skill ARENA (4 persona);
       │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
       ├─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
       ├─ cron notif-paper          * * * * * --no-agent → notif_cron.py → scripts/notifikasi.py --cron (tanpa LLM):
@@ -24,8 +24,10 @@ Folder Startup user (login, tanpa jendela)
       │                            nilai hipotesis jatuh tempo + baseline + pelajaran → Telegram bila ada hasil
       ├─ cron psikologi            7 * * * * --no-agent → psikologi_cron.py → scripts/psikologi.py --cron (diam):
       │                            12 indikator §16.2 BTC/ETH/pasar → data/psikologi.sqlite; agent: panel_psikologi, pemilik: /psikologi
-      └─ cron evaluasi-susulan     20 8-21/3 * * * → susulan_cron.py (gate: pasar/harian/<kemarin>.md belum ada) → evaluasi kemarin
+      ├─ cron evaluasi-susulan     20 8-21/3 * * * → susulan_cron.py (gate: pasar/harian/<kemarin>.md belum ada) → evaluasi kemarin
+      └─ cron nilai-arena          30 7 * * 1 --no-agent → arena_cron.py → evaluasi.py --nilai-arena (pensiun persona yang kalah)
 ```
+Arena: akun persona `tiket`, `fade`, `breakout`, `rentang` (tabel `account`, saldo $1/hari masing-masing, bayangan acak per order).
 Mesin paper v2: setiap order tiket agent mendapat bayangan acak di akun `acak` (pembanding §19.7, dibuat mesin, tidak dinotifikasi).
 Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga mengisi `kline_1h` (120 hari) untuk konteks 1h/4h/1d.
 
@@ -38,6 +40,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | `pemindai.py` + `kandidat.sqlite`, `kline_1h` di collector, 2 cron job (`pemindai-tiket`, `evaluasi-harian`) | **Selesai & terpasang** (91 tes; cron `pemindai-tiket` f27a23cad20c dan `evaluasi-harian` d38d3262d1b5 aktif; nol biaya terverifikasi) |
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
+| AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Kode selesai** (138 tes; T27, S4/S9/S11, E4, M16, D6, H7). Deploy: lihat verifikasi AR |
 | D | Dashboard lokal: chart trading (Lightweight Charts) + marker mesin paper, posisi/order live, riwayat + **trailing drawdown per akun**, rapor, radar, suasana pasar, catatan AI; bahasa awam; autostart | **Selesai & jalan** (128 tes; D1–D5) |
 | 3c | Referensi buku & playbook (§15): `konversi_buku.py`, `referensi.py`, tool `cari_referensi`/`baca_referensi`, `/referensi`, `referensi/indeks.md`, `referensi/playbook.md` v1, aturan SOUL "Referensi", playbook di skill tiket | **Selesai & terpasang** (122 tes; 3 buku terkonversi; MCP 26 tool; `/referensi` di menu) |
 
@@ -90,6 +93,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 2b | Jalur positif 16:51 WIB: pemindai bangun dengan 3 kandidat (K1 XRP SHORT, K2 BTC LONG, K3 SOL SHORT, skor 3); agent memasang order #7 SOL SHORT 75x @ 109,41 TP 109,14 `plan_id=K3` (persis), SKIP K1/K2 dengan alasan di jurnal; 2 panggilan Opus ≈ $0,30; order terisi 16:53 → posisi #1 | ✅ |
 | 2b | 23:55 evaluasi harian tiba di Telegram | ⬜ (11 Okt terlewat: laptop mati 22:03; dikerjakan lewat `evaluasi-susulan` 12 Okt 08:38 → `pasar/harian/2026-10-11.md` terbentuk) |
 | A | T24 breakeven (SL ke entry setelah 83% jalan → STOP kecil, bukan hangus; cfg 0 = mati), T25 autopsi, M9/M11 → 27 tool | ✅ |
+| AR | Deploy: collector/dashboard restart skema v3; cron `pemindai-tiket` dibuat ulang dengan `--skill arena`; cron `nilai-arena` terdaftar; `hermes mcp test paper` → 28; `paper_engine.py akun list` 4 persona aktif | ⬜ deploy |
+| AR | Wake pertama arena: jurnal berisi keputusan per persona, order di akun berbeda, bayangan acak per order | ⬜ menunggu kejadian |
 | S | Cron `evaluasi-susulan` 4186108ae29c terdaftar; `cron run` → agent mengevaluasi 11 Okt dengan `hari=`, catatan harian kemarin terbentuk, gate kembali false | ✅ |
 | 2b+ | `test_notifikasi` N1–N3 (init sunyi, order/terisi/TP, batal/kedaluwarsa, likuidasi, batas 20, CLI), `test_hermes_sync` H5 | ✅ |
 | 2b+ | Cron `notif-paper` 4c19f528cc31 terdaftar (mode no-agent); `hermes cron run notif-paper` 17:01 WIB mengirim 2 kejadian (#6 order SOL, #7 terisi) → `delivery_outcome=delivered`, kursor #7; tanpa panggilan API | ✅ |
@@ -111,6 +116,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 ## Keputusan yang berlaku
 
 - Jaringan rumah memblokir DNS Binance → DoH di dalam skrip; DNS Windows tidak diubah.
+- Arena (12 Okt): persona = akun jenis `tiket` di tabel `account`; seleksi mekanis mingguan (≥ 30 trade, ≥ 30 hari, kalah dari acaknya
+  p < 0,2 → pensiun); juara hanya dilaporkan, jatah tidak diubah (v1). Satu wake = satu sesi untuk semua persona (hemat konteks).
 - Saldo tiket harian bergulir (12 Okt, keputusan user): mulai $1, TP menambah, hangus mengurangi, minimum $0,50 untuk buka tiket baru,
   satu tiket ≤ $1 (margin + fee); kedaluwarsa & tutup paksa 23:50; tidak ada tiket baru setelah 22:30. Akun acak mengikuti aturan yang sama.
 - Ambiguitas intrabar pesimis (liq → SL → TP), ditandai `ambiguous`.

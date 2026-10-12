@@ -132,7 +132,7 @@ class TestGates(Base):
         self.engine.budget_status = lambda account, day=None: {"remaining": 0.05}
         res = self.p.run()
         self.assertFalse(res.wake)
-        self.assertIn("saldo tiket habis", res.alasan)
+        self.assertIn("tidak ada persona yang boleh buka", res.alasan)
         self.assertEqual(res.n_symbols, 0)   # tidak memindai sama sekali
 
     def test_s5_stale_tick(self):
@@ -199,19 +199,23 @@ class TestGates(Base):
         self.assertTrue(res.wake, res.alasan)
         self.assertEqual([k.symbol for k in res.kandidat], [PEM2])
         self.assertEqual(res.ditahan[0], {"symbol": PEM, "alasan": "ada order/posisi", "score": None})
-        self.assertLess(res.budget_sisa, 0.5)                     # budget tersisa setelah reservasi order
+        self.assertLess(next(a["sisa"] for a in res.akun_aktif if a["akun"] == "tiket"), 0.5)   # saldo tiket tersisa setelah reservasi; persona lain masih $1
         self.assertEqual(res.kandidat[0].lev_layak[0]["leverage"], 150)
         self.assertEqual(sorted(self.p.universe()), sorted([PEM, PEM2]))
         # dua order tiket hidup → gate G4
         r2 = self.engine.place_order(OrderRequest("tiket", PEM2, "LONG", 0.2, 100, price=99.5, tp_price=100.5, plan_id="UJI2"))
         self.assertTrue(r2.ok, str(r2))
         self.fresh(NOW + 5 * MINUTE_MS)
-        self.assertIn("order tiket hidup", self.p.run().alasan)
+        res2 = self.p.run()
+        self.assertIn({"akun": "tiket", "alasan": "sudah 2 order hidup"}, res2.akun_ditahan)   # persona lain tetap boleh (arena)
+        self.assertFalse(res2.wake)                                                        # kedua simbol sudah terpapar
 
 
 class TestHangus(Base):
     def test_s11_gate_hangus_beruntun(self):
         self.seed()
+        for acc in ("fade", "breakout", "rentang"):       # arena: uji gate P-09 hanya pada persona tiket
+            self.engine.set_account_status(acc, "pensiun", "uji")
         def tutup(pid, reason, ts, net=-0.3):   # net kecil agar saldo bergulir tetap ≥ $0,50 (yang diuji di sini adalah G9, bukan saldo)
             with C.tx(self.engine.conn):
                 self.engine.conn.execute("INSERT INTO positions(account,symbol,side,qty,entry_price,leverage,status,close_reason,closed_ts,day_wib,opened_ts,net_result) "
@@ -228,6 +232,7 @@ class TestHangus(Base):
         self.assertFalse(res.wake)
         self.assertIn("HANGUS beruntun", res.alasan)
         self.assertIn("P-09", res.alasan)
+        self.assertIn("pensiun", res.alasan)                     # persona lain ditahan karena pensiun
         # hari berikutnya bebas lagi
         self.assertEqual(self.engine.hangus_beruntun(C.day_wib(NOW + C.DAY_MS)), 0)
 

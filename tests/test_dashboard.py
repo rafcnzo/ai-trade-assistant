@@ -51,6 +51,21 @@ class TestDrawdown(unittest.TestCase):
         self.assertEqual(D.ekuitas_drawdown([])["drawdown_maks"], 0.0)
 
 
+class TestArenaApi(Base):
+    def test_d6_arena_and_dynamic_accounts(self):
+        eng, pasar_ro = self.seed()
+        rk = self.client.get("/api/ringkasan").json()
+        self.assertEqual([a["name"] for a in rk["akun"]], ["tiket", "breakout", "fade", "rentang", "acak", "swing"])
+        self.assertEqual(rk["budget"]["fade"]["kind"], "tiket")
+        ar = self.client.get("/api/arena").json()
+        self.assertEqual(len(ar["persona"]), 4)
+        self.assertIsNone(ar["juara"])
+        eq = self.client.get("/api/ekuitas").json()
+        self.assertIn("rentang", eq)
+        eng.conn.close()
+        pasar_ro.close()
+
+
 class TestDashboard(Base):
     def test_d1_empty_everything_is_200(self):
         for path in ("/api/ringkasan", "/api/simbol", "/api/candles?symbol=X&tf=5m", "/api/marker?symbol=X", "/api/riwayat", "/api/ekuitas",

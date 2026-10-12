@@ -251,7 +251,7 @@ class TestHipotesisStatistik(Base):
         self.assertTrue(str(s["akun"]["tiket"]["expectancy"]).startswith("tidak tersedia"))
         self.assertIn("# Statistik kelulusan", s["markdown"])
         self.assertIn("statistik_lulus", TOOL_NAMES)
-        self.assertEqual(len(TOOL_NAMES), 27)
+        self.assertEqual(len(TOOL_NAMES), 28)
 
 
 class TestPanelPsikologi(Base):
@@ -315,12 +315,29 @@ class TestSusulan(Base):
         self.assertFalse(self.tools.tulis_catatan_harian("x", hari="kemarin")["ok"])
 
 
+class TestArenaTools(Base):
+    def test_m16_papan_arena_dan_budget_persona(self):
+        b = self.tools.budget_tiket()
+        self.assertEqual(sorted(b["persona"]), ["breakout", "fade", "rentang", "tiket"])
+        self.assertTrue(all(v["boleh_buka"] for v in b["persona"].values()))
+        r = self.tools.pasang_order("fade", BTC, "SHORT", 0.001, 100, harga=82900.0, tp=82600.0, plan_id="K2")
+        self.assertTrue(r["ok"], r)
+        self.assertLess(self.tools.budget_tiket()["persona"]["fade"]["remaining"], 0.2)
+        ar = self.tools.papan_arena()
+        self.assertEqual([p["akun"] for p in ar["persona"]][0], "tiket")
+        self.assertIsNone(ar["juara"])
+        self.assertIn("# Arena", ar["markdown"])
+        self.engine.set_account_status("rentang", "pensiun", "uji")
+        self.assertFalse(self.tools.pasang_order("rentang", BTC, "LONG", 0.001, 100, harga=82700.0)["ok"])
+        self.assertFalse(self.tools.budget_tiket()["persona"]["rentang"]["boleh_buka"])
+
+
 class TestRegistration(unittest.TestCase):
     def test_m9_register_fastmcp(self):
         from mcp.server.fastmcp import FastMCP
         mcp = FastMCP("paper-uji")
         names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
-        self.assertEqual(len(names), 27)
+        self.assertEqual(len(names), 28)
         listed = asyncio.run(mcp.list_tools())
         self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
         po = [x for x in listed if x.name == "pasang_order"][0]

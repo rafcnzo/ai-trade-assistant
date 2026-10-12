@@ -3,6 +3,21 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-12 (sore, 17:30) — laptop Windows — Arena: empat persona trader AI bersaing
+
+**Apa:** skema paper v3: akun persona `fade`, `breakout`, `rentang` (kind `tiket`) + kolom `account.status`; `PaperEngine` memakai tabel
+`account` sebagai sumber kebenaran (`accounts()`, `is_daily()`, `kind()`, `set_account_status()`, CLI `akun list|aktif|pensiun`); bayangan acak
+untuk setiap persona; `ACCOUNT_PENSIUN`. Pemindai: gate saldo/order hidup/P-09 per persona, baris `Akun aktif:` di stdout. `evaluasi.py`:
+`papan_arena`, `nilai_arena`, `--arena`, `--nilai-arena --cron` (pensiun otomatis: ≥ 30 trade, ≥ 30 hari, kalah dari acaknya p < 0,2);
+`compare()`/`pairs()` per akun. MCP: `papan_arena` (28 tool), `budget_tiket` memuat semua persona. Skill `arena` (menggantikan `tiket`
+di cron pemindai; satu sesi untuk semua persona, maks 1 order/persona/wake), skill `arena-papan` (`/arena-papan`, menu menggantikan
+`/commands`), SOUL. Cron `nilai-arena` Senin 07:30 (`arena_cron.py`). Dashboard: tab Arena (kartu, tabel, ekuitas semua persona),
+pemilih akun dinamis, kartu KPI juara sementara. Tes T27, S4/S9/S11 (per persona), E4, M16, D6, H7 — 138 hijau.
+
+**Kenapa:** permintaan user: "sistem yang terbukti makin baik lewat angka" — seleksi antar gaya trading dengan jatah sama dan pembanding
+acak masing-masing, bukan satu persona. **File:** `scripts/{schema_paper.sql,paper_engine,pemindai,evaluasi,mcp_server,notifikasi,dashboard}.py`,
+`dashboard/*`, `hermes/{cron.cmd,merge_config.py,SOUL.md,scripts/arena_cron.py,skills/arena,skills/arena-papan}`, tests, docs, CLAUDE.md.
+
 ## 2026-10-12 (pagi, 09:45) — laptop Windows — saldo tiket harian bergulir (TP menambah jatah)
 
 **Apa:** `paper_engine.budget_harian()` (murni, dipakai engine & dashboard): saldo = $1 + Σ net posisi ditutup hari itu; bisa dipakai =

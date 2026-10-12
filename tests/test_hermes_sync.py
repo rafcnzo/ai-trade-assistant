@@ -109,6 +109,18 @@ class TestSync(unittest.TestCase):
         r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
         self.assertEqual(r.stdout.strip(), '{"wakeAgent": false}')
 
+    def test_h7_arena_wrapper(self):
+        sync.apply(sync.plan(SRC, self.home))
+        wrapper = self.home / "scripts" / "arena_cron.py"
+        self.assertTrue(wrapper.exists())
+        self.assertTrue((self.home / "skills" / "arena" / "SKILL.md").exists())
+        env = {**os.environ, "ARENA_CMD": f"{sys.executable} -c print('arena')"}
+        r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "arena"))
+        env["ARENA_CMD"] = f"{sys.executable} -c exit(2)"
+        r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, ""))
+
     def test_h5_notif_wrapper_silent_on_failure(self):
         sync.apply(sync.plan(SRC, self.home))
         wrapper = self.home / "scripts" / "notif_cron.py"

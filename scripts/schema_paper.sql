@@ -4,12 +4,16 @@
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 
 CREATE TABLE IF NOT EXISTS account(
-  name TEXT PRIMARY KEY, kind TEXT, budget_rule TEXT, budget_usdt REAL
+  name TEXT PRIMARY KEY, kind TEXT, budget_rule TEXT, budget_usdt REAL,
+  status TEXT DEFAULT 'aktif'               -- aktif | pensiun (arena: persona yang kalah dari acak dipensiunkan skrip)
 );
 INSERT OR IGNORE INTO account(name, kind, budget_rule, budget_usdt) VALUES
   ('tiket', 'tiket', 'daily_total', 1.00),
   ('swing', 'swing', 'per_position', 10.00),
-  ('acak',  'acak',  'daily_total', 1.00);   -- bayangan acak per order tiket agent (pembanding, hanya dibuat mesin)
+  ('acak',  'acak',  'daily_total', 1.00),   -- bayangan acak per order tiket agent (pembanding, hanya dibuat mesin)
+  ('fade',     'tiket', 'daily_total', 1.00),  -- arena: lawan kerumunan (panel psikologi ekstrem + divergensi)
+  ('breakout', 'tiket', 'daily_total', 1.00),  -- arena: tembus + uji ulang dengan volume
+  ('rentang',  'tiket', 'daily_total', 1.00);  -- arena: mean reversion di pasar sideways
 
 CREATE TABLE IF NOT EXISTS orders(
   id INTEGER PRIMARY KEY,

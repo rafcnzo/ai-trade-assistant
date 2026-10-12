@@ -45,7 +45,7 @@ MS_FIELDS = {"ts", "open_time", "funding_time", "opened_ts", "closed_ts", "creat
 TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
-    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi",
+    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi", "papan_arena",
 )
 
 
@@ -338,7 +338,7 @@ class Tools:
     def pasang_order(self, akun: str, symbol: str, sisi: str, qty: float, leverage: int, harga: Optional[float] = None,
                      market: bool = False, tp: Optional[float] = None, sl: Optional[float] = None, plan_id: Optional[str] = None,
                      pola: Optional[str] = None, catatan: Optional[str] = None) -> dict:
-        """Pasang order PAPER. akun=tiket|swing, sisi=LONG|SHORT. Limit (harga) post-only = fee maker; market=true = taker di open bar berikutnya. Swing wajib tp & sl. Mesin memvalidasi budget, leverage, tick/step, dan mengembalikan kode penolakan."""
+        """Pasang order PAPER. akun=tiket|fade|breakout|rentang (persona arena, saldo terpisah) atau swing; sisi=LONG|SHORT. Limit (harga) post-only = fee maker; market=true = taker di open bar berikutnya. Swing wajib tp & sl. Mesin memvalidasi budget, leverage, tick/step, dan mengembalikan kode penolakan."""
         def run():
             req = OrderRequest(account=akun.strip().lower(), symbol=symbol.strip(), side=sisi.strip().upper(), qty=float(qty),
                                leverage=int(leverage), type="MARKET" if market else "LIMIT", price=float(harga) if harga else None,
@@ -388,8 +388,20 @@ class Tools:
         return self._call("riwayat", run)
 
     def budget_tiket(self) -> dict:
-        """Sisa budget tiket hari ini (margin + fee masuk ≤ $1) dan status akun swing."""
-        return self._call("budget_tiket", lambda: {"tiket": self.ctx.engine.budget_status(TIKET), "swing": self.ctx.engine.budget_status(SWING)})
+        """Saldo harian bergulir tiap persona tiket arena (tiket, fade, breakout, rentang: saldo, remaining, boleh_buka, status aktif/pensiun) dan status akun swing. Hanya persona dengan boleh_buka=true yang boleh dipasangi order."""
+        def run():
+            eng = self.ctx.engine
+            persona = {a: eng.budget_status(a) for a in eng.accounts("tiket")}
+            return {"tiket": persona.get(TIKET), "persona": persona, "swing": eng.budget_status(SWING)}
+        return self._call("budget_tiket", run)
+
+    def papan_arena(self) -> dict:
+        """Papan peringkat arena: tiap persona tiket (tiket=price action, fade=lawan kerumunan, breakout=tembus+uji ulang, rentang=mean reversion) — jumlah trade, expectancy, win rate, total, drawdown maks, vs pembanding acaknya sendiri; juara hanya bila ≥ 30 trade; status pensiun diputuskan skrip mingguan."""
+        def run():
+            ar = E.papan_arena(self.ctx.engine.conn, self.ctx.clock())
+            ar["markdown"] = E.render_arena(ar)
+            return ar
+        return self._call("papan_arena", run)
 
     def laporan_paper(self, hari: Optional[str] = None) -> dict:
         """Laporan paper harian (markdown): budget, posisi terbuka, posisi ditutup, order menunggu, hasil ambigu, event."""

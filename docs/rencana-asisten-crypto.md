@@ -3,6 +3,12 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.9 (12 Okt 2026, Arena)
+- **§19.7 arena**: bukan satu agent vs acak, melainkan beberapa persona (gaya) dengan jatah $1/hari masing-masing dan bayangan acak
+  masing-masing; seleksi mekanis mingguan memensiunkan persona yang kalah dari acaknya (≥ 30 trade, ≥ 30 hari, p < 0,2). Kriteria
+  lulus §19.7 tetap dihitung per persona; yang "lulus" adalah persona, bukan agent secara umum.
+- §19.3: satu wake pemindai = satu sesi agent (skill `arena`) untuk semua persona aktif, supaya biaya tidak berlipat.
+
 ### Perubahan v1.8 (12 Okt 2026)
 - **§17.2 budget tiket** menjadi saldo harian bergulir: mulai $1 per hari WIB, hasil bersih posisi yang ditutup hari itu menambah/
   mengurangi saldo; satu tiket ≤ $1; di bawah $0,50 tidak ada tiket baru sampai besok. Tujuan: lebih banyak sampel pada hari yang baik

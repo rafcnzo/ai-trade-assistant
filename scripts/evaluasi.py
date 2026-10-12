@@ -26,10 +26,27 @@ LULUS_SWING_N = 30
 JAM_TIKET_TERAKHIR = "22:30"
 TOP_PCT = 0.05
 P_SIGNIFIKAN = 0.05
-ACCOUNTS = ("tiket", "swing", "acak")
+ACCOUNTS = ("tiket", "swing", "acak")   # fallback bila tabel account tidak terbaca
+ARENA_MIN_TRADE = 30
+ARENA_MIN_HARI = 30
+ARENA_P_PENSIUN = 0.2
 
 
 # --------------------------------------------------------------------------- util
+def daftar_akun(conn: sqlite3.Connection) -> list[dict]:
+    """[{name, kind, status}] dari tabel account (persona tiket dulu, lalu acak, swing)."""
+    try:
+        rows = [dict(name=r[0], kind=r[1], status=(r[2] or "aktif")) for r in conn.execute("SELECT name, kind, COALESCE(status,'aktif') FROM account")]
+    except sqlite3.Error:
+        rows = [dict(name=a, kind=a, status="aktif") for a in ACCOUNTS]
+    urut = {"tiket": 0, "acak": 1, "swing": 2}
+    return sorted(rows, key=lambda r: (urut.get(r["kind"], 9), r["name"] != "tiket", r["name"]))
+
+
+def persona_tiket(conn: sqlite3.Connection) -> list[dict]:
+    return [a for a in daftar_akun(conn) if a["kind"] == "tiket"]
+
+
 def mean(xs: list[float]) -> Optional[float]:
     return sum(xs) / len(xs) if xs else None
 
@@ -135,9 +152,9 @@ def sign_test(k: int, m: int) -> float:
     return min(1.0, 2 * p)
 
 
-def pairs(conn: sqlite3.Connection, since_ms: Optional[int] = None) -> dict:
-    """Pasangan posisi tiket ↔ posisi acak (plan_id 'ACAK:<entry_order_id tiket>'), keduanya CLOSED."""
-    tiket = closed_positions(conn, "tiket", since_ms)
+def pairs(conn: sqlite3.Connection, since_ms: Optional[int] = None, account: str = "tiket") -> dict:
+    """Pasangan posisi persona ↔ posisi acak (plan_id 'ACAK:<entry_order_id>'), keduanya CLOSED."""
+    tiket = closed_positions(conn, account, since_ms)
     acak = {p["plan_id"]: p for p in closed_positions(conn, "acak", since_ms) if p["plan_id"]}
     out, tanpa = [], 0
     for p in tiket:
@@ -149,9 +166,12 @@ def pairs(conn: sqlite3.Connection, since_ms: Optional[int] = None) -> dict:
     return {"pasangan": out, "tiket_tanpa_pasangan": tanpa}
 
 
-def compare(conn: sqlite3.Connection, since_ms: Optional[int] = None, seed: int = 1) -> dict:
-    a = [float(p["net_result"]) for p in closed_positions(conn, "tiket", since_ms) if p["net_result"] is not None]
-    b = [float(p["net_result"]) for p in closed_positions(conn, "acak", since_ms) if p["net_result"] is not None]
+def compare(conn: sqlite3.Connection, since_ms: Optional[int] = None, seed: int = 1, account: str = "tiket") -> dict:
+    a = [float(p["net_result"]) for p in closed_positions(conn, account, since_ms) if p["net_result"] is not None]
+    # acak pembanding = hanya bayangan dari order akun ini (plan_id ACAK:<id order akun ini>)
+    ids = {str(p["entry_order_id"]) for p in closed_positions(conn, account, since_ms)} | {str(o["id"]) for o in entry_orders(conn, account, since_ms)}
+    b = [float(p["net_result"]) for p in closed_positions(conn, "acak", since_ms)
+         if p["net_result"] is not None and p["plan_id"] and p["plan_id"].split(":")[-1] in ids]
     out: dict = {"n_tiket": len(a), "n_acak": len(b), "mean_tiket": mean(a), "mean_acak": mean(b)}
     if len(a) >= MIN_SAMPEL and len(b) >= MIN_SAMPEL:
         out["selisih_mean"] = mean(a) - mean(b)
@@ -159,7 +179,7 @@ def compare(conn: sqlite3.Connection, since_ms: Optional[int] = None, seed: int 
     else:
         out["selisih_mean"] = tidak_tersedia(f"tiket n={len(a)}, acak n={len(b)}; butuh ≥ {MIN_SAMPEL} keduanya")
         out["p_permutasi"] = None
-    pr = pairs(conn, since_ms)
+    pr = pairs(conn, since_ms, account)
     ps = pr["pasangan"]
     beda = [(x, y) for x, y in ps if abs(x - y) > 1e-12]
     out["n_pasangan"] = len(ps)
@@ -174,9 +194,10 @@ def compare(conn: sqlite3.Connection, since_ms: Optional[int] = None, seed: int 
 
 # --------------------------------------------------------------------------- gabungan §19.7
 def compute(conn: sqlite3.Connection, now_ms: int, since_ms: Optional[int] = None, seed: int = 1) -> dict:
-    akun = {a: account_stats(conn, a, now_ms, since_ms) for a in ACCOUNTS}
+    akun = {a["name"]: account_stats(conn, a["name"], now_ms, since_ms) for a in daftar_akun(conn)}
     kep = compliance(conn, since_ms)
     cmp_ = compare(conn, since_ms, seed)
+    arena = papan_arena(conn, now_ms, since_ms, seed)
     t, s = akun["tiket"], akun["swing"]
     lulus: dict[str, str] = {}
     lulus["sampel"] = "lulus" if (t["n_posisi"] >= LULUS_TIKET_N and s["n_posisi"] >= LULUS_SWING_N) \
@@ -200,9 +221,68 @@ def compute(conn: sqlite3.Connection, now_ms: int, since_ms: Optional[int] = Non
     else:
         lulus["stabilitas"] = "lulus" if st > 0 else f"belum (expectancy tanpa 5% terbaik {st:+.4f})"
     return {"dihitung": C.fmt_wib(now_ms), "sejak": C.fmt_wib(since_ms) if since_ms else "awal", "akun": akun,
-            "kepatuhan": kep, "tiket_vs_acak": cmp_, "lulus": lulus,
+            "kepatuhan": kep, "tiket_vs_acak": cmp_, "lulus": lulus, "arena": arena,
             "catatan": "sampel kecil → 'tidak tersedia'; kriteria §19.7: ≥200 tiket & ≥30 swing, expectancy positif 2 bulan terpisah, "
                        "lebih baik dari acak, patuh aturan, stabil tanpa 5% trade terbaik"}
+
+
+def drawdown_maks(conn: sqlite3.Connection, account: str, since_ms: Optional[int] = None) -> float:
+    cum, peak, dd = 0.0, 0.0, 0.0
+    for p in closed_positions(conn, account, since_ms):
+        if p["net_result"] is None:
+            continue
+        cum += float(p["net_result"])
+        peak = max(peak, cum)
+        dd = min(dd, cum - peak)
+    return dd
+
+
+def papan_arena(conn: sqlite3.Connection, now_ms: int, since_ms: Optional[int] = None, seed: int = 1) -> dict:
+    """Papan peringkat persona tiket: statistik per akun + pembanding acaknya sendiri + drawdown; urut expectancy."""
+    rows = []
+    for a in persona_tiket(conn):
+        s = account_stats(conn, a["name"], now_ms, since_ms)
+        c = compare(conn, since_ms, seed, account=a["name"])
+        first = conn.execute("SELECT MIN(closed_ts) FROM positions WHERE account=? AND status='CLOSED'", (a["name"],)).fetchone()[0]
+        hari = ((now_ms - int(first)) // C.DAY_MS) if first else 0
+        rows.append({"akun": a["name"], "status": a["status"], "n": s["n_posisi"], "hari": hari,
+                     "expectancy": s["expectancy"] if isinstance(s["expectancy"], (int, float)) else None,
+                     "win_rate": s["win_rate"] if isinstance(s["win_rate"], (int, float)) else None, "total_net": s["total_net"],
+                     "tp_n": s["tp_n"], "hangus_n": s["hangus_n"], "tidak_terisi_n": s["tidak_terisi_n"],
+                     "drawdown_maks": drawdown_maks(conn, a["name"], since_ms),
+                     "vs_acak_selisih": c["selisih_mean"] if isinstance(c["selisih_mean"], (int, float)) else None,
+                     "vs_acak_p": c["p_permutasi"], "n_pasangan": c["n_pasangan"],
+                     "sign_test": c["sign_test"] if isinstance(c["sign_test"], dict) else None})
+    rows.sort(key=lambda r: (r["expectancy"] is None, -(r["expectancy"] or 0), -r["total_net"]))
+    layak = [r for r in rows if r["n"] >= ARENA_MIN_TRADE and r["status"] == "aktif"]
+    juara = layak[0]["akun"] if layak and layak[0]["expectancy"] is not None else None
+    return {"dihitung": C.fmt_wib(now_ms), "persona": rows, "juara": juara,
+            "catatan": f"juara hanya bila ≥ {ARENA_MIN_TRADE} trade; pensiun otomatis bila ≥ {ARENA_MIN_TRADE} trade, ≥ {ARENA_MIN_HARI} hari, dan kalah dari acaknya (p < {ARENA_P_PENSIUN})"}
+
+
+def nilai_arena(conn: sqlite3.Connection, now_ms: int, seed: int = 1) -> list[dict]:
+    """Keputusan seleksi (tidak menulis): persona aktif dengan sampel & umur cukup yang kalah dari pembanding acaknya → pensiun."""
+    out = []
+    for r in papan_arena(conn, now_ms, None, seed)["persona"]:
+        if r["status"] != "aktif":
+            out.append({"akun": r["akun"], "keputusan": "tetap", "alasan": "sudah pensiun"}); continue
+        if r["n"] < ARENA_MIN_TRADE or r["hari"] < ARENA_MIN_HARI:
+            out.append({"akun": r["akun"], "keputusan": "tetap", "alasan": f"sampel {r['n']}/{ARENA_MIN_TRADE} trade, {r['hari']}/{ARENA_MIN_HARI} hari"}); continue
+        kalah = r["vs_acak_selisih"] is not None and r["vs_acak_selisih"] < 0 and r["vs_acak_p"] is not None and r["vs_acak_p"] < ARENA_P_PENSIUN
+        if kalah:
+            out.append({"akun": r["akun"], "keputusan": "pensiun", "alasan": f"expectancy {r['expectancy']:+.4f} kalah dari acaknya (selisih {r['vs_acak_selisih']:+.4f}, p {r['vs_acak_p']:.2f}) setelah {r['n']} trade"})
+        else:
+            out.append({"akun": r["akun"], "keputusan": "tetap", "alasan": f"tidak kalah dari acak (selisih {_f(r['vs_acak_selisih'])}, p {_f(r['vs_acak_p'], '{:.2f}')})"})
+    return out
+
+
+def render_arena(ar: dict) -> str:
+    lines = [f"# Arena ({ar['dihitung']}) — juara sementara: {ar['juara'] or 'belum ada (butuh ≥ 30 trade)'}", "",
+             "| persona | status | trade | hari | expectancy | win | total | TP | HANGUS | tidak terisi | DD maks | vs acak | p |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for r in ar["persona"]:
+        lines.append(f"| {r['akun']} | {r['status']} | {r['n']} | {r['hari']} | {_f(r['expectancy'])} | {_f(r['win_rate'], '{:.0%}')} | {r['total_net']:+.4f} | {r['tp_n']} | {r['hangus_n']} | "
+                     f"{r['tidak_terisi_n']} | {r['drawdown_maks']:+.4f} | {_f(r['vs_acak_selisih'])} | {_f(r['vs_acak_p'], '{:.2f}')} |")
+    return "\n".join(lines)
 
 
 def _f(x, fmt: str = "{:+.4f}") -> str:
@@ -213,7 +293,7 @@ def render_markdown(st: dict) -> str:
     lines = [f"# Statistik kelulusan (dihitung {st['dihitung']}, sejak {st['sejak']})", "",
              "| akun | posisi selesai | expectancy/trade | win rate | TP | HANGUS | STOP | EOD | TIDAK_TERISI | ambigu | stabilitas (−5% terbaik) | bulan positif |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
-    for a in ACCOUNTS:
+    for a in st["akun"]:
         s = st["akun"][a]
         wr = s["win_rate"] if isinstance(s["win_rate"], str) else f"{s['win_rate']:.0%}"
         lines.append(f"| {a} | {s['n_posisi']} | {_f(s['expectancy'])} | {wr} | {s['tp_n']} | {s['hangus_n']} | {s['stop_n']} | {s['eod_n']} | "
@@ -240,6 +320,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--sejak", default=None, help="YYYY-MM-DD (WIB)")
     ap.add_argument("--db", default=None)
     ap.add_argument("--sekarang", default=None)
+    ap.add_argument("--arena", action="store_true", help="papan peringkat persona")
+    ap.add_argument("--nilai-arena", action="store_true", help="terapkan keputusan pensiun (menulis lewat PaperEngine)")
+    ap.add_argument("--cron", action="store_true", help="dengan --nilai-arena: cetak hanya bila ada perubahan")
     args = ap.parse_args(argv)
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
@@ -249,10 +332,31 @@ def main(argv: Optional[list[str]] = None) -> int:
     if not db.exists():
         print("paper.sqlite belum ada")
         return 1
+    now = C.parse_iso_ms(args.sekarang) if args.sekarang else C.now_ms()
+    if args.nilai_arena:
+        from paper_engine import PaperEngine, SqliteMarket
+        pasar = C.connect(C.PASAR_DB, readonly=True)
+        eng = PaperEngine(C.connect(db), SqliteMarket(pasar), clock=lambda: now)
+        keputusan = nilai_arena(eng.conn, now)
+        berubah = []
+        for k in keputusan:
+            if k["keputusan"] == "pensiun" and eng.set_account_status(k["akun"], "pensiun", k["alasan"]):
+                berubah.append(k)
+        ar = papan_arena(eng.conn, now)
+        pasar.close()
+        if args.json:
+            print(json.dumps({"keputusan": keputusan, "berubah": berubah, "arena": ar}, ensure_ascii=False, default=str))
+        elif berubah or not args.cron:
+            head = [f"🏟️ Arena {C.day_wib(now)}: " + (", ".join(f"{b['akun']} → PENSIUN ({b['alasan']})" for b in berubah) if berubah else "tidak ada perubahan")]
+            print("\n".join(head + [f"{r['akun']}: {r['n']} trade, expectancy {_f(r['expectancy'])}, vs acak {_f(r['vs_acak_selisih'])} ({r['status']})" for r in ar["persona"]]))
+        return 0
     conn = C.connect(db, readonly=True)
     try:
-        st = compute(conn, C.parse_iso_ms(args.sekarang) if args.sekarang else C.now_ms(),
-                     C.parse_iso_ms(args.sejak) if args.sejak else None)
+        if args.arena:
+            ar = papan_arena(conn, now, C.parse_iso_ms(args.sejak) if args.sejak else None)
+            print(json.dumps(ar, ensure_ascii=False, indent=1, default=str) if args.json else render_arena(ar))
+            return 0
+        st = compute(conn, now, C.parse_iso_ms(args.sejak) if args.sejak else None)
     finally:
         conn.close()
     print(json.dumps(st, ensure_ascii=False, indent=1, default=str) if args.json else render_markdown(st))

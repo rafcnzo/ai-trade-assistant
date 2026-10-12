@@ -14,7 +14,16 @@ const state = { symbol: null, tf: "5m", acak: false, lastBar: null, ps: "BTCUSDT
 const stripFm = (t) => (t.startsWith("---") && t.indexOf("\n---", 3) > 0) ? t.slice(t.indexOf("\n---", 3) + 4).trim() : t.trim();
 const api = async (p) => { const r = await fetch(p, { cache: "no-store" }); return r.json(); };
 const hasLWC = typeof LightweightCharts !== "undefined";
-const AKUN = { tiket: "Tiket ($1/hari)", swing: "Swing", acak: "Pembanding acak" };
+const AKUN = { tiket: "Tiket · price action", fade: "Fade · lawan kerumunan", breakout: "Breakout · tembus + uji ulang", rentang: "Rentang · mean reversion", swing: "Swing", acak: "Pembanding acak" };
+const WARNA = { tiket: "#5b9cff", fade: "#f5b53f", breakout: "#2ec27e", rentang: "#c58cff", swing: "#8d97a7", acak: "#7a8aa0" };
+let akunList = [];
+function setAkunList(list) {
+  if (!list || !list.length || JSON.stringify(list.map(a => a.name)) === JSON.stringify(akunList.map(a => a.name))) return;
+  akunList = list;
+  const eq = $("#eq-group"); if (eq) eq.innerHTML = list.map(a => `<button data-acc="${a.name}" class="${a.name === state.eq ? "active" : ""}">${(AKUN[a.name] || a.name).split(" · ")[0]}</button>`).join("");
+  if (eq) eq.querySelectorAll("button").forEach(b => b.onclick = () => { eq.querySelectorAll("button").forEach(x => x.classList.toggle("active", x === b)); state.eq = b.dataset.acc; loadEkuitas(); });
+  const f = $("#f-akun"); if (f) f.innerHTML = '<option value="">semua akun</option>' + list.map(a => `<option value="${a.name}">${AKUN[a.name] || a.name}</option>`).join("");
+}
 const ALASAN = { TP: ["Target tercapai", "pos"], HANGUS: ["Modal hangus (likuidasi)", "neg"], FUNDING_LIQ: ["Hangus karena biaya funding", "neg"], STOP: ["Kena stop loss", "neg"], EOD: ["Ditutup jam 23:50", ""], MANUAL: ["Ditutup manual", ""], DELISTED: ["Koin dihapus", ""] };
 const STATUS_ORDER = { EXPIRED: "harga tidak pernah tersentuh", CANCELED: "dibatalkan", REJECTED: "ditolak mesin", NEW: "menunggu aktif", ACTIVE: "aktif, menunggu harga" };
 const KODE = { BUDGET_TIKET: "saldo tiket hari ini tidak cukup / di bawah $0,50", TIKET_EOD: "sudah lewat jam tutup", LIMIT_CROSSES: "harga sudah lewat level", LEVERAGE_CAP: "leverage melebihi batas Binance", QTY_STEP: "jumlah tidak sesuai kelipatan", MIN_NOTIONAL: "nilai order terlalu kecil", RR_TOO_LOW: "untung:rugi di bawah 2,5", BAD_TP: "target di arah yang salah", BUDGET_ACAK: "jatah pembanding acak habis", ACAK_EOD: "pembanding: lewat jam tutup" };
@@ -30,7 +39,7 @@ const ARTI = {
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x === b));
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === "tab-" + b.dataset.tab));
-  ({ riwayat: loadRiwayat, statistik: loadStatistik, kandidat: loadKandidat, psikologi: loadPsikologi, jurnal: loadJurnal }[b.dataset.tab] || (() => chart && chart.timeScale().fitContent()))();
+  ({ riwayat: loadRiwayat, statistik: loadStatistik, kandidat: loadKandidat, psikologi: loadPsikologi, jurnal: loadJurnal, arena: loadArena }[b.dataset.tab] || (() => chart && chart.timeScale().fitContent()))();
 });
 
 // ---------------------------------------------------------------- chart
@@ -103,6 +112,7 @@ function kpi(k, v, d, barPct, barCls) { return `<div class="kpi"><div class="k">
 async function loadRingkasan() {
   const r = await api("/api/ringkasan");
   if (r.error) { $("#jam").textContent = "server error"; return; }
+  setAkunList(r.akun || []);
   $("#jam").textContent = r.sekarang_wib.slice(11, 16);
   const c = r.collector, pm = r.pemindai, run = pm.run_terakhir, b = r.biaya;
   const chips = [];
@@ -112,17 +122,19 @@ async function loadRingkasan() {
   if (r.kill_switch) chips.push(chip("AI DIMATIKAN (kill switch)", "bad", "Berkas data/STOP_AGENT ada: semua panggilan AI ditolak"));
   $("#health").innerHTML = chips.join("");
   const t = r.budget.tiket, a = r.budget.acak, s = r.budget.swing;
+  const personas = (r.akun || []).filter(x => x.kind === "tiket").map(x => ({ ...x, b: r.budget[x.name] }));
   const pos = r.posisi.filter(p => state.acak || p.account !== "acak");
   const unreal = pos.reduce((x, p) => x + (p.unrealized || 0), 0);
   const eq = state.eqData;
   $("#kpis").innerHTML = t.status ? '<div class="kpi"><div class="k">Belum ada data</div><div class="d">Mesin paper belum pernah jalan.</div></div>' :
     kpi("Saldo tiket hari ini", usd(t.remaining), `mulai $${t.budget.toFixed(2)} ${t.realisasi >= 0 ? "+" : "−"}$${Math.abs(t.realisasi).toFixed(4)} hasil · terkunci ${usd(t.used)} · order ${usd(t.reserved)}${t.boleh_buka ? "" : " · DI BAWAH $0,50: berhenti sampai besok"}`, (t.used + t.reserved) / Math.max(t.saldo, 0.01) * 100, t.boleh_buka ? "" : "down") +
     kpi("Posisi berjalan", `<span class="${unreal >= 0 ? "pos" : "neg"}">${usd(unreal, true)}</span>`, pos.length ? `${pos.length} posisi terbuka · untung/rugi kalau ditutup sekarang` : "tidak ada posisi terbuka") +
-    kpi("Hasil tiket sejauh ini", eq ? `<span class="${eq.tiket.ekuitas_akhir >= 0 ? "pos" : "neg"}">${usd(eq.tiket.ekuitas_akhir, true)}</span>` : "—", eq ? `${eq.tiket.n} trade selesai · pembanding acak ${usd(eq.acak.ekuitas_akhir, true)} (${eq.acak.n} trade)` : "memuat…") +
+    kpi("Arena: juara sementara", eq ? (() => { const best = personas.map(p => ({ n: p.name, e: eq[p.name] })).filter(x => x.e).sort((x, y) => y.e.ekuitas_akhir - x.e.ekuitas_akhir)[0]; return best ? `${best.n} <span class="${best.e.ekuitas_akhir >= 0 ? "pos" : "neg"}">${usd(best.e.ekuitas_akhir, true)}</span>` : "—"; })() : "—", eq ? `${personas.length} persona · pembanding acak ${usd((eq.acak || {}).ekuitas_akhir, true)}` : "memuat…") +
     kpi("Penurunan dari puncak", eq ? `<span class="${eq.tiket.drawdown_sekarang < 0 ? "neg" : ""}">${usd(eq.tiket.drawdown_sekarang)}</span>` : "—", eq ? `terdalam ${usd(eq.tiket.drawdown_maks)} · akun tiket` : "") +
     kpi("Swing", `${s.open} / ${s.max_open}`, `${s.open} posisi, ${s.pending} order menunggu · $${s.margin_per_trade} per trade`);
   $("#p-budget .body").innerHTML = `<div class="item"><div class="l"><div class="t">Tiket (utama)</div><div class="s">mulai $1/hari; untung menambah, hangus mengurangi; di bawah $0,50 berhenti</div></div><div class="r num"><b>${usd(t.remaining)}</b> bisa dipakai<br><span class="s">saldo ${usd(t.saldo)}</span></div></div>` +
     `<div class="item"><div class="l"><div class="t">Swing</div><div class="s">maks ${s.max_open} posisi, $${s.margin_per_trade}/trade</div></div><div class="r num">${s.open} posisi<br><span class="s">${s.pending} order</span></div></div>` +
+    personas.filter(p => p.name !== "tiket" && p.b).map(p => `<div class="item"><div class="l"><div class="t">${AKUN[p.name] || p.name}</div><div class="s">${p.status === "aktif" ? (p.b.boleh_buka ? "boleh buka" : "saldo di bawah $0,50") : "PENSIUN"}</div></div><div class="r num"><b>${usd(p.b.remaining)}</b><br><span class="s">saldo ${usd(p.b.saldo)}</span></div></div>`).join("") +
     `<div class="item acak"><div class="l"><div class="t">Pembanding acak</div><div class="s">kembaran arah acak, bukan keputusan AI</div></div><div class="r num">${usd(a.remaining)} sisa</div></div>`;
   $("#p-posisi .body").innerHTML = pos.length ? pos.map(p => `<div class="item ${p.account === "acak" ? "acak" : ""}"><div class="l"><div class="t">${p.symbol.replace("USDT", "")} ${p.side === "LONG" ? "beli" : "jual"} ${p.leverage}x <span class="dim">· ${AKUN[p.account]}${p.plan_id ? " · " + p.plan_id : ""}</span></div>` +
     `<div class="s">masuk ${px(p.entry_price)} · target ${px(p.tp_price)} · hangus di ${px(p.liq_price)} (${Math.abs(p.liq_dist_pct || 0).toFixed(2)}% lagi)${p.sl_price ? " · stop " + px(p.sl_price) : ""}</div></div>` +
@@ -180,6 +192,36 @@ async function loadRiwayat() {
     ["Fee", h => usd(h.fees), "num"], ["Hasil bersih", h => `<b class="${(h.pnl_net || 0) >= 0 ? "pos" : "neg"}">${usd(h.pnl_net, true)}</b>`, "num"]], (r.harian || []).filter(h => showAcak || h.account !== "acak"));
 }
 $("#f-apply").onclick = loadRiwayat;
+
+// ---------------------------------------------------------------- arena
+let arenaChart, arenaSeries = {};
+async function loadArena() {
+  const ar = await api("/api/arena");
+  const rows = ar.persona || [];
+  const j = rows.find(r => r.akun === ar.juara);
+  $("#arena-juara").innerHTML = [["Juara sementara", j ? j.akun : "belum ada", j ? `expectancy ${usd(j.expectancy, true)} dari ${j.n} trade` : "butuh ≥ 30 trade selesai", j ? "pos" : ""],
+    ["Persona aktif", String(rows.filter(r => r.status === "aktif").length), `${rows.filter(r => r.status !== "aktif").length} pensiun`, ""],
+    ["Total trade arena", String(rows.reduce((s, r) => s + r.n, 0)), "semua persona", ""],
+    ["Hasil gabungan", usd(rows.reduce((s, r) => s + (r.total_net || 0), 0), true), "jumlah semua persona (bukan acak)", rows.reduce((s, r) => s + (r.total_net || 0), 0) >= 0 ? "pos" : "neg"]]
+    .map(c => `<div class="card"><div class="k">${c[0]}</div><div class="v ${c[3]}">${c[1]}</div><div class="d">${c[2]}</div></div>`).join("");
+  const f = (x, fn) => (x === null || x === undefined) ? '<span class="dim">belum cukup data</span>' : fn(x);
+  table($("#tbl-arena"), [["Persona", r => `<b>${AKUN[r.akun] || r.akun}</b>`], ["Status", r => r.status === "aktif" ? '<span class="tag ok">aktif</span>' : '<span class="tag belum">pensiun</span>'], ["Trade", r => r.n, "num"], ["Hari", r => r.hari, "num"],
+    ["Rata-rata/trade", r => f(r.expectancy, v => `<b class="${v >= 0 ? "pos" : "neg"}">${usd(v, true)}</b>`), "num"], ["Menang", r => f(r.win_rate, v => (v * 100).toFixed(0) + "%"), "num"], ["Total", r => `<b class="${r.total_net >= 0 ? "pos" : "neg"}">${usd(r.total_net, true)}</b>`, "num"],
+    ["Target kena", r => r.tp_n, "num"], ["Hangus", r => r.hangus_n, "num"], ["Tidak terisi", r => r.tidak_terisi_n, "num"], ["Penurunan terdalam", r => `<span class="neg">${usd(r.drawdown_maks)}</span>`, "num"],
+    ["Vs acaknya", r => f(r.vs_acak_selisih, v => `<span class="${v >= 0 ? "pos" : "neg"}">${usd(v, true)}</span>${r.vs_acak_p !== null && r.vs_acak_p !== undefined ? ` <span class="dim">(p ${(r.vs_acak_p * 100).toFixed(0)}%)</span>` : ""}`), "num"]], rows);
+  if (!hasLWC) return;
+  const eq = await api("/api/ekuitas");
+  if (!arenaChart) {
+    arenaChart = LightweightCharts.createChart($("#chart-arena"), { ...baseOpts, rightPriceScale: { ...baseOpts.rightPriceScale, scaleMargins: { top: 0.1, bottom: 0.1 } } });
+    new ResizeObserver(() => arenaChart.applyOptions({ width: $("#chart-arena").clientWidth })).observe($("#chart-arena"));
+  }
+  const dedup = (pts) => { const o = []; (pts || []).forEach(p => { const q = { time: p.time + OFF, value: p.value }; if (o.length && o[o.length - 1].time === q.time) o[o.length - 1] = q; else o.push(q); }); return o; };
+  rows.concat([{ akun: "acak" }]).forEach(r => {
+    if (!arenaSeries[r.akun]) arenaSeries[r.akun] = arenaChart.addLineSeries({ color: WARNA[r.akun] || "#888", lineWidth: r.akun === "acak" ? 1 : 2, lineStyle: r.akun === "acak" ? 2 : 0, title: r.akun, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
+    arenaSeries[r.akun].setData(dedup((eq[r.akun] || {}).ekuitas));
+  });
+  arenaChart.timeScale().fitContent();
+}
 
 // ---------------------------------------------------------------- rapor
 async function loadStatistik() {

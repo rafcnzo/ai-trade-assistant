@@ -7,6 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -126,3 +127,43 @@ class TestEvaluasi(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestArena(Base):
+    def test_e4_papan_dan_nilai_arena(self):
+        with C.tx(self.conn):
+            # fade: 32 trade, kalah telak dari acaknya; breakout: 32 trade, menang; tiket: 5 trade (belum cukup)
+            for i in range(32):
+                ts = t("10:00") - (40 - i) * C.DAY_MS
+                for acc, net, oid in (("fade", -0.4 + 0.01 * (i % 3), 1000 + i), ("breakout", 0.3 + 0.01 * (i % 3), 2000 + i)):
+                    pos(self.conn, acc, net, "TP" if net > 0 else "HANGUS", ts, oid=oid)
+                    pos(self.conn, "acak", 0.1 if acc == "fade" else -0.5, "TP" if acc == "fade" else "HANGUS", ts, plan=f"ACAK:{oid}")
+            for i in range(5):
+                pos(self.conn, "tiket", 0.2, "TP", t("10:00") + i * C.HOUR_MS)
+        ar = E.papan_arena(self.conn, self.now)
+        self.assertEqual([r["akun"] for r in ar["persona"]], ["breakout", "fade", "tiket", "rentang"])   # urut expectancy; tiket (5 trade) & rentang tanpa angka di akhir
+        self.assertEqual(ar["juara"], "breakout")
+        fade = next(r for r in ar["persona"] if r["akun"] == "fade")
+        self.assertEqual((fade["n"], fade["status"]), (32, "aktif"))
+        self.assertLess(fade["vs_acak_selisih"], 0)
+        self.assertLess(fade["vs_acak_p"], 0.05)
+        self.assertLess(fade["drawdown_maks"], -10)
+        kep = {k["akun"]: k for k in E.nilai_arena(self.conn, self.now)}
+        self.assertEqual(kep["fade"]["keputusan"], "pensiun")
+        self.assertEqual(kep["breakout"]["keputusan"], "tetap")
+        self.assertIn("sampel 5/30", kep["tiket"]["alasan"])
+        self.assertIn("| fade | aktif | 32 |", E.render_arena(ar))
+        # --nilai-arena menulis status lewat PaperEngine; --cron diam bila tidak ada perubahan setelahnya
+        pasar = self.root / "pasar.sqlite"
+        from fixtures import PEM, bars_flat, seed_pasar
+        c = connect(pasar); seed_pasar(c, PEM, bars_flat(PEM, t("10:00")), mark=100.3, tick_ts=t("10:00")); c.close()
+        with mock.patch.object(C, "PASAR_DB", pasar):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                E.main(["--nilai-arena", "--db", str(self.root / "paper.sqlite"), "--sekarang", "2026-11-10T20:00"])
+            self.assertIn("fade → PENSIUN", out.getvalue())
+            self.assertEqual(self.conn.execute("SELECT status FROM account WHERE name='fade'").fetchone()[0], "pensiun")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                E.main(["--nilai-arena", "--cron", "--db", str(self.root / "paper.sqlite"), "--sekarang", "2026-11-10T20:00"])
+            self.assertEqual(out.getvalue(), "")
