@@ -754,11 +754,10 @@ class PaperEngine:
                 continue
             # 3b0. pengaman breakeven (playbook P-18): tiket/acak dengan TP tanpa SL, setelah >= k x jalan ke TP tercapai
             if self.cfg.tiket_breakeven_mfe and p["account"] in DAILY_ACCOUNTS and p["tp_price"] and not p["sl_price"]:
-                best = mark.high if p["side"] == LONG else mark.low
-                if p["best_mark"] is not None:
-                    best = max(best, p["best_mark"]) if p["side"] == LONG else min(best, p["best_mark"])
+                # hanya dari bar-bar SEBELUMNYA (best_mark), supaya bar yang menyentuh TP tidak keburu di-STOP oleh SL yang baru dipasang
+                best = p["best_mark"]
                 jarak_tp = abs(p["tp_price"] - p["entry_price"])
-                tempuh = (best - p["entry_price"]) if p["side"] == LONG else (p["entry_price"] - best)
+                tempuh = ((best - p["entry_price"]) if p["side"] == LONG else (p["entry_price"] - best)) if best is not None else 0.0
                 if jarak_tp > 0 and tempuh / jarak_tp >= self.cfg.tiket_breakeven_mfe:
                     self.conn.execute("UPDATE positions SET sl_price=? WHERE id=?", (p["entry_price"], p["id"]))
                     p["sl_price"] = p["entry_price"]

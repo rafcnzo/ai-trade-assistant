@@ -575,15 +575,15 @@ class TestBreakevenAutopsi(Base):
         self.tiket_long(tp=83000.0)                                   # entry 82700, TP +300 → 80% = 82940
         self.market.add_bar(BTC, t("10:04"), 82790, 82800, 82650, 82700)   # terisi
         self.run_bar(t("10:04"))
-        self.market.add_bar(BTC, t("10:05"), 82700, 82950, 82690, 82900)   # high 82950 = 83% jalan → SL dipindah ke 82700
+        self.market.add_bar(BTC, t("10:05"), 82700, 82950, 82690, 82900)   # high 82950 = 83% jalan; SL baru dipasang di bar BERIKUTNYA
         self.run_bar(t("10:05"))
         p = self.pos()
-        self.assertEqual((p["status"], p["sl_price"]), ("OPEN", 82700.0))
-        self.assertIn("BREAKEVEN", [e[0] for e in self.eng.conn.execute("SELECT type FROM events WHERE position_id=1")])
-        self.market.add_bar(BTC, t("10:06"), 82900, 82910, 82600, 82650)   # kembali menembus entry → STOP di 82700, bukan hangus
+        self.assertEqual((p["status"], p["sl_price"], p["best_mark"]), ("OPEN", None, 82950.0))
+        self.market.add_bar(BTC, t("10:06"), 82900, 82910, 82600, 82650)   # SL dipasang 82700 lalu tertembus → STOP, bukan hangus
         self.run_bar(t("10:06"))
         p = self.pos()
-        self.assertEqual(p["close_reason"], "STOP")
+        self.assertEqual((p["close_reason"], p["sl_price"]), ("STOP", 82700.0))
+        self.assertIn("BREAKEVEN", [e[0] for e in self.eng.conn.execute("SELECT type FROM events WHERE position_id=1")])
         self.assertGreater(p["net_result"], -0.1)                       # rugi hanya fee + slippage, bukan −$0.83
         # tanpa pengaman (cfg 0): tidak ada SL
         eng2 = PaperEngine(connect(":memory:"), self.market, clock=lambda: self.clock_ms[0], cfg=EngineConfig(acak_enabled=False, tiket_breakeven_mfe=0))

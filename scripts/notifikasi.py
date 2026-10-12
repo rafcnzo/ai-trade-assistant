@@ -78,6 +78,8 @@ def format_event(e: dict) -> str:
         line = f"❌ Order #{oid} {acc} {sym} {side} @ {fmt_px(e['o_price'])} dibatalkan ({msg})"
     elif typ == "ORDER_EXPIRED":
         line = f"⌛ Order #{oid} {acc} {sym} {side} @ {fmt_px(e['o_price'])} kedaluwarsa — tidak terisi"
+    elif typ == "BREAKEVEN":
+        line = f"🛡️ Pengaman posisi #{pid} {sym} {side}: {msg}"
     elif typ == "ACAK_SHADOW":
         line = f"🎲 Bayangan acak: {msg}"
     elif typ == "ACAK_SKIP":
