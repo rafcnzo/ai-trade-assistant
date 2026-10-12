@@ -66,3 +66,22 @@ class TestMerge(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestIncludeSync(unittest.TestCase):
+    def test_include_updated_and_matches_tool_names(self):
+        import sys as _s
+        _s.path.insert(0, str(ROOT / "scripts"))
+        from mcp_server import TOOL_NAMES
+        snip = (ROOT / "hermes" / "config.snippet.yaml").read_text(encoding="utf-8")
+        listed = [ln.strip()[2:] for ln in snip.splitlines() if ln.startswith("        - ")]
+        self.assertEqual(listed, list(TOOL_NAMES))            # whitelist harus memuat semua tool server
+        home = Path(tempfile.gettempdir()) / "hermes-home-uji"
+        new, _ = M.merge(TEMPLATE, ROOT, home)
+        stale = new.replace("        - " + TOOL_NAMES[-1] + "\n", "")   # simulasi config lama tanpa tool terbaru
+        self.assertNotEqual(stale, new)
+        fixed, changes = M.merge(stale, ROOT, home)
+        self.assertTrue(any("tools.include" in c for c in changes), changes)
+        self.assertIn("        - " + TOOL_NAMES[-1] + "\n", fixed)
+        self.assertEqual(M.merge(fixed, ROOT, home)[1], [])
+

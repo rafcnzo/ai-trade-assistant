@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-12 17:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-12 19:10 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -110,6 +110,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3c | Konversi nyata: mastering-trading-psychology 14 bab (hal 1–408), panduan-analisis-crypto 9 bab, goodcrypto-pola-chart 3 bab; `referensi/buku/` tidak ter-commit | ✅ |
 | 3c | `indeks.md` terisi untuk 3 buku; `playbook.md` v1: aturan aktif (ditegakkan mesin/skill) + usulan `uji` dari buku dengan rujukan bab | ✅ |
 | 3c | Sync skill `referensi` + SOUL + menu (`/referensi` menggantikan `/model`), gateway restart PID 27388, `hermes mcp test paper` → 26 tool, menu Telegram 14 perintah | ✅ |
+| 3c | Whitelist `tools.include` di config.yaml hidup ketinggalan (22 tool) → snippet dibuat dari TOOL_NAMES, merge menyamakan daftar; setup_hermes + gateway restart; `hermes mcp test paper` → 28 | ✅ (12 Okt malam) |
 | 3c | `/referensi fomo` dari Telegram; `/cek` menyebut playbook; pemilik memutuskan status aturan `uji` | ⬜ user (P-09/11/15 sudah diaktifkan) |
 | D | `test_dashboard` D1–D4 (DB kosong → 200 & tidak tersedia, candles resample, marker/riwayat/ekuitas dari engine, statis aman); dashboard nyata: chart ETH/SOL dengan garis order #3, marker, panel budget/posisi/cron, API cost | ✅ |
 

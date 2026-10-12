@@ -53,5 +53,11 @@ mcp_servers:
         - tulis_catatan_harian
         - tulis_hipotesis
         - usul_pelajaran
+        - statistik_lulus
+        - panel_psikologi
+        - cari_referensi
+        - baca_referensi
+        - autopsi_posisi
+        - papan_arena
     timeout: 60
     connect_timeout: 30

@@ -3,6 +3,12 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-12 (malam, 19:10) — laptop Windows — whitelist tool MCP di config.yaml disamakan dengan TOOL_NAMES
+
+**Apa:** `hermes/config.snippet.yaml` daftar `mcp_servers.paper.tools.include` dibuat ulang dari `TOOL_NAMES` (28 tool); `merge_config.ensure_mcp_block` kini mengganti daftar include pada blok yang sudah ada (perubahan `ubah mcp_servers.paper.tools.include (N tool)`), bukan hanya membuat blok bila belum ada. Tes `TestIncludeSync` (snippet == TOOL_NAMES; merge memperbaiki config lama; idempoten) — 139 hijau.
+
+**Kenapa:** laporan user dari Telegram: `/referensi` gagal, agent hanya melihat 26 tool tanpa `cari_referensi`/`baca_referensi` — config.yaml hidup masih memakai whitelist lama (22 tool) karena merge tidak pernah menyentuh blok yang sudah ada. **File:** `hermes/config.snippet.yaml`, `hermes/merge_config.py`, `tests/test_merge_config.py`, docs.
+
 ## 2026-10-12 (sore, 17:30) — laptop Windows — Arena: empat persona trader AI bersaing
 
 **Apa:** skema paper v3: akun persona `fade`, `breakout`, `rentang` (kind `tiket`) + kolom `account.status`; `PaperEngine` memakai tabel

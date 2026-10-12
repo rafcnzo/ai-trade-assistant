@@ -74,6 +74,12 @@ def ensure_mcp_block(lines: list[str], block: str, changes: list[str]) -> None:
         return
     start, end = b
     if any(re.match(r"^\s{2}paper:\s*$", ln) for ln in lines[start:end]):
+        # blok sudah ada: samakan daftar tools.include dengan snippet (tool baru di mcp_server.TOOL_NAMES ikut terdaftar)
+        want = [ln for ln in block.splitlines() if re.match(r"^\s{8}- ", ln)]
+        idx = [i for i in range(start, end) if re.match(r"^\s{8}- ", lines[i])]
+        if want and idx and [lines[i] for i in idx] != want:
+            lines[idx[0]:idx[-1] + 1] = want
+            changes.append(f"ubah mcp_servers.paper.tools.include ({len(want)} tool)")
         return
     body = block.rstrip("\n").splitlines()[1:]  # tanpa baris 'mcp_servers:'
     lines[end:end] = body
