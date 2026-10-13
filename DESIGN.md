@@ -239,7 +239,7 @@ kesehatan.
 ### Primary
 - **Kuningan** (`kuningan`): satu-satunya aksen. Dipakai pada garis pendek 28 × 2 px di bawah tiap judul bagian, pilihan
   aktif (pil navigasi, segmen aktif), cincin fokus 2 px, garis bawah tooltip saat hover, nama analis di aliran kejadian,
-  batang saldo yang sehat, garis & area ekuitas, garis silang grafik lilin, seleksi teks, `accent-color` kotak centang,
+  hitungan "N terbuka" di kecenderungan analis, batang saldo yang sehat, garis & area ekuitas, garis silang grafik lilin, seleksi teks, `accent-color` kotak centang,
   tautan di blok markdown, dan denyut angka berubah. Teks di atas kuningan selalu **Kuningan-tinta** (`kuningan-tinta`),
   hampir hitam hangat.
 
@@ -253,8 +253,8 @@ kesehatan.
 
 ### Tertiary
 - **Warna persona** (`persona-tiket` = kuningan, `persona-fade` biru lembut, `persona-breakout` = mint, `persona-rentang`
-  merah muda, `persona-acak` = pudar, `persona-swing` jingga): identitas tiap akun pada nama di tabel Peringkat dan garis
-  pada grafik arena (acak: garis putus-putus 1 px, persona: 2 px). Didefinisikan di `app.js` (`WARNA`), bukan di CSS;
+  merah muda, `persona-acak` = pudar, `persona-swing` jingga): identitas tiap akun pada nama di tabel Peringkat, nama di daftar
+  kecenderungan analis (`b.nm`), dan garis pada grafik arena (acak: garis putus-putus 1 px, persona: 2 px). Didefinisikan di `app.js` (`WARNA`), bukan di CSS;
   tidak dipakai sebagai warna permukaan.
 
 ### Neutral
@@ -303,8 +303,8 @@ Hirarki selebihnya dari nada warna (gading/redup/pudar) dan tebal 600 pada nilai
 Google Fonts pada bobot 400/500/600/700.
 
 ### Hierarchy
-- **Title** (600, 23px, tracking -0,01 em, padding bawah 8 px + garis kuningan): judul bagian (Sekarang, Peringkat,
-  Pasar, Riwayat, Konteks, Catatan AI).
+- **Title** (600, 23px, tracking -0,01 em, padding bawah 8 px + garis kuningan): judul bagian (Sekarang, Ringkasan,
+  Peringkat, Pasar, Riwayat, Konteks, Catatan AI).
 - **Headline** (600, 21px): nama halaman "Meja analis" di header.
 - **Nama analis** (700, 17px): `h3` di header kolom analis; satu-satunya bobot 700.
 - **Subtitle** (600, 15px; 14px untuk judul aside feed; 17/15.5/14 px untuk `h2/h3/h4` di markdown): judul kolom dan aside.
@@ -328,17 +328,18 @@ Google Fonts pada bobot 400/500/600/700.
 **The Kalimat Bukan Kotak Rule.** Keadaan dinyatakan sebagai kalimat kaya (nama koin tebal, arah, leverage, jarak ke
 target/hangus) dengan nilai inline tebal; bukan sebagai angka besar terpisah.
 
-**The Layar Tipis Rule.** Satu baris per keadaan di layar; rinciannya (harga masuk/target/stop, status order, saldo
-bergulir, syarat juara, puncak modal, bacaan per indikator) hidup di tooltip pada label bergaris putus atau di blok
-`details`, bukan sebagai baris tambahan.
+**The Layar Tipis Rule.** Satu baris per keadaan di layar, di semua bagian: rinciannya (harga masuk/target/stop,
+status order, saldo bergulir, syarat juara, puncak modal, bacaan per indikator, kolom tabel Riwayat yang dipangkas,
+status mesin dan rincian biaya di Konteks) hidup di tooltip pada label bergaris putus atau di blok `details`, bukan
+sebagai baris atau kolom tambahan.
 
 **The Waktu Relatif Rule.** Di feed, waktu ditulis relatif ("baru saja", "12 mnt", jam untuk hari ini, "kemarin 21:40",
 lalu "13 Okt 21:40"), dan hari dipisah oleh pembatas "hari ini / kemarin / tanggal". Di tempat lain waktu tetap jam WIB.
 
 ## Layout
 
-Single-page scroll dengan enam bagian (`section.bag`) berurutan Sekarang, Peringkat, Pasar, Riwayat, Konteks, Catatan
-AI; tiap bagian berpadding 30 px atas / 26 px bawah dan dipisah garis 2 px `sep` (bagian terakhir tanpa); kepala bagian
+Single-page scroll dengan tujuh bagian (`section.bag`) berurutan Sekarang, Ringkasan, Peringkat, Pasar, Riwayat,
+Konteks, Catatan AI; tiap bagian berpadding 30 px atas / 26 px bawah dan dipisah garis 2 px `sep` (bagian terakhir tanpa); kepala bagian
 (`.head`) berjarak 18 px ke isi dan `h2`-nya membawa garis kuningan 28 × 2 px di bawah (padding bawah 8 px). `main`
 ber-gutter horizontal `clamp(16px, 2.4vw, 36px)` dan padding bawah 40 px. Header tipis (`.top`, padding 14 px / 10 px)
 lalu navigasi lompat-bagian sticky (`.jump`, latar arang 88 % + blur 8 px, z-index 20) yang menyembunyikan scrollbar-nya
@@ -347,7 +348,9 @@ dan memudar 28 px di tepi kanan lewat `mask-image`; `scroll-margin-top` 52 px.
 Bagian berdata memakai grid dua kolom: isi utama `minmax(0,1fr)` + kolom kanan tetap (360 px untuk feed di Sekarang;
 340 px di Peringkat dan Riwayat; 300 px untuk kejadian di Pasar), jarak 28 px, `align-items: start`. Meja analis adalah
 grid `repeat(auto-fit, minmax(215px, 1fr))` dengan jarak kolom 22 px dan tanpa jarak baris (tiap kolom membawa garis
-bawahnya sendiri). Pembanding acak/swing `minmax(260px, 1fr)`; Konteks `minmax(300px, 1fr)` dengan jarak 28 px.
+bawahnya sendiri). Pembanding acak/swing `minmax(260px, 1fr)`; Konteks `minmax(300px, 1fr)` dengan jarak 28 px. Ringkasan adalah
+grid dua kolom tak-simetris `minmax(0,1fr) minmax(0,1.3fr)` (tabel koin teramai di kiri, kecenderungan analis yang
+lebih lebar di kanan), jarak 28 px, `align-items: start`.
 
 Ritme vertikal: 7–8 px padding item daftar/feed/sel tabel, 10 px baris pembanding/summary, 14 px padding atas kolom
 analis, 4 px jarak baris saldo. Semua anak grid `min-width: 0` supaya tabel dan grafik tidak meledakkan kolom.
@@ -355,7 +358,7 @@ analis, 4 px jarak baris saldo. Semua anak grid `min-width: 0` supaya tabel dan 
 Tinggi tetap: grafik lilin 460 px, arena 240 px, ekuitas 220 px, drawdown 120 px; feed maksimal 560 px dan tabel 440 px
 dengan scroll internal, blok markdown maksimal 60vh (320 px untuk catatan pasar di Konteks).
 
-**Responsif.** ≤ 1100 px: semua grid dua kolom menjadi satu kolom; feed maksimal 320 px. ≤ 640 px: teks dasar 14 px,
+**Responsif.** ≤ 1100 px: semua grid dua kolom (termasuk Ringkasan) menjadi satu kolom; feed maksimal 320 px. ≤ 640 px: teks dasar 14 px,
 header menjadi kolom (jarak 6 px), kesehatan rata kiri, meja satu kolom, grafik lilin 320 px, sel tabel 7 px / 8 px.
 `prefers-reduced-motion`: denyut dan geser masuk dimatikan.
 
@@ -466,6 +469,16 @@ atau daftar "KOIN ARAH" + P/L tebal mint/koral; bila tidak ada: "tidak ada posis
   puncak" dan "terdalam" bergaris putus (tooltip: puncak modal, posisi sekarang, tanggal terdalam); X koral bila di bawah
   puncak.
 
+### Ringkasan (koin teramai + kecenderungan analis)
+- **Koin teramai 24 jam**: `tablewrap` lima baris, kolom `#` (rata kanan), koin tebal, harga, perubahan 24 jam tebal
+  600 mint/koral dengan tanda, dan volume yang dipendekkan ("13,6 M" untuk miliar, "250 jt" untuk juta); judul `h3`
+  bergaris rambut dengan `small` jam data; baris dapat diklik ke grafik.
+- **Kecenderungan analis** (`ul.list.profil`): tiap `li` grid `96px 1fr`, jarak 12 px, rata baseline: nama analis
+  tebal 600 14.5 px dalam warna personanya, lalu satu kalimat redup 13.5 px yang menyebut kecenderungan dengan nilai
+  tebal 500 gading, dipisah " · " ("cenderung **jual** (5/6) · suka **BNB, SOL** · **10–100×** · menang **50 %** dari 4
+  · pegang **2,0 jam** · keluar: **target 2×, hangus 1×** · pola **…** · sering jam **08**"); persentase menang mint/koral;
+  "N terbuka" kuningan di ujung bila ada posisi; "belum pernah membuka posisi" pudar bila kosong.
+
 ### Feed (aliran kejadian)
 `ol` tanpa bullet, maks 560 px scroll; tiap `li` grid `82px 1fr` (kolom waktu cukup untuk "kemarin 21:40"), padding
 7 px, garis rambut atas, 13 px / 1.4; waktu relatif pudar 12 px `nowrap`, nama akun kuningan 600; baris acak diredupkan
@@ -477,7 +490,10 @@ pernah tersentuh", "ditutup di … (stop / jam 23:50)").
 
 ### List
 `.list li`: padding 8 px, garis rambut bawah (kecuali terakhir), 13.5 px / 1.5; baris `.k` kiri-kanan, sub `.s` redup
-12.5 px, `.utama` 14.5 px. `.syarat li` memakai pola kiri-kanan yang sama dengan padding 9 px. Bacaan pasar menampilkan
+12.5 px, `.utama` 14.5 px. Mesin dan Biaya AI memakai satu baris per item tanpa sub-baris: label bergaris putus
+(tooltip memuat waktu tick, hasil pemindaian, pesan cron, jumlah panggilan dan empat panggilan terakhir) dan nilai
+ringkas di kanan ("jalan"/"basi"/"mati" mint/koral, "09.12 · 3×", "14.30 · kirim" pudar, nilai USD tebal); biaya
+membawa batang 4 px di bawahnya. `.syarat li` memakai pola kiri-kanan yang sama dengan padding 9 px. Bacaan pasar menampilkan
 hanya ringkasan tebal (`.utama`) dan "Yang tidak nyambung" (amber, bergaris putus); kalimat per indikator berada di
 `details` "Bacaan per indikator (N)" di dalam item terakhir.
 
@@ -485,6 +501,9 @@ hanya ringkasan tebal (`.utama`) dan "Yang tidak nyambung" (amber, bergaris putu
 Pembungkus scroll dengan garis rambut atas-bawah, maks 440 px; tabel 13.5 px, sel padding 8 px / 10 px, garis rambut
 bawah tiap baris (terakhir tanpa), `nowrap`; `th` sticky latar arang teks redup 500 12.5 px; `.num` rata kanan; baris
 `.klik` hover arang-2; baris akun acak diredupkan. Di dalam `.md`, tablewrap tanpa batas tinggi dan tabel 13 px.
+Tabel Riwayat dipangkas ke kolom inti (posisi: Ditutup, Analis, Koin, Keluar, Hasil; order: Dibuat, Analis, Koin,
+Apa yang terjadi); sel Koin adalah label bergaris putus (`tabindex="0"`) yang tooltip-nya memuat harga masuk/keluar,
+leverage, fee, rencana, dan pembuat order.
 
 ### Details
 Pembuka bagian sekunder: garis rambut atas, margin atas 14 px, summary redup 13.5 px padding 10 px dengan indent kiri
@@ -514,7 +533,7 @@ Indonesia.
 - **Do** beri tiap judul bagian garis kuningan 28 × 2 px di bawahnya; selain itu pakai kuningan hanya untuk pilihan
   aktif, fokus, tautan, nama akun di feed, dan denyut perubahan; teks di atasnya kuningan-tinta.
 - **Do** warnai angka uang dengan mint/koral berdasarkan tanda, tebal 600, tabular, rata kanan di tabel; nol ditulis "$0,00".
-- **Do** tulis satu baris per keadaan; taruh rincian dan definisi di tooltip lewat label bergaris putus yang juga bisa
+- **Do** tulis satu baris per keadaan (juga di tabel Riwayat dan daftar Mesin/Biaya); taruh rincian dan definisi di tooltip lewat label bergaris putus yang juga bisa
   difokus keyboard (`tabindex="0"`) atau di blok `details`, dan jangan render ulang wadah yang sedang dibaca.
 - **Do** tulis "tidak tersedia" (atau "—") dalam pudar beserta alasan ketika data tidak ada.
 - **Do** tandai nilai yang berubah dengan `data-k` supaya denyut 600 ms berjalan; entri baru masuk dengan geser 200 ms;

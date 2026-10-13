@@ -433,7 +433,7 @@
       {
         "name": "satu-kolom",
         "value": "1100px",
-        "purpose": "Grid dua kolom menjadi satu; feed maks 320px."
+        "purpose": "Grid dua kolom (termasuk Ringkasan 1fr/1.3fr) menjadi satu; feed maks 320px."
       },
       {
         "name": "sempit",
@@ -551,6 +551,14 @@
       "css": ".ds-analis{padding:14px 0 12px;border-top:1px solid var(--line,#332e28);border-bottom:1px solid var(--line,#332e28);font:14.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1);font-variant-numeric:tabular-nums;max-width:320px}.ds-analis-h{display:grid;grid-template-columns:1fr auto;grid-template-areas:'nama pil' 'gaya pil';align-items:center;column-gap:10px;margin-bottom:8px}.ds-analis-h h3{grid-area:nama;margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}.ds-gaya{grid-area:gaya;font-size:12.5px;color:var(--muted,#aab0b7)}.ds-analis-h .ds-pil{grid-area:pil;font:600 11.5px/1.5 Inter,system-ui,sans-serif;letter-spacing:.02em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid var(--line2,#433c34);color:var(--muted,#aab0b7)}.ds-pil.ds-ok{color:var(--up,#5bd4a3);border-color:color-mix(in srgb,var(--up,#5bd4a3) 45%,transparent)}.ds-saldo{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:13px;color:var(--muted,#aab0b7);margin-bottom:10px}.ds-saldo b{font-size:15px;color:var(--ink,#ece9e1);font-weight:600}.ds-hasil{font-size:12.5px}.ds-tip{text-decoration:underline dotted var(--dim,#7d838b);text-decoration-thickness:1px;text-underline-offset:3px;cursor:help;border-radius:2px}.ds-tip:hover,.ds-tip:focus-visible{text-decoration-color:var(--brass,#d9b35c)}.ds-tip:focus-visible{outline:2px solid var(--brass,#d9b35c);outline-offset:2px;border-radius:3px}.ds-bar{grid-column:1/-1;height:4px;background:var(--bg3,#27231f);border-radius:2px;overflow:hidden}.ds-bar i{display:block;height:100%;background:var(--brass,#d9b35c)}.ds-bar i.ds-down{background:var(--down,#f07b7b)}.ds-up{color:var(--up,#5bd4a3)}.ds-down{color:var(--down,#f07b7b)}.ds-muted{color:var(--muted,#aab0b7)}.ds-ul{list-style:none;margin:0;padding:0}.ds-ul li{padding:7px 0;border-top:1px solid var(--line,#332e28);font-size:13.5px;line-height:1.45}.ds-l1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.ds-l1 b{font-size:14.5px;font-weight:600}.ds-order .ds-l1 b{color:var(--muted,#aab0b7)}.ds-l2{color:var(--muted,#aab0b7);font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap}.ds-ke{color:var(--dim,#7d838b)}.ds-pl{font-weight:600;white-space:nowrap}.ds-terakhir{margin:8px 0 0;font-size:12.5px;color:var(--dim,#7d838b)}.ds-terakhir time{color:var(--muted,#aab0b7)}"
     },
     {
+      "name": "Kecenderungan analis",
+      "kind": "custom",
+      "refersTo": "tag",
+      "description": "Daftar profil per analis: nama dalam warna persona (96px) + satu kalimat kecenderungan dengan nilai tebal 500 gading di baris redup; 'N terbuka' kuningan.",
+      "html": "<ul class=\"ds-profil\"><li><b class=\"ds-nm\" style=\"color:#d9b35c\">Tiket</b><span class=\"ds-c\">cenderung <b>jual</b> (5/6) · suka <b>BNB, SOL</b> · <b>10–100×</b> · menang <b class=\"ds-up\">50 %</b> dari 4 · pegang <b>2,0 jam</b> · keluar: <b>target 2×, hangus 1×</b> · sering jam <b>08</b> · <span class=\"ds-brass\">2 terbuka</span></span></li><li><b class=\"ds-nm\" style=\"color:#8ab4f8\">Fade</b><span class=\"ds-c\"><span class=\"ds-dim\">belum pernah membuka posisi</span></span></li></ul>",
+      "css": ".ds-profil{list-style:none;margin:0;padding:0;font:13.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1);font-variant-numeric:tabular-nums;max-width:560px}.ds-profil li{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line,#332e28)}.ds-profil li:last-child{border-bottom:0}.ds-nm{font-size:14.5px;font-weight:600}.ds-c{color:var(--muted,#aab0b7)}.ds-c b{color:var(--ink,#ece9e1);font-weight:500}.ds-c b.ds-up{color:var(--up,#5bd4a3)}.ds-brass{color:var(--brass,#d9b35c)}.ds-dim{color:var(--dim,#7d838b)}"
+    },
+    {
       "name": "Feed kejadian",
       "kind": "custom",
       "refersTo": "jump-link",
@@ -562,7 +570,7 @@
       "name": "Tablewrap",
       "kind": "custom",
       "refersTo": "tag",
-      "description": "Tabel dalam pembungkus scroll bergaris rambut; th sticky redup, angka rata kanan, baris klik hover arang-2.",
+      "description": "Tabel dalam pembungkus scroll bergaris rambut; th sticky redup, angka rata kanan, baris klik hover arang-2. Riwayat dipangkas ke kolom inti; sel Koin membawa tooltip rincian.",
       "html": "<div class=\"ds-tablewrap\"><table class=\"ds-table\"><thead><tr><th>Analis</th><th>Status</th><th class=\"ds-num\">Total</th><th class=\"ds-num\">Terdalam</th></tr></thead><tbody><tr class=\"ds-klik\"><td><b style=\"color:#d9b35c\">Tiket</b></td><td><span class=\"ds-tag ds-ok\">aktif</span></td><td class=\"ds-num\"><b class=\"ds-up\">+$1,42</b></td><td class=\"ds-num\"><span class=\"ds-down\">-$0,61</span></td></tr><tr class=\"ds-klik ds-acak\"><td>Acak</td><td><span class=\"ds-tag ds-ok\">aktif</span></td><td class=\"ds-num\"><b class=\"ds-down\">-$0,37</b></td><td class=\"ds-num\"><span class=\"ds-down\">-$0,90</span></td></tr></tbody></table></div>",
       "css": ".ds-tablewrap{overflow:auto;border-top:1px solid var(--line,#332e28);border-bottom:1px solid var(--line,#332e28);max-height:440px;font-variant-numeric:tabular-nums}.ds-table{border-collapse:collapse;width:100%;font:13.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1)}.ds-table th,.ds-table td{padding:8px 10px;border-bottom:1px solid var(--line,#332e28);text-align:left;white-space:nowrap;vertical-align:top}.ds-table th{position:sticky;top:0;background:var(--bg,#1a1816);color:var(--muted,#aab0b7);font-weight:500;font-size:12.5px}.ds-table .ds-num{text-align:right}.ds-table tbody tr:last-child td{border-bottom:0}.ds-table tr.ds-klik:hover{background:var(--bg2,#201d1a);cursor:pointer}.ds-table tr.ds-acak{color:var(--muted,#aab0b7)}.ds-tag{display:inline-block;padding:0 7px;border-radius:999px;border:1px solid var(--line2,#433c34);font-size:12px;color:var(--muted,#aab0b7);line-height:1.6}.ds-tag.ds-ok{color:var(--up,#5bd4a3);border-color:color-mix(in srgb,var(--up,#5bd4a3) 45%,transparent)}.ds-up{color:var(--up,#5bd4a3)}.ds-down{color:var(--down,#f07b7b)}.ds-table b{font-weight:600}"
     },
@@ -570,7 +578,7 @@
       "name": "List + details",
       "kind": "custom",
       "refersTo": "tag",
-      "description": "Daftar kiri-kanan bergaris rambut (mesin, biaya, bacaan pasar) dan pembuka details dengan chevron SVG (mask) yang berputar saat terbuka.",
+      "description": "Daftar kiri-kanan bergaris rambut; Mesin dan Biaya satu baris per item (label bergaris putus + nilai ringkas, rincian di tooltip) dan pembuka details dengan chevron SVG.",
       "html": "<ul class=\"ds-list\"><li class=\"ds-utama\"><div class=\"ds-k\"><span>Hari ini</span><b>$0,41</b></div><div class=\"ds-s\">12 panggilan · batas $2</div><div class=\"ds-bar\"><i style=\"width:21%\"></i></div></li><li><div class=\"ds-k\"><span>Pengambil harga</span><b class=\"ds-up\">jalan</b></div><div class=\"ds-s\">tick terakhir 4 dtk lalu</div></li><li class=\"ds-dim\">Riwayat cron Hermes tidak tersedia.</li></ul><details class=\"ds-details\"><summary>Angka per indikator</summary><div class=\"ds-s\">isi</div></details>",
       "css": ".ds-list{list-style:none;margin:0;padding:0;font:13.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1);max-width:340px}.ds-list li{padding:8px 0;border-bottom:1px solid var(--line,#332e28)}.ds-list li:last-child{border-bottom:0}.ds-k{display:flex;justify-content:space-between;gap:12px}.ds-k b{font-weight:600}.ds-s{color:var(--muted,#aab0b7);font-size:12.5px}.ds-utama{font-size:14.5px}.ds-dim{color:var(--dim,#7d838b)}.ds-up{color:var(--up,#5bd4a3)}.ds-bar{height:4px;background:var(--bg3,#27231f);border-radius:2px;overflow:hidden;margin-top:6px}.ds-bar i{display:block;height:100%;background:var(--brass,#d9b35c)}.ds-bar i.ds-warn{background:var(--warn,#e3b04b)}.ds-details{border-top:1px solid var(--line,#332e28);margin-top:14px;font:13.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1)}.ds-details summary{cursor:pointer;padding:10px 0 10px 18px;color:var(--muted,#aab0b7);list-style:none;position:relative}.ds-details summary::-webkit-details-marker{display:none}.ds-details summary::before{content:'';position:absolute;left:0;top:14px;width:12px;height:12px;background:var(--dim,#7d838b);-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 2l4 4-4 4'/%3E%3C/svg%3E\") center/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 2l4 4-4 4'/%3E%3C/svg%3E\") center/contain no-repeat;transition:transform .15s ease-out}.ds-details[open] summary::before{transform:rotate(90deg)}.ds-details summary:hover{color:var(--ink,#ece9e1)}"
     },
@@ -626,7 +634,7 @@
       },
       {
         "name": "The Layar Tipis Rule",
-        "body": "Satu baris per keadaan di layar; rinciannya (harga masuk/target/stop, status order, saldo bergulir, syarat juara, puncak modal, bacaan per indikator) hidup di tooltip pada label bergaris putus atau di blok details, bukan sebagai baris tambahan.",
+        "body": "Satu baris per keadaan di layar, di semua bagian: rinciannya (harga masuk/target/stop, status order, saldo bergulir, syarat juara, puncak modal, bacaan per indikator, kolom tabel Riwayat yang dipangkas, status mesin dan rincian biaya di Konteks) hidup di tooltip pada label bergaris putus atau di blok details, bukan sebagai baris atau kolom tambahan.",
         "section": "typography"
       },
       {
@@ -644,7 +652,7 @@
       "Do pisahkan baris dan item dengan garis rambut 1 px garis, dan bagian dengan garis 2 px sep; biarkan latar tetap arang.",
       "Do beri tiap judul bagian garis kuningan 28 × 2 px di bawahnya; selain itu pakai kuningan hanya untuk pilihan aktif, fokus, tautan, nama akun di feed, dan denyut perubahan; teks di atasnya kuningan-tinta.",
       "Do warnai angka uang dengan mint/koral berdasarkan tanda, tebal 600, tabular, rata kanan di tabel; nol ditulis \"$0,00\".",
-      "Do tulis satu baris per keadaan; taruh rincian dan definisi di tooltip lewat label bergaris putus yang juga bisa difokus keyboard (tabindex=\"0\") atau di blok details, dan jangan render ulang wadah yang sedang dibaca.",
+      "Do tulis satu baris per keadaan (juga di tabel Riwayat dan daftar Mesin/Biaya); taruh rincian dan definisi di tooltip lewat label bergaris putus yang juga bisa difokus keyboard (tabindex=\"0\") atau di blok details, dan jangan render ulang wadah yang sedang dibaca.",
       "Do tulis \"tidak tersedia\" (atau \"—\") dalam pudar beserta alasan ketika data tidak ada.",
       "Do tandai nilai yang berubah dengan data-k supaya denyut 600 ms berjalan; entri baru masuk dengan geser 200 ms; hormati prefers-reduced-motion.",
       "Do tulis waktu di feed secara relatif dengan pembatas hari; di tempat lain pakai jam WIB.",
