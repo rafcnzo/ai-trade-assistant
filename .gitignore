@@ -12,3 +12,5 @@ referensi/buku/
 pasar/harian/
 pasar/komunitas/
 .claude/settings.local.json
+.impeccable/review/
+.impeccable/hook.cache.json

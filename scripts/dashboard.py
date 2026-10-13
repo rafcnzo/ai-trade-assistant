@@ -320,6 +320,22 @@ class Data:
         finally:
             k.close()
 
+    def kejadian(self, limit: int = 40) -> dict:
+        """Kejadian mesin terbaru (tabel events) + akun/simbol dari posisi atau order terkait. Baca saja."""
+        paper = self._ro(self.paper_p)
+        if paper is None:
+            return {"kejadian": []}
+        try:
+            rows = [dict(r) for r in paper.execute(
+                "SELECT e.id, e.ts, e.level, e.type, e.position_id, e.order_id, e.msg, "
+                "COALESCE(p.account, o.account) AS account, COALESCE(p.symbol, o.symbol) AS symbol, "
+                "COALESCE(p.side, o.side) AS side, p.net_result, p.close_reason "
+                "FROM events e LEFT JOIN positions p ON p.id=e.position_id LEFT JOIN orders o ON o.id=e.order_id "
+                "ORDER BY e.id DESC LIMIT ?", (max(1, min(int(limit), 200)),))]
+            return {"kejadian": rows}
+        finally:
+            paper.close()
+
     def teks(self, jenis: str, hari: Optional[str]) -> dict:
         day = hari or C.day_wib(self.clock())
         if jenis == "hipotesis":
@@ -403,6 +419,7 @@ def make_app(data: Optional[Data] = None, static_dir: Path = STATIC_DIR):
         Route("/api/arena", guard(lambda r: d.arena())),
         Route("/api/psikologi", guard(lambda r: d.psikologi(qp(r, "symbol", "BTCUSDT")))),
         Route("/api/kandidat", guard(lambda r: d.kandidat())),
+        Route("/api/kejadian", guard(lambda r: d.kejadian(int(qp(r, "limit", 40))))),
         Route("/api/teks", guard(lambda r: d.teks(qp(r, "jenis", "jurnal"), qp(r, "hari")))),
     ]
     return Starlette(routes=routes)

@@ -65,6 +65,19 @@ class TestArenaApi(Base):
         eng.conn.close()
         pasar_ro.close()
 
+    def test_d7_kejadian_feed(self):
+        self.assertEqual(self.client.get("/api/kejadian").json(), {"kejadian": []})        # paper.sqlite belum ada
+        eng, pasar_ro = self.seed()
+        res = eng.place_order(OrderRequest(account="tiket", symbol=PEM, side=LONG, type="LIMIT", qty=0.1, price=99.8, leverage=20, tp_price=102.0, plan_id="K1"))
+        self.assertTrue(res.ok, res.reject_reason)
+        eng.conn.close()
+        k = self.client.get("/api/kejadian?limit=5").json()["kejadian"]
+        self.assertTrue(k and k[0]["id"] >= k[-1]["id"])                                  # terbaru dulu
+        order_new = next(e for e in k if e["type"] == "ORDER_NEW" and e["account"] == "tiket")
+        self.assertEqual((order_new["account"], order_new["symbol"], order_new["side"]), ("tiket", PEM, "LONG"))
+        self.assertEqual(len(self.client.get("/api/kejadian?limit=1").json()["kejadian"]), 1)
+        pasar_ro.close()
+
 
 class TestDashboard(Base):
     def test_d1_empty_everything_is_200(self):

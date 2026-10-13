@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "dashboard/index.html"
+        ],
+        "createdAt": "2026-10-13T02:29:01.219Z",
+        "reason": "Claude: positif palsu; detektor tidak bisa membaca /static/style.css (dilayani dashboard.py dari dashboard/), sedangkan CSS menetapkan h1 21px, h2 19px, h3 15px, body 14.5px (langkah 1.27x)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "consolas",
+        "createdAt": "2026-10-13T02:37:13.892Z",
+        "reason": "Claude: tumpukan monospace sistem (ui-monospace, Consolas) hanya untuk kode di blok markdown Catatan AI; sengaja, dicatat di DESIGN.md yang sedang diperbarui dokumenter"
+      }
+    ]
+  }
+}

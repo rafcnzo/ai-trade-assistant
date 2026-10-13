@@ -3,6 +3,23 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-13 (pagi, 09:40) — laptop Windows — dashboard dibangun ulang: "Meja analis"
+
+**Apa:** `dashboard/{index.html,style.css,app.js}` ditulis ulang (skill impeccable, code-led): satu halaman gulir dengan lompat-bagian; bagian
+Sekarang = meja empat analis (persona) dengan posisi/order sebagai kalimat kaya + P/L hidup, saldo bergulir, keputusan terakhir, baris acak/swing,
+dan aliran kejadian mesin; Pasar, Peringkat (+ syarat lulus), Riwayat (+ perjalanan modal/drawdown), Konteks (suasana, mesin, biaya), Catatan AI.
+Semua keterangan pindah ke tooltip (hover + fokus keyboard, Esc). Palet: arang hangat, tinta gading, aksen kuningan, mint/koral. Denyut pada angka
+yang berubah. `dashboard.py`: endpoint baca-saja `/api/kejadian` (tabel `events` + akun/simbol dari posisi/order); tes D7 (140 hijau).
+Artefak desain: `PRODUCT.md`, `DESIGN.md`, `.impeccable/surfaces/dashboard-index-html.md` (brief + kontrak arah); `.impeccable/review/` di-gitignore.
+Putaran review (finish reviewer): latar dibuat hangat, urutan bagian Sekarang → Peringkat → Pasar, waktu relatif + pembatas hari di aliran kejadian,
+render tidak menimpa wadah yang sedang di-hover/fokus (tooltip keyboard), chevron SVG, skala judul. Permintaan user lanjutan: Catatan AI dirender dari
+markdown (judul, daftar, tabel, tebal/miring), pembatas antar-bagian dipertegas (`--sep`, aksen kuningan di bawah judul), teks panjang dipangkas
+(rincian posisi/saldo/juara/modal/bacaan pasar pindah ke tooltip atau `details`).
+
+**Kenapa:** permintaan user: dashboard pemantau "para analis yang sedang paper trade", rich text terbaca, label/informasi di tooltip, warna
+sederhana-elegan-kontras; jawaban wawancara: ganti total, dibaca sendiri sambil bekerja, prioritas = apa yang terjadi sekarang.
+**File:** `dashboard/*`, `scripts/dashboard.py`, `tests/test_dashboard.py`, `PRODUCT.md`, `DESIGN.md`, `.impeccable/surfaces/`, `.gitignore`, docs, CLAUDE.md.
+
 ## 2026-10-12 (malam, 19:10) — laptop Windows — whitelist tool MCP di config.yaml disamakan dengan TOOL_NAMES
 
 **Apa:** `hermes/config.snippet.yaml` daftar `mcp_servers.paper.tools.include` dibuat ulang dari `TOOL_NAMES` (28 tool); `merge_config.ensure_mcp_block` kini mengganti daftar include pada blok yang sudah ada (perubahan `ubah mcp_servers.paper.tools.include (N tool)`), bukan hanya membuat blok bila belum ada. Tes `TestIncludeSync` (snippet == TOOL_NAMES; merge memperbaiki config lama; idempoten) — 139 hijau.

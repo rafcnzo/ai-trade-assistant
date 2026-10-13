@@ -68,5 +68,6 @@ tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)
 data/      sqlite (gitignored)        logs/   log UTF-8 (gitignored)
 docs/      spesifikasi, operasi, STATUS, CHANGELOG      jurnal/ laporan/ pasar/ (gitignored sebagian)
 referensi/ indeks.md + playbook.md (di-commit); buku/ = ebook asli + hasil konversi <slug>/bab-NN.md (gitignored, pribadi)
-dashboard/ index.html, app.js, style.css — frontend statis dashboard lokal (Lightweight Charts dari CDN)
+dashboard/ index.html, app.js, style.css — frontend statis "Meja analis" (Lightweight Charts dari CDN)
+PRODUCT.md, DESIGN.md, .impeccable/surfaces/ — kebenaran produk, sistem visual, brief surface dashboard (skill impeccable; perbarui bila UI berubah)
 ```

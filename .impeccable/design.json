@@ -1,0 +1,665 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-13T00:00:00+07:00",
+  "title": "Design System: crypto-analyst — Meja analis",
+  "extensions": {
+    "colorMeta": {
+      "arang": {
+        "role": "neutral",
+        "displayName": "Arang",
+        "canonical": "#1a1816",
+        "tonalRamp": [
+          "oklch(15% 0.008 60)",
+          "oklch(25% 0.008 60)",
+          "oklch(35% 0.008 60)",
+          "oklch(45% 0.008 60)",
+          "oklch(55% 0.008 60)",
+          "oklch(65% 0.008 60)",
+          "oklch(80% 0.008 60)",
+          "oklch(95% 0.008 60)"
+        ]
+      },
+      "arang-2": {
+        "role": "neutral",
+        "displayName": "Arang-2 (kontrol)",
+        "canonical": "#201d1a",
+        "tonalRamp": [
+          "oklch(15% 0.009 60)",
+          "oklch(25% 0.009 60)",
+          "oklch(35% 0.009 60)",
+          "oklch(45% 0.009 60)",
+          "oklch(55% 0.009 60)",
+          "oklch(65% 0.009 60)",
+          "oklch(80% 0.009 60)",
+          "oklch(95% 0.009 60)"
+        ]
+      },
+      "arang-3": {
+        "role": "neutral",
+        "displayName": "Arang-3 (trek, kode)",
+        "canonical": "#27231f",
+        "tonalRamp": [
+          "oklch(15% 0.01 60)",
+          "oklch(25% 0.01 60)",
+          "oklch(35% 0.01 60)",
+          "oklch(45% 0.01 60)",
+          "oklch(55% 0.01 60)",
+          "oklch(65% 0.01 60)",
+          "oklch(80% 0.01 60)",
+          "oklch(95% 0.01 60)"
+        ]
+      },
+      "arang-tooltip": {
+        "role": "neutral",
+        "displayName": "Arang tooltip",
+        "canonical": "#120f0d",
+        "tonalRamp": [
+          "oklch(15% 0.008 60)",
+          "oklch(25% 0.008 60)",
+          "oklch(35% 0.008 60)",
+          "oklch(45% 0.008 60)",
+          "oklch(55% 0.008 60)",
+          "oklch(65% 0.008 60)",
+          "oklch(80% 0.008 60)",
+          "oklch(95% 0.008 60)"
+        ]
+      },
+      "garis": {
+        "role": "neutral",
+        "displayName": "Garis rambut",
+        "canonical": "#332e28",
+        "tonalRamp": [
+          "oklch(15% 0.012 60)",
+          "oklch(25% 0.012 60)",
+          "oklch(35% 0.012 60)",
+          "oklch(45% 0.012 60)",
+          "oklch(55% 0.012 60)",
+          "oklch(65% 0.012 60)",
+          "oklch(80% 0.012 60)",
+          "oklch(95% 0.012 60)"
+        ]
+      },
+      "garis-2": {
+        "role": "neutral",
+        "displayName": "Garis-2 (tepi kontrol)",
+        "canonical": "#433c34",
+        "tonalRamp": [
+          "oklch(15% 0.014 60)",
+          "oklch(25% 0.014 60)",
+          "oklch(35% 0.014 60)",
+          "oklch(45% 0.014 60)",
+          "oklch(55% 0.014 60)",
+          "oklch(65% 0.014 60)",
+          "oklch(80% 0.014 60)",
+          "oklch(95% 0.014 60)"
+        ]
+      },
+      "sep": {
+        "role": "neutral",
+        "displayName": "Sep (pemisah bagian 2px)",
+        "canonical": "#4e463b",
+        "tonalRamp": [
+          "oklch(15% 0.016 60)",
+          "oklch(25% 0.016 60)",
+          "oklch(35% 0.016 60)",
+          "oklch(45% 0.016 60)",
+          "oklch(55% 0.016 60)",
+          "oklch(65% 0.016 60)",
+          "oklch(80% 0.016 60)",
+          "oklch(95% 0.016 60)"
+        ]
+      },
+      "garis-grafik": {
+        "role": "neutral",
+        "displayName": "Grid grafik",
+        "canonical": "#242019",
+        "tonalRamp": [
+          "oklch(15% 0.012 60)",
+          "oklch(25% 0.012 60)",
+          "oklch(35% 0.012 60)",
+          "oklch(45% 0.012 60)",
+          "oklch(55% 0.012 60)",
+          "oklch(65% 0.012 60)",
+          "oklch(80% 0.012 60)",
+          "oklch(95% 0.012 60)"
+        ]
+      },
+      "gading": {
+        "role": "neutral",
+        "displayName": "Tinta gading",
+        "canonical": "#ece9e1",
+        "tonalRamp": [
+          "oklch(15% 0.012 90)",
+          "oklch(25% 0.012 90)",
+          "oklch(35% 0.012 90)",
+          "oklch(45% 0.012 90)",
+          "oklch(55% 0.012 90)",
+          "oklch(70% 0.012 90)",
+          "oklch(85% 0.012 90)",
+          "oklch(95% 0.012 90)"
+        ]
+      },
+      "redup": {
+        "role": "neutral",
+        "displayName": "Tinta redup",
+        "canonical": "#aab0b7",
+        "tonalRamp": [
+          "oklch(15% 0.01 250)",
+          "oklch(25% 0.01 250)",
+          "oklch(35% 0.01 250)",
+          "oklch(45% 0.01 250)",
+          "oklch(55% 0.01 250)",
+          "oklch(65% 0.01 250)",
+          "oklch(80% 0.01 250)",
+          "oklch(95% 0.01 250)"
+        ]
+      },
+      "pudar": {
+        "role": "neutral",
+        "displayName": "Tinta pudar",
+        "canonical": "#7d838b",
+        "tonalRamp": [
+          "oklch(15% 0.012 250)",
+          "oklch(25% 0.012 250)",
+          "oklch(35% 0.012 250)",
+          "oklch(45% 0.012 250)",
+          "oklch(55% 0.012 250)",
+          "oklch(65% 0.012 250)",
+          "oklch(80% 0.012 250)",
+          "oklch(95% 0.012 250)"
+        ]
+      },
+      "kuningan": {
+        "role": "primary",
+        "displayName": "Kuningan",
+        "canonical": "#d9b35c",
+        "tonalRamp": [
+          "oklch(15% 0.06 85)",
+          "oklch(25% 0.08 85)",
+          "oklch(35% 0.1 85)",
+          "oklch(45% 0.11 85)",
+          "oklch(55% 0.12 85)",
+          "oklch(65% 0.12 85)",
+          "oklch(80% 0.1 85)",
+          "oklch(95% 0.04 85)"
+        ]
+      },
+      "kuningan-tinta": {
+        "role": "primary",
+        "displayName": "Kuningan-tinta (teks di atas kuningan)",
+        "canonical": "#1a1500",
+        "tonalRamp": [
+          "oklch(15% 0.04 85)",
+          "oklch(25% 0.06 85)",
+          "oklch(35% 0.08 85)",
+          "oklch(45% 0.1 85)",
+          "oklch(55% 0.11 85)",
+          "oklch(65% 0.12 85)",
+          "oklch(80% 0.1 85)",
+          "oklch(95% 0.04 85)"
+        ]
+      },
+      "mint": {
+        "role": "secondary",
+        "displayName": "Mint (untung)",
+        "canonical": "#5bd4a3",
+        "tonalRamp": [
+          "oklch(15% 0.05 165)",
+          "oklch(25% 0.07 165)",
+          "oklch(35% 0.09 165)",
+          "oklch(45% 0.11 165)",
+          "oklch(55% 0.12 165)",
+          "oklch(65% 0.13 165)",
+          "oklch(80% 0.12 165)",
+          "oklch(95% 0.04 165)"
+        ]
+      },
+      "koral": {
+        "role": "secondary",
+        "displayName": "Koral (rugi)",
+        "canonical": "#f07b7b",
+        "tonalRamp": [
+          "oklch(15% 0.06 20)",
+          "oklch(25% 0.09 20)",
+          "oklch(35% 0.12 20)",
+          "oklch(45% 0.14 20)",
+          "oklch(55% 0.16 20)",
+          "oklch(65% 0.16 20)",
+          "oklch(80% 0.1 20)",
+          "oklch(95% 0.03 20)"
+        ]
+      },
+      "amber": {
+        "role": "secondary",
+        "displayName": "Amber (tunggu/batas)",
+        "canonical": "#e3b04b",
+        "tonalRamp": [
+          "oklch(15% 0.06 80)",
+          "oklch(25% 0.09 80)",
+          "oklch(35% 0.11 80)",
+          "oklch(45% 0.13 80)",
+          "oklch(55% 0.14 80)",
+          "oklch(65% 0.15 80)",
+          "oklch(80% 0.12 80)",
+          "oklch(95% 0.04 80)"
+        ]
+      },
+      "persona-tiket": {
+        "role": "tertiary",
+        "displayName": "Persona tiket",
+        "canonical": "#d9b35c",
+        "tonalRamp": [
+          "oklch(15% 0.06 85)",
+          "oklch(25% 0.08 85)",
+          "oklch(35% 0.1 85)",
+          "oklch(45% 0.11 85)",
+          "oklch(55% 0.12 85)",
+          "oklch(65% 0.12 85)",
+          "oklch(80% 0.1 85)",
+          "oklch(95% 0.04 85)"
+        ]
+      },
+      "persona-fade": {
+        "role": "tertiary",
+        "displayName": "Persona fade",
+        "canonical": "#8ab4f8",
+        "tonalRamp": [
+          "oklch(15% 0.05 260)",
+          "oklch(25% 0.08 260)",
+          "oklch(35% 0.1 260)",
+          "oklch(45% 0.12 260)",
+          "oklch(55% 0.13 260)",
+          "oklch(65% 0.13 260)",
+          "oklch(80% 0.1 260)",
+          "oklch(95% 0.03 260)"
+        ]
+      },
+      "persona-breakout": {
+        "role": "tertiary",
+        "displayName": "Persona breakout",
+        "canonical": "#5bd4a3",
+        "tonalRamp": [
+          "oklch(15% 0.05 165)",
+          "oklch(25% 0.07 165)",
+          "oklch(35% 0.09 165)",
+          "oklch(45% 0.11 165)",
+          "oklch(55% 0.12 165)",
+          "oklch(65% 0.13 165)",
+          "oklch(80% 0.12 165)",
+          "oklch(95% 0.04 165)"
+        ]
+      },
+      "persona-rentang": {
+        "role": "tertiary",
+        "displayName": "Persona rentang",
+        "canonical": "#e39bd0",
+        "tonalRamp": [
+          "oklch(15% 0.05 335)",
+          "oklch(25% 0.08 335)",
+          "oklch(35% 0.1 335)",
+          "oklch(45% 0.12 335)",
+          "oklch(55% 0.13 335)",
+          "oklch(65% 0.13 335)",
+          "oklch(80% 0.1 335)",
+          "oklch(95% 0.03 335)"
+        ]
+      },
+      "persona-acak": {
+        "role": "tertiary",
+        "displayName": "Persona acak",
+        "canonical": "#7d838b",
+        "tonalRamp": [
+          "oklch(15% 0.012 250)",
+          "oklch(25% 0.012 250)",
+          "oklch(35% 0.012 250)",
+          "oklch(45% 0.012 250)",
+          "oklch(55% 0.012 250)",
+          "oklch(65% 0.012 250)",
+          "oklch(80% 0.012 250)",
+          "oklch(95% 0.012 250)"
+        ]
+      },
+      "persona-swing": {
+        "role": "tertiary",
+        "displayName": "Persona swing",
+        "canonical": "#f0a35b",
+        "tonalRamp": [
+          "oklch(15% 0.06 60)",
+          "oklch(25% 0.09 60)",
+          "oklch(35% 0.11 60)",
+          "oklch(45% 0.13 60)",
+          "oklch(55% 0.15 60)",
+          "oklch(65% 0.15 60)",
+          "oklch(80% 0.11 60)",
+          "oklch(95% 0.04 60)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Judul bagian (h2) 23px dengan garis kuningan 28x2px di bawah (padding-bottom 8px); lebih besar dari nama halaman karena bagianlah yang dilirik."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Nama halaman di header (h1) 21px."
+      },
+      "nama-analis": {
+        "displayName": "Nama analis",
+        "purpose": "h3 di header kolom analis; satu-satunya bobot 700."
+      },
+      "subtitle": {
+        "displayName": "Subtitle",
+        "purpose": "Judul kolom/aside (h3) 15px; 14px untuk feed; h2–h4 markdown 17/15.5/14px."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Teks dasar halaman; nilai tebal 600 pada ukuran sama; saldo 600 15px; .juara 14.5px redup dengan b gading."
+      },
+      "body-md": {
+        "displayName": "Body markdown",
+        "purpose": "Isi blok .md, maks 80ch."
+      },
+      "body-small": {
+        "displayName": "Body small",
+        "purpose": "Daftar, baris posisi/order, tabel, summary details, .ringkas Riwayat (redup, b gading)."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Kontrol, tooltip, feed, subjudul header; th 500 12.5px."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Baris kedua posisi (entry → target · hangus), hasil hari ini di blok saldo, gaya analis, keterangan, footer."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Waktu di feed, small di judul, isi tag."
+      },
+      "pil": {
+        "displayName": "Pil status",
+        "purpose": "Pil status analis (kapital, 600); pembatas hari feed memakai ukuran sama dengan tracking .04em, 400, pudar."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Hanya code dan pre di dalam blok markdown."
+      }
+    },
+    "shadows": [
+      {
+        "name": "tooltip",
+        "value": "0 8px 24px -8px rgba(0,0,0,.7)",
+        "purpose": "Hanya pada #tt yang melayang di atas halaman."
+      },
+      {
+        "name": "cincin-titik-kesehatan",
+        "value": "0 0 0 2px var(--bg), 0 0 0 3px var(--line2)",
+        "purpose": "Tepi dua cincin pada titik kesehatan 9px; bukan elevasi."
+      },
+      {
+        "name": "denyut",
+        "value": "inset 0 -2px 0 var(--brass)",
+        "purpose": "Garis bawah kuningan yang memudar ke transparan pada angka yang berubah."
+      }
+    ],
+    "motion": [
+      {
+        "name": "pulse",
+        "value": "pulse .6s ease-out (inset 0 -2px 0 var(--brass) -> transparent)",
+        "purpose": "Angka ber-data-k yang berubah saat polling 5 detik."
+      },
+      {
+        "name": "masuk",
+        "value": "masuk .2s ease-out (opacity 0, translateY(-6px) -> 1, none)",
+        "purpose": "Entri kejadian baru di feed."
+      },
+      {
+        "name": "tooltip-in",
+        "value": "opacity .15s ease-out, transform .15s ease-out (translateY(2px) -> none)",
+        "purpose": "Tooltip tampil saat hover/fokus."
+      },
+      {
+        "name": "chevron",
+        "value": "transform .15s ease-out (rotate(0) -> rotate(90deg))",
+        "purpose": "Chevron details saat [open]."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "@media (prefers-reduced-motion: reduce) { .pulse, .feed li.masuk { animation: none } }",
+        "purpose": "Mematikan denyut dan geser masuk."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "satu-kolom",
+        "value": "1100px",
+        "purpose": "Grid dua kolom menjadi satu; feed maks 320px."
+      },
+      {
+        "name": "sempit",
+        "value": "640px",
+        "purpose": "Teks 14px, header jadi kolom, meja satu kolom, grafik 320px, sel tabel 7px/8px."
+      }
+    ],
+    "polling": [
+      {
+        "name": "ringkasan",
+        "value": "5000ms",
+        "purpose": "#meja/#banding/#feed/#health dilewati bila tooltip terbuka atau fokus di dalamnya (setHTML/sibuk)."
+      },
+      {
+        "name": "grafik",
+        "value": "15000ms"
+      },
+      {
+        "name": "arena-ekuitas-kandidat",
+        "value": "60000ms"
+      },
+      {
+        "name": "psikologi",
+        "value": "300000ms"
+      }
+    ],
+    "masks": [
+      {
+        "name": "jump-fade",
+        "value": "linear-gradient(90deg, #000 calc(100% - 28px), transparent)",
+        "purpose": "Tepi kanan navigasi lompat-bagian memudar; scrollbar disembunyikan."
+      }
+    ],
+    "separators": [
+      {
+        "name": "garis",
+        "value": "1px solid var(--line)",
+        "purpose": "Pemisah di dalam bagian (baris, item, header)."
+      },
+      {
+        "name": "sep",
+        "value": "2px solid var(--sep)",
+        "purpose": "Pemisah antar section.bag; padding bagian 30px atas / 26px bawah; .head margin-bottom 18px."
+      },
+      {
+        "name": "judul-bar",
+        "value": "section.bag>.head h2::after { width:28px; height:2px; background:var(--brass) }",
+        "purpose": "Garis kuningan pendek di bawah tiap judul bagian."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Seg control",
+      "kind": "button",
+      "refersTo": "seg-button",
+      "description": "Kelompok tombol pilihan tampilan (rentang lilin, akun, BTC/ETH); aktif kuningan.",
+      "html": "<div class=\"ds-seg\" role=\"group\"><button class=\"ds-seg-btn\">1m</button><button class=\"ds-seg-btn ds-on\">5m</button><button class=\"ds-seg-btn\">15m</button><button class=\"ds-seg-btn\">1h</button></div>",
+      "css": ".ds-seg{display:inline-flex;border:1px solid var(--line2,#433c34);border-radius:var(--r,6px);overflow:hidden}.ds-seg-btn{white-space:nowrap;background:var(--bg2,#201d1a);color:var(--muted,#aab0b7);border:0;padding:6px 10px;cursor:pointer;font:13px/1.5 Inter,system-ui,sans-serif;min-height:30px}.ds-seg-btn:hover{color:var(--ink,#ece9e1)}.ds-seg-btn.ds-on{background:var(--brass,#d9b35c);color:var(--brass-ink,#1a1500);font-weight:600}.ds-seg-btn:focus-visible{outline:2px solid var(--brass,#d9b35c);outline-offset:-2px}"
+    },
+    {
+      "name": "Pil navigasi",
+      "kind": "nav",
+      "refersTo": "jump-link",
+      "description": "Lompat-bagian sticky; pil kapsul, aktif kuningan; scrollbar tersembunyi, tepi kanan memudar 28px.",
+      "html": "<nav class=\"ds-jump\"><a href=\"#\" class=\"ds-jump-a ds-on\">Sekarang</a><a href=\"#\" class=\"ds-jump-a\">Peringkat</a><a href=\"#\" class=\"ds-jump-a\">Pasar</a><a href=\"#\" class=\"ds-jump-a\">Riwayat</a><a href=\"#\" class=\"ds-jump-a\">Konteks</a><a href=\"#\" class=\"ds-jump-a\">Catatan AI</a></nav>",
+      "css": ".ds-jump{display:flex;gap:2px;padding:6px 16px;background:color-mix(in srgb,var(--bg,#1a1816) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line,#332e28);overflow-x:auto;scrollbar-width:none;mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}.ds-jump::-webkit-scrollbar{display:none}.ds-jump-a{padding:6px 11px;border-radius:999px;font:13px/1.5 Inter,system-ui,sans-serif;color:var(--muted,#aab0b7);text-decoration:none;white-space:nowrap}.ds-jump-a:hover{color:var(--ink,#ece9e1);background:var(--bg3,#27231f)}.ds-jump-a.ds-on{color:var(--brass-ink,#1a1500);background:var(--brass,#d9b35c);font-weight:600}.ds-jump-a:focus-visible{outline:2px solid var(--brass,#d9b35c);outline-offset:2px}"
+    },
+    {
+      "name": "Judul bagian",
+      "kind": "custom",
+      "refersTo": "judul-bagian",
+      "description": "h2 23px/600 dengan garis kuningan 28x2px di bawahnya; judul adalah label bergaris putus yang membuka tooltip penjelas bagian.",
+      "html": "<div class=\"ds-head\"><h2 class=\"ds-h2\"><span class=\"ds-tip\" tabindex=\"0\">Sekarang</span></h2><span class=\"ds-ctl\">tampilkan kembaran acak</span></div>",
+      "css": ".ds-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:18px;font-family:Inter,system-ui,sans-serif;color:var(--ink,#ece9e1)}.ds-h2{position:relative;margin:0;padding-bottom:8px;font-size:23px;font-weight:600;letter-spacing:-.01em}.ds-h2::after{content:'';position:absolute;left:0;bottom:0;width:28px;height:2px;background:var(--brass,#d9b35c)}.ds-tip{text-decoration:underline dotted var(--dim,#7d838b);text-decoration-thickness:1px;text-underline-offset:3px;cursor:help;border-radius:2px}.ds-tip:hover,.ds-tip:focus-visible{text-decoration-color:var(--brass,#d9b35c)}.ds-tip:focus-visible{outline:2px solid var(--brass,#d9b35c);outline-offset:2px;border-radius:3px}.ds-ctl{color:var(--muted,#aab0b7);font-size:13px}"
+    },
+    {
+      "name": "Select",
+      "kind": "input",
+      "refersTo": "select-input",
+      "description": "Satu-satunya input: pemilih koin/akun/jenis catatan/hari.",
+      "html": "<select class=\"ds-select\" aria-label=\"Pilih koin\"><option>BTCUSDT</option><option>ETHUSDT</option></select>",
+      "css": ".ds-select{background:var(--bg2,#201d1a);color:var(--ink,#ece9e1);border:1px solid var(--line2,#433c34);border-radius:var(--r,6px);padding:6px 10px;font:13px/1.5 Inter,system-ui,sans-serif;min-height:32px}.ds-select:hover{border-color:var(--muted,#aab0b7)}.ds-select:focus-visible{outline:2px solid var(--brass,#d9b35c);outline-offset:2px}"
+    },
+    {
+      "name": "Pil status",
+      "kind": "chip",
+      "refersTo": "pil",
+      "description": "Status analis di header kolom: boleh buka (ok), berhenti (hold), mati (off), tidak tersedia (netral).",
+      "html": "<span class=\"ds-pil ds-ok\">boleh buka</span> <span class=\"ds-pil ds-hold\">berhenti</span> <span class=\"ds-pil ds-off\">mati</span> <span class=\"ds-pil\">tidak tersedia</span>",
+      "css": ".ds-pil{display:inline-block;font:600 11.5px/1.5 Inter,system-ui,sans-serif;letter-spacing:.02em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid var(--line2,#433c34);color:var(--muted,#aab0b7)}.ds-pil.ds-ok{color:var(--up,#5bd4a3);border-color:color-mix(in srgb,var(--up,#5bd4a3) 45%,transparent)}.ds-pil.ds-off{color:var(--down,#f07b7b);border-color:color-mix(in srgb,var(--down,#f07b7b) 45%,transparent)}.ds-pil.ds-hold{color:var(--warn,#e3b04b);border-color:color-mix(in srgb,var(--warn,#e3b04b) 45%,transparent)}"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Kapsul kecil di tabel dan daftar syarat: aktif/lolos (ok), belum, suasana takut/serakah.",
+      "html": "<span class=\"ds-tag ds-ok\">aktif</span> <span class=\"ds-tag ds-belum\">belum</span> <span class=\"ds-tag\">belum cukup data</span> <span class=\"ds-tag ds-takut\">sangat takut</span>",
+      "css": ".ds-tag{display:inline-block;padding:0 7px;border-radius:999px;border:1px solid var(--line2,#433c34);font:12px/1.6 Inter,system-ui,sans-serif;color:var(--muted,#aab0b7)}.ds-tag.ds-ok{color:var(--up,#5bd4a3);border-color:color-mix(in srgb,var(--up,#5bd4a3) 45%,transparent)}.ds-tag.ds-belum{color:var(--warn,#e3b04b);border-color:color-mix(in srgb,var(--warn,#e3b04b) 45%,transparent)}.ds-tag.ds-takut{color:var(--down,#f07b7b)}.ds-tag.ds-serakah{color:var(--up,#5bd4a3)}"
+    },
+    {
+      "name": "Tip tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip",
+      "description": "Label bergaris putus yang membuka tooltip pada hover dan fokus; semua keterangan tinggal di sini.",
+      "html": "<p class=\"ds-p\"><span class=\"ds-tip\" tabindex=\"0\">Bisa dipakai</span> <b>$0,82</b></p><div class=\"ds-tt ds-on\" role=\"tooltip\">Saldo bergulir hari ini: mulai $1, target tercapai menambah, hangus mengurangi.</div>",
+      "css": ".ds-p{font:13px/1.5 Inter,system-ui,sans-serif;color:var(--muted,#aab0b7)}.ds-p b{color:var(--ink,#ece9e1);font-weight:600;font-size:15px}.ds-tip{text-decoration:underline dotted var(--dim,#7d838b);text-decoration-thickness:1px;text-underline-offset:3px;cursor:help;border-radius:2px}.ds-tip:hover,.ds-tip:focus-visible{text-decoration-color:var(--brass,#d9b35c)}.ds-tip:focus-visible{outline:2px solid var(--brass,#d9b35c);outline-offset:2px;border-radius:3px}.ds-tt{max-width:320px;padding:9px 12px;background:#120f0d;color:var(--ink,#ece9e1);border:1px solid var(--line2,#433c34);border-radius:var(--r,6px);box-shadow:0 8px 24px -8px rgba(0,0,0,.7);font:13px/1.45 Inter,system-ui,sans-serif;white-space:pre-line;opacity:0;transform:translateY(2px);transition:opacity .15s ease-out,transform .15s ease-out}.ds-tt.ds-on{opacity:1;transform:none}"
+    },
+    {
+      "name": "Kolom analis",
+      "kind": "card",
+      "refersTo": "pil",
+      "description": "Satu kolom meja: nama 17px/700 + gaya, pil status, saldo (nilai + hasil hari ini bila bukan nol, rincian di tooltip), posisi satu baris 'entry → target · hangus' dengan rincian di tooltip nama koin, order 'menunggu harga · gugur HH.MM', keputusan terakhir. Tanpa latar, hanya garis rambut.",
+      "html": "<article class=\"ds-analis\"><header class=\"ds-analis-h\"><h3>Tiket</h3><span class=\"ds-gaya\">price action</span><span class=\"ds-pil ds-ok\">boleh buka</span></header><div class=\"ds-saldo\"><span class=\"ds-tip\" tabindex=\"0\">Bisa dipakai</span><b>$0,82</b><span class=\"ds-hasil ds-up\">+$0,12</span><span class=\"ds-bar\"><i style=\"width:82%\"></i></span></div><ul class=\"ds-ul\"><li><div class=\"ds-l1\"><span class=\"ds-tip\" tabindex=\"0\"><b>BTC</b> LONG 5×</span><b class=\"ds-pl ds-up\">+$0,04</b></div><div class=\"ds-l2\"><span>61.240 <span class=\"ds-ke\">→</span> 61.730</span><span>hangus 4,2 %</span></div></li><li class=\"ds-order\"><div class=\"ds-l1\"><span class=\"ds-tip\" tabindex=\"0\"><b>ETH</b> SHORT 3×</span><span class=\"ds-muted\">2.410</span></div><div class=\"ds-l2\"><span>menunggu harga</span><span class=\"ds-ke\">·</span><span>gugur 14.30</span></div></li></ul><p class=\"ds-terakhir\"><time>09:12</time> masuk BTC LONG di 61.240</p></article>",
+      "css": ".ds-analis{padding:14px 0 12px;border-top:1px solid var(--line,#332e28);border-bottom:1px solid var(--line,#332e28);font:14.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1);font-variant-numeric:tabular-nums;max-width:320px}.ds-analis-h{display:grid;grid-template-columns:1fr auto;grid-template-areas:'nama pil' 'gaya pil';align-items:center;column-gap:10px;margin-bottom:8px}.ds-analis-h h3{grid-area:nama;margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}.ds-gaya{grid-area:gaya;font-size:12.5px;color:var(--muted,#aab0b7)}.ds-analis-h .ds-pil{grid-area:pil;font:600 11.5px/1.5 Inter,system-ui,sans-serif;letter-spacing:.02em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid var(--line2,#433c34);color:var(--muted,#aab0b7)}.ds-pil.ds-ok{color:var(--up,#5bd4a3);border-color:color-mix(in srgb,var(--up,#5bd4a3) 45%,transparent)}.ds-saldo{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:13px;color:var(--muted,#aab0b7);margin-bottom:10px}.ds-saldo b{font-size:15px;color:var(--ink,#ece9e1);font-weight:600}.ds-hasil{font-size:12.5px}.ds-tip{text-decoration:underline dotted var(--dim,#7d838b);text-decoration-thickness:1px;text-underline-offset:3px;cursor:help;border-radius:2px}.ds-tip:hover,.ds-tip:focus-visible{text-decoration-color:var(--brass,#d9b35c)}.ds-tip:focus-visible{outline:2px solid var(--brass,#d9b35c);outline-offset:2px;border-radius:3px}.ds-bar{grid-column:1/-1;height:4px;background:var(--bg3,#27231f);border-radius:2px;overflow:hidden}.ds-bar i{display:block;height:100%;background:var(--brass,#d9b35c)}.ds-bar i.ds-down{background:var(--down,#f07b7b)}.ds-up{color:var(--up,#5bd4a3)}.ds-down{color:var(--down,#f07b7b)}.ds-muted{color:var(--muted,#aab0b7)}.ds-ul{list-style:none;margin:0;padding:0}.ds-ul li{padding:7px 0;border-top:1px solid var(--line,#332e28);font-size:13.5px;line-height:1.45}.ds-l1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.ds-l1 b{font-size:14.5px;font-weight:600}.ds-order .ds-l1 b{color:var(--muted,#aab0b7)}.ds-l2{color:var(--muted,#aab0b7);font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap}.ds-ke{color:var(--dim,#7d838b)}.ds-pl{font-weight:600;white-space:nowrap}.ds-terakhir{margin:8px 0 0;font-size:12.5px;color:var(--dim,#7d838b)}.ds-terakhir time{color:var(--muted,#aab0b7)}"
+    },
+    {
+      "name": "Feed kejadian",
+      "kind": "custom",
+      "refersTo": "jump-link",
+      "description": "Aliran kejadian: waktu relatif pudar (kolom 82px), nama akun kuningan, kalimat; pembatas hari; entri baru geser masuk 200 ms; baris acak diredupkan.",
+      "html": "<ol class=\"ds-feed\"><li class=\"ds-masuk\"><time>baru saja</time><span><span class=\"ds-who\">Tiket</span> BTC: stop digeser ke harga masuk (pengaman 80 % jalan ke target)</span></li><li><time>12 mnt</time><span><span class=\"ds-who\">Tiket</span> masuk BTC LONG di 61.240</span></li><li class=\"ds-hari\">kemarin</li><li class=\"ds-acak\"><time>kemarin 21:40</time><span><span class=\"ds-who\">Acak</span> masuk BTC SHORT di 61.240</span></li></ol>",
+      "css": ".ds-feed{list-style:none;margin:0;padding:0;border-top:1px solid var(--line,#332e28);font:13px/1.4 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1);max-width:360px;font-variant-numeric:tabular-nums}.ds-feed li{display:grid;grid-template-columns:82px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line,#332e28)}.ds-feed li:first-child{border-top:0}.ds-feed li.ds-hari{display:block;padding:8px 0 2px;color:var(--dim,#7d838b);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;border-top:1px solid var(--line2,#433c34)}.ds-feed time{color:var(--dim,#7d838b);font-size:12px;padding-top:1px;white-space:nowrap}.ds-who{color:var(--brass,#d9b35c);font-weight:600}.ds-feed li.ds-acak{color:var(--muted,#aab0b7)}.ds-feed li.ds-acak .ds-who{color:var(--dim,#7d838b)}.ds-feed li.ds-masuk{animation:ds-masuk .2s ease-out}@keyframes ds-masuk{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.ds-feed li.ds-masuk{animation:none}}"
+    },
+    {
+      "name": "Tablewrap",
+      "kind": "custom",
+      "refersTo": "tag",
+      "description": "Tabel dalam pembungkus scroll bergaris rambut; th sticky redup, angka rata kanan, baris klik hover arang-2.",
+      "html": "<div class=\"ds-tablewrap\"><table class=\"ds-table\"><thead><tr><th>Analis</th><th>Status</th><th class=\"ds-num\">Total</th><th class=\"ds-num\">Terdalam</th></tr></thead><tbody><tr class=\"ds-klik\"><td><b style=\"color:#d9b35c\">Tiket</b></td><td><span class=\"ds-tag ds-ok\">aktif</span></td><td class=\"ds-num\"><b class=\"ds-up\">+$1,42</b></td><td class=\"ds-num\"><span class=\"ds-down\">-$0,61</span></td></tr><tr class=\"ds-klik ds-acak\"><td>Acak</td><td><span class=\"ds-tag ds-ok\">aktif</span></td><td class=\"ds-num\"><b class=\"ds-down\">-$0,37</b></td><td class=\"ds-num\"><span class=\"ds-down\">-$0,90</span></td></tr></tbody></table></div>",
+      "css": ".ds-tablewrap{overflow:auto;border-top:1px solid var(--line,#332e28);border-bottom:1px solid var(--line,#332e28);max-height:440px;font-variant-numeric:tabular-nums}.ds-table{border-collapse:collapse;width:100%;font:13.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1)}.ds-table th,.ds-table td{padding:8px 10px;border-bottom:1px solid var(--line,#332e28);text-align:left;white-space:nowrap;vertical-align:top}.ds-table th{position:sticky;top:0;background:var(--bg,#1a1816);color:var(--muted,#aab0b7);font-weight:500;font-size:12.5px}.ds-table .ds-num{text-align:right}.ds-table tbody tr:last-child td{border-bottom:0}.ds-table tr.ds-klik:hover{background:var(--bg2,#201d1a);cursor:pointer}.ds-table tr.ds-acak{color:var(--muted,#aab0b7)}.ds-tag{display:inline-block;padding:0 7px;border-radius:999px;border:1px solid var(--line2,#433c34);font-size:12px;color:var(--muted,#aab0b7);line-height:1.6}.ds-tag.ds-ok{color:var(--up,#5bd4a3);border-color:color-mix(in srgb,var(--up,#5bd4a3) 45%,transparent)}.ds-up{color:var(--up,#5bd4a3)}.ds-down{color:var(--down,#f07b7b)}.ds-table b{font-weight:600}"
+    },
+    {
+      "name": "List + details",
+      "kind": "custom",
+      "refersTo": "tag",
+      "description": "Daftar kiri-kanan bergaris rambut (mesin, biaya, bacaan pasar) dan pembuka details dengan chevron SVG (mask) yang berputar saat terbuka.",
+      "html": "<ul class=\"ds-list\"><li class=\"ds-utama\"><div class=\"ds-k\"><span>Hari ini</span><b>$0,41</b></div><div class=\"ds-s\">12 panggilan · batas $2</div><div class=\"ds-bar\"><i style=\"width:21%\"></i></div></li><li><div class=\"ds-k\"><span>Pengambil harga</span><b class=\"ds-up\">jalan</b></div><div class=\"ds-s\">tick terakhir 4 dtk lalu</div></li><li class=\"ds-dim\">Riwayat cron Hermes tidak tersedia.</li></ul><details class=\"ds-details\"><summary>Angka per indikator</summary><div class=\"ds-s\">isi</div></details>",
+      "css": ".ds-list{list-style:none;margin:0;padding:0;font:13.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1);max-width:340px}.ds-list li{padding:8px 0;border-bottom:1px solid var(--line,#332e28)}.ds-list li:last-child{border-bottom:0}.ds-k{display:flex;justify-content:space-between;gap:12px}.ds-k b{font-weight:600}.ds-s{color:var(--muted,#aab0b7);font-size:12.5px}.ds-utama{font-size:14.5px}.ds-dim{color:var(--dim,#7d838b)}.ds-up{color:var(--up,#5bd4a3)}.ds-bar{height:4px;background:var(--bg3,#27231f);border-radius:2px;overflow:hidden;margin-top:6px}.ds-bar i{display:block;height:100%;background:var(--brass,#d9b35c)}.ds-bar i.ds-warn{background:var(--warn,#e3b04b)}.ds-details{border-top:1px solid var(--line,#332e28);margin-top:14px;font:13.5px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1)}.ds-details summary{cursor:pointer;padding:10px 0 10px 18px;color:var(--muted,#aab0b7);list-style:none;position:relative}.ds-details summary::-webkit-details-marker{display:none}.ds-details summary::before{content:'';position:absolute;left:0;top:14px;width:12px;height:12px;background:var(--dim,#7d838b);-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 2l4 4-4 4'/%3E%3C/svg%3E\") center/contain no-repeat;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 2l4 4-4 4'/%3E%3C/svg%3E\") center/contain no-repeat;transition:transform .15s ease-out}.ds-details[open] summary::before{transform:rotate(90deg)}.ds-details summary:hover{color:var(--ink,#ece9e1)}"
+    },
+    {
+      "name": "Blok markdown",
+      "kind": "card",
+      "refersTo": "md-block",
+      "description": "Catatan AI dirender md() ke h2–h4, p, ul/ol, blockquote, code, pre, hr, tabel, a (kuningan); satu-satunya blok berlatar.",
+      "html": "<div class=\"ds-md\"><h2>Keputusan hari ini</h2><p><b>Rencana:</b> tunggu uji ulang 61.200 sebelum masuk.</p><ul><li>BTC masih di atas level harian</li><li>Volume <i>belum</i> konfirmasi</li></ul><blockquote>Jangan mengejar harga yang sudah lewat level.</blockquote><p>Lihat <a href=\"#\">playbook P-01</a>; parameter <code>lev=5</code>.</p><hr><pre>entry 61240\nsl 60980</pre></div>",
+      "css": ".ds-md{margin:0;background:var(--bg2,#201d1a);border:1px solid var(--line,#332e28);border-radius:var(--r,6px);padding:16px 20px;font:14px/1.6 Inter,system-ui,sans-serif;color:var(--ink,#ece9e1);max-width:80ch}.ds-md h2,.ds-md h3,.ds-md h4{margin:18px 0 6px;font-weight:600;letter-spacing:-.01em}.ds-md h2{font-size:17px}.ds-md h3{font-size:15.5px}.ds-md h4{font-size:14px;color:var(--muted,#aab0b7)}.ds-md>:first-child{margin-top:0}.ds-md p{margin:6px 0}.ds-md ul,.ds-md ol{margin:6px 0 10px;padding-left:22px}.ds-md li{margin:3px 0}.ds-md li::marker{color:var(--dim,#7d838b)}.ds-md b{color:var(--ink,#ece9e1);font-weight:600}.ds-md i{color:var(--muted,#aab0b7)}.ds-md code{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;background:var(--bg3,#27231f);padding:1px 5px;border-radius:4px}.ds-md pre{background:var(--bg3,#27231f);border-radius:var(--r,6px);padding:10px 12px;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monospace,Consolas,monospace}.ds-md blockquote{margin:8px 0;padding:4px 0 4px 12px;color:var(--muted,#aab0b7);border-left:1px solid var(--line2,#433c34)}.ds-md hr{border:0;border-top:1px solid var(--line,#332e28);margin:14px 0}.ds-md a{color:var(--brass,#d9b35c)}.ds-md a:hover{text-decoration-color:var(--brass,#d9b35c)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Meja Analis",
+    "overview": "Dashboard ini adalah satu meja kerja gelap yang dilirik sepanjang hari, bukan layar yang dibaca. Permukaannya arang hangat (kecoklatan, bukan kebiruan) tanpa kartu, tanpa panel bertumpuk; di dalam bagian hanya ada garis rambut 1 px, antar bagian garis pemisah 2 px yang sedikit lebih terang, dan tiap judul bagian membawa satu garis kuningan pendek 28 × 2 px di bawahnya. Tinta gading menulis kalimat utuh (\"BTC LONG 5× · 61.240 → 61.730 · hangus 4,2 %\"), bukan angka besar dalam kotak KPI. Satu aksen kuningan dipakai hemat untuk hal yang sedang dipilih, difokus, atau baru berubah; mint dan koral hanya berbicara soal untung dan rugi; amber memberi tanda tunggu atau batas yang mendekat.\n\nKepadatannya tinggi tetapi tenang: ukuran teks 12–15 px, baris 1,45–1,6, angka tabular supaya kolom tidak bergoyang saat polling 5 detik. Di layar hanya tinggal yang dilirik: nilai, arah, jarak; saldo rinci, harga masuk/target/stop, status order, syarat juara, dan bacaan per indikator dipindahkan ke tooltip pada label bergaris putus atau ke blok `details`. Bagian yang sedang dibaca (tooltip terbuka atau fokus di dalamnya) tidak dirender ulang. Gerak hanya tiga dan semuanya pendek: denyut garis bawah kuningan pada angka yang berubah, entri kejadian baru yang masuk dengan geser, dan chevron `details` yang berputar.\n\nDunia ini menolak susunan default \"kartu angka besar + tab\", menolak kartu di dalam kartu, dan menolak estimasi: data yang tidak ada ditulis \"tidak tersedia\" beserta alasannya, dalam warna pudar, bukan diganti angka tebakan.",
+    "keyCharacteristics": [
+      "Satu permukaan arang hangat; hirarki lewat garis rambut, pemisah bagian 2 px, dan nada teks (gading → redup → pudar), bukan lewat kotak.",
+      "Satu keluarga huruf (Inter) dengan angka tabular; tebal 600 untuk nilai dan status terpilih, 700 hanya untuk nama analis.",
+      "Satu aksen kuningan untuk pilihan/fokus/perubahan/tautan dan garis pendek di bawah judul bagian; mint = untung, koral = rugi, amber = tunggu/batas.",
+      "Layar tipis: satu baris per keadaan, rincian di tooltip atau `details`; catatan AI dirender sebagai markdown.",
+      "Baca-saja: tidak ada aksi primer, tidak ada tombol beli/jual; kontrol hanya memilih tampilan."
+    ],
+    "rules": [
+      {
+        "name": "The Satu Kuningan Rule",
+        "body": "Kuningan menandai pilihan, fokus, perubahan, tautan, dan garis pendek di bawah judul bagian; tidak pernah menjadi latar area atau warna teks tubuh. Teks di atas kuningan selalu kuningan-tinta.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mint-Koral Rule",
+        "body": "Mint dan koral hanya mengatakan arah uang atau hidup/mati sistem (untung/rugi, LONG/SHORT, OK/mati). Tidak dipakai untuk dekorasi atau untuk menandai persona.",
+        "section": "colors"
+      },
+      {
+        "name": "The Garis Rambut Rule",
+        "body": "Di dalam bagian, pemisah hanya garis 1 px garis; antar bagian garis 2 px sep. Tidak ada kartu, kotak latar, atau bayangan untuk memecah halaman. Tepi garis-2 hanya pada kontrol, pil/tag, tooltip, pembatas hari, dan kutipan.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tidak Tersedia Rule",
+        "body": "Data yang tidak ada ditulis \"tidak tersedia\" (atau \"—\" untuk satu nilai) dalam pudar, dengan alasan bila ada. Nilai nol ditulis \"$0,00\", bukan dikosongkan. Tidak pernah diisi estimasi, dan tidak pernah diberi warna semantik.",
+        "section": "colors"
+      },
+      {
+        "name": "The Angka Tabular Rule",
+        "body": "Semua angka tabular-nums (diset di html, body), rata kanan di kolom .num, dan diformat id-ID; mata uang USD, IDR hanya dalam kurung.",
+        "section": "typography"
+      },
+      {
+        "name": "The Kalimat Bukan Kotak Rule",
+        "body": "Keadaan dinyatakan sebagai kalimat kaya (nama koin tebal, arah, leverage, jarak ke target/hangus) dengan nilai inline tebal; bukan sebagai angka besar terpisah.",
+        "section": "typography"
+      },
+      {
+        "name": "The Layar Tipis Rule",
+        "body": "Satu baris per keadaan di layar; rinciannya (harga masuk/target/stop, status order, saldo bergulir, syarat juara, puncak modal, bacaan per indikator) hidup di tooltip pada label bergaris putus atau di blok details, bukan sebagai baris tambahan.",
+        "section": "typography"
+      },
+      {
+        "name": "The Waktu Relatif Rule",
+        "body": "Di feed, waktu ditulis relatif (\"baru saja\", \"12 mnt\", jam untuk hari ini, \"kemarin 21:40\", lalu \"13 Okt 21:40\"), dan hari dipisah oleh pembatas \"hari ini / kemarin / tanggal\". Di tempat lain waktu tetap jam WIB.",
+        "section": "typography"
+      },
+      {
+        "name": "The Datar Kecuali Melayang Rule",
+        "body": "Permukaan di dalam halaman tidak pernah berbayang. Bayangan hanya pada lapisan yang benar-benar mengambang di atas konten (tooltip); navigasi sticky memakai blur dan mask, bukan bayangan.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do pisahkan baris dan item dengan garis rambut 1 px garis, dan bagian dengan garis 2 px sep; biarkan latar tetap arang.",
+      "Do beri tiap judul bagian garis kuningan 28 × 2 px di bawahnya; selain itu pakai kuningan hanya untuk pilihan aktif, fokus, tautan, nama akun di feed, dan denyut perubahan; teks di atasnya kuningan-tinta.",
+      "Do warnai angka uang dengan mint/koral berdasarkan tanda, tebal 600, tabular, rata kanan di tabel; nol ditulis \"$0,00\".",
+      "Do tulis satu baris per keadaan; taruh rincian dan definisi di tooltip lewat label bergaris putus yang juga bisa difokus keyboard (tabindex=\"0\") atau di blok details, dan jangan render ulang wadah yang sedang dibaca.",
+      "Do tulis \"tidak tersedia\" (atau \"—\") dalam pudar beserta alasan ketika data tidak ada.",
+      "Do tandai nilai yang berubah dengan data-k supaya denyut 600 ms berjalan; entri baru masuk dengan geser 200 ms; hormati prefers-reduced-motion.",
+      "Do tulis waktu di feed secara relatif dengan pembatas hari; di tempat lain pakai jam WIB.",
+      "Do runtuhkan grid dua kolom menjadi satu pada ≤ 1100 px dan meja analis menjadi satu kolom pada ≤ 640 px."
+    ],
+    "donts": [
+      "Don't tambahkan kartu, panel berlatar, atau kotak di dalam kotak; .md adalah satu-satunya blok berlatar.",
+      "Don't pakai bayangan pada permukaan di dalam halaman; bayangan hanya untuk tooltip yang melayang.",
+      "Don't pakai mint/koral untuk hal selain arah uang atau hidup/mati sistem, dan jangan pakai warna persona sebagai latar.",
+      "Don't tambahkan aksi primer, tombol beli/jual, atau input yang menulis data; dashboard hanya membaca.",
+      "Don't tambahkan baris keterangan di bawah nilai; kalau perlu dijelaskan, pindahkan ke tooltip atau details.",
+      "Don't tambahkan motion selain denyut garis bawah, geser masuk entri, dan putaran chevron; durasi tetap 150–600 ms ease-out.",
+      "Don't pakai bobot 700 di luar nama analis, dan jangan pakai huruf mono di luar code/pre markdown.",
+      "Don't tampilkan jargon mesin (kode event, nama tabel, JSON) di layar; terjemahkan ke kalimat Indonesia.",
+      "Don't mengestimasi angka yang tidak tersedia atau memberinya warna semantik."
+    ]
+  }
+}
