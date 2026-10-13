@@ -137,6 +137,16 @@ tr.acak{color:var(--muted)}
 .tag.belum{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
 .tag.takut{color:var(--down)}.tag.serakah{color:var(--up)}
 
+/* ---- RINGKASAN */
+.ringkasan{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:28px;align-items:start}
+.ringkasan h3{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:0 0 8px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.ringkasan h3 small{color:var(--dim);font-weight:400;font-size:12px}
+.profil li{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:baseline}
+.profil li b.nm{font-size:14.5px}
+.profil li .c{color:var(--muted)}
+.profil li .c b{color:var(--ink);font-weight:500}
+@media(max-width:1100px){.ringkasan{grid-template-columns:1fr}}
+
 /* ---- PERINGKAT */
 .peringkat{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
 #chart-arena{height:240px;width:100%}

@@ -12,6 +12,7 @@ import logging
 import os
 import sqlite3
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any, Optional
 
@@ -336,6 +337,44 @@ class Data:
         finally:
             paper.close()
 
+    def ringkas(self, top_n: int = 5) -> dict:
+        """Ringkasan mudah dibaca: top koin 24 jam (ticker_24h) + kecenderungan tiap analis dari tabel positions. Baca saja."""
+        pasar, paper = self._ro(self.pasar_p), self._ro(self.paper_p)
+        try:
+            top: list[dict] = []
+            if pasar:
+                r = pasar.execute("SELECT MAX(ts) FROM ticker_24h").fetchone()
+                if r and r[0]:
+                    top = [dict(x) for x in pasar.execute(
+                        "SELECT ts, symbol, rank, last, pct_24h, quote_volume FROM ticker_24h WHERE ts=? ORDER BY rank LIMIT ?", (int(r[0]), int(top_n)))]
+            analis: list[dict] = []
+            if paper:
+                for a in daftar_akun(paper):
+                    rows = [dict(x) for x in paper.execute("SELECT * FROM positions WHERE account=? ORDER BY id", (a["name"],))]
+                    closed = [p for p in rows if p["status"] == "CLOSED" and p["net_result"] is not None]
+                    koin = Counter(p["symbol"] for p in rows).most_common(3)
+                    alasan = Counter(p["close_reason"] for p in closed)
+                    pola = Counter((p["pattern"] or "").split(":")[-1] for p in rows if p["pattern"]).most_common(2)
+                    jam = Counter(int(C.fmt_wib(p["opened_ts"])[11:13]) for p in rows if p["opened_ts"])
+                    durasi = [(p["closed_ts"] - p["opened_ts"]) / 60000 for p in closed if p["opened_ts"] and p["closed_ts"]]
+                    menang = sum(1 for p in closed if p["net_result"] > 0)
+                    analis.append({
+                        "akun": a["name"], "kind": a["kind"], "status": a["status"],
+                        "n_posisi": len(rows), "n_selesai": len(closed), "n_terbuka": sum(1 for p in rows if p["status"] == "OPEN"),
+                        "long_n": sum(1 for p in rows if p["side"] == LONG), "short_n": sum(1 for p in rows if p["side"] != LONG),
+                        "koin": [{"symbol": s, "n": n} for s, n in koin],
+                        "lev_min": min((p["leverage"] for p in rows), default=None), "lev_maks": max((p["leverage"] for p in rows), default=None),
+                        "win_rate": (menang / len(closed)) if closed else None, "total_net": sum(p["net_result"] for p in closed),
+                        "rata_durasi_mnt": (sum(durasi) / len(durasi)) if durasi else None,
+                        "alasan": dict(alasan), "pola": [{"pola": k, "n": n} for k, n in pola],
+                        "jam_sibuk": (jam.most_common(1)[0][0] if jam else None),
+                    })
+            return {"top_koin": top, "analis": analis}
+        finally:
+            for c in (pasar, paper):
+                if c:
+                    c.close()
+
     def teks(self, jenis: str, hari: Optional[str]) -> dict:
         day = hari or C.day_wib(self.clock())
         if jenis == "hipotesis":
@@ -420,6 +459,7 @@ def make_app(data: Optional[Data] = None, static_dir: Path = STATIC_DIR):
         Route("/api/psikologi", guard(lambda r: d.psikologi(qp(r, "symbol", "BTCUSDT")))),
         Route("/api/kandidat", guard(lambda r: d.kandidat())),
         Route("/api/kejadian", guard(lambda r: d.kejadian(int(qp(r, "limit", 40))))),
+        Route("/api/ringkas", guard(lambda r: d.ringkas(int(qp(r, "n", 5))))),
         Route("/api/teks", guard(lambda r: d.teks(qp(r, "jenis", "jurnal"), qp(r, "hari")))),
     ]
     return Starlette(routes=routes)

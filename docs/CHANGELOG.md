@@ -14,7 +14,9 @@ Artefak desain: `PRODUCT.md`, `DESIGN.md`, `.impeccable/surfaces/dashboard-index
 Putaran review (finish reviewer): latar dibuat hangat, urutan bagian Sekarang → Peringkat → Pasar, waktu relatif + pembatas hari di aliran kejadian,
 render tidak menimpa wadah yang sedang di-hover/fokus (tooltip keyboard), chevron SVG, skala judul. Permintaan user lanjutan: Catatan AI dirender dari
 markdown (judul, daftar, tabel, tebal/miring), pembatas antar-bagian dipertegas (`--sep`, aksen kuningan di bawah judul), teks panjang dipangkas
-(rincian posisi/saldo/juara/modal/bacaan pasar pindah ke tooltip atau `details`).
+(rincian posisi/saldo/juara/modal/bacaan pasar pindah ke tooltip atau `details`). Permintaan lanjutan: bagian **Ringkasan** (`/api/ringkas`):
+5 koin teramai 24 jam (ticker_24h) + kecenderungan tiap analis dihitung mesin dari `positions` (arah, koin favorit, leverage, menang, lama pegang,
+cara keluar, pola, jam sibuk); tabel Riwayat tinggal kolom inti (rincian di tooltip koin); Mesin/Biaya satu baris per item. Tes D8 (141).
 
 **Kenapa:** permintaan user: dashboard pemantau "para analis yang sedang paper trade", rich text terbaca, label/informasi di tooltip, warna
 sederhana-elegan-kontras; jawaban wawancara: ganti total, dibaca sendiri sambil bekerja, prioritas = apa yang terjadi sekarang.

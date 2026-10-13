@@ -534,12 +534,14 @@ Desain: `PRODUCT.md` (kebenaran produk) + `DESIGN.md` (sistem visual) + `.impecc
   pernah ditradingkan → top 30 volume.
 - **Titik kesehatan (header)**: harga (collector OK/BASI), radar (run terakhir, wake hari ini), biaya (hari/bulan vs cap), AI dimatikan (kill switch);
   detail hanya di tooltip.
+- **Ringkasan** (`/api/ringkas?n=5`): 5 koin teramai 24 jam (harga, Δ24h, volume) dan satu baris kecenderungan per analis, dihitung dari
+  tabel `positions` (bukan jawaban AI).
 - **Peringkat**: kalimat juara/terdepan, tabel `papan_arena` per persona, kurva ekuitas semua persona + acak, syarat lulus §19.7 (`evaluasi.compute`).
 - **Riwayat**: trade selesai, order tidak jadi dan rekap harian (dilipat), perjalanan modal + trailing drawdown per akun dengan kalimat ringkas;
   klik baris → chart. **Konteks**: suasana pasar BTC/ETH (bacaan + tabel indikator + catatan AI), mesin (collector, radar, cron Hermes, kandidat
   radar), biaya AI. **Catatan AI**: jurnal, catatan harian, hipotesis, pelajaran, usulan, playbook, indeks.
 - API JSON (GET): `/api/ringkasan`, `/api/simbol`, `/api/candles?symbol&tf&n`, `/api/marker?symbol`, `/api/riwayat?akun&hari&symbol`,
-  `/api/ekuitas`, `/api/statistik`, `/api/arena`, `/api/psikologi?symbol`, `/api/kandidat`, `/api/kejadian?limit`, `/api/teks?jenis&hari`.
+  `/api/ekuitas`, `/api/statistik`, `/api/arena`, `/api/psikologi?symbol`, `/api/kandidat`, `/api/kejadian?limit`, `/api/ringkas?n`, `/api/teks?jenis&hari`.
 
 | Gejala | Tindakan |
 |---|---|

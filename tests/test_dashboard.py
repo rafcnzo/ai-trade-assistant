@@ -78,6 +78,19 @@ class TestArenaApi(Base):
         self.assertEqual(len(self.client.get("/api/kejadian?limit=1").json()["kejadian"]), 1)
         pasar_ro.close()
 
+    def test_d8_ringkas_top_koin_dan_profil_analis(self):
+        self.assertEqual(self.client.get("/api/ringkas").json(), {"top_koin": [], "analis": []})
+        eng, pasar_ro = self.seed()
+        res = eng.place_order(OrderRequest(account="tiket", symbol=PEM, side=LONG, type="LIMIT", qty=0.1, price=99.8, leverage=20, tp_price=102.0, plan_id="K1"))
+        self.assertTrue(res.ok, res.reject_reason)
+        eng.conn.close()
+        r = self.client.get("/api/ringkas?n=3").json()
+        self.assertLessEqual(len(r["top_koin"]), 3)
+        tiket = next(a for a in r["analis"] if a["akun"] == "tiket")
+        self.assertEqual((tiket["kind"], tiket["n_selesai"], tiket["win_rate"]), ("tiket", 0, None))
+        self.assertIn(tiket["long_n"] + tiket["short_n"], (0, 1))
+        pasar_ro.close()
+
 
 class TestDashboard(Base):
     def test_d1_empty_everything_is_200(self):

@@ -24,7 +24,7 @@
 </header>
 
 <nav class="jump" aria-label="Bagian">
-  <a href="#sekarang" class="on">Sekarang</a><a href="#peringkat">Peringkat</a><a href="#pasar">Pasar</a><a href="#riwayat">Riwayat</a><a href="#konteks">Konteks</a><a href="#catatan">Catatan AI</a>
+  <a href="#sekarang" class="on">Sekarang</a><a href="#ringkasan">Ringkasan</a><a href="#peringkat">Peringkat</a><a href="#pasar">Pasar</a><a href="#riwayat">Riwayat</a><a href="#konteks">Konteks</a><a href="#catatan">Catatan AI</a>
 </nav>
 
 <main>
@@ -43,6 +43,21 @@
         <h3><span class="tip" tabindex="0" data-tip="Catatan mesin paper, dari yang terbaru: order dipasang, posisi masuk, target tercapai, stop, modal hangus, pengaman breakeven, dan kembaran acak. Nama di depan = analis yang bersangkutan.">Kejadian</span> <small id="feed-info"></small></h3>
         <ol id="feed"></ol>
       </aside>
+    </div>
+  </section>
+
+  <!-- RINGKASAN -->
+  <section id="ringkasan" class="bag">
+    <div class="head"><h2><span class="tip" tabindex="0" data-tip="Sekilas pasar dan kebiasaan tiap analis. Koin teramai = 5 pasangan futures dengan volume 24 jam terbesar (sumber: collector tiap 5 menit). Kecenderungan dihitung mesin dari semua posisi analis itu: arah yang sering diambil, koin favorit, leverage, lama memegang, dan cara keluar.">Ringkasan</span></h2></div>
+    <div class="ringkasan">
+      <div>
+        <h3><span class="tip" tabindex="0" data-tip="Lima koin dengan volume perdagangan 24 jam terbesar di futures. Perubahan = harga sekarang vs 24 jam lalu. Volume dalam USDT.">Koin teramai 24 jam</span> <small id="top-info"></small></h3>
+        <div class="tablewrap"><table id="tbl-top"></table></div>
+      </div>
+      <div>
+        <h3><span class="tip" tabindex="0" data-tip="Satu baris per analis: arah yang cenderung diambil, koin yang sering dipegang, rentang leverage, persentase menang, rata-rata lama memegang, dan cara keluar yang paling sering. Semua dihitung dari riwayat posisi, bukan dari jawaban AI.">Kecenderungan analis</span></h3>
+        <ul class="list profil" id="profil"></ul>
+      </div>
     </div>
   </section>
 
