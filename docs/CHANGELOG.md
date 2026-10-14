@@ -3,6 +3,18 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-14 (siang, 13:40) — laptop Windows — belajar dari kesalahan: gate R:R P-19, uji hipotesis ikut susulan, evaluasi 21:30
+
+**Apa:** `paper_engine.py`: `tiket_min_rr` (bawaan 0,5; env `PAPER_TIKET_MIN_RR`) — order persona dengan TP ditolak `RR_TOO_LOW` bila untung bersih di TP
+< 0,5× risiko hangus (margin + fee masuk); `hermes/scripts/susulan_cron.py` menjalankan `uji_hipotesis.py --cron` sebelum membangunkan agent
+(hipotesis jatuh tempo yang terlewat dinilai, hasil diteruskan); `hermes/cron.cmd` + Hermes: `evaluasi-harian` 23:55 → 21:30 (prompt menyebut EOD
+kemarin), `uji-hipotesis` 23:40 → 21:15; skill evaluasi-harian + teks susulan disesuaikan; playbook P-19 aktif (U-001 diterima pemilik); tes T28,
+fixtures menyetel `PAPER_TIKET_MIN_RR=0` untuk fixture lama (142 hijau).
+
+**Kenapa:** laporan user 14 Okt: evaluasi malam tidak pernah jalan (laptop mati 23:55; susulan pagi yang bekerja), uji hipotesis tidak pernah jalan
+(0 hipotesis dinilai), dan AI mengulang pola rugi yang sudah diusulkan agent sendiri (hangus ≈ −$1 vs TP +$0,1–0,3) karena usulan menunggu keputusan pemilik.
+**File:** `scripts/paper_engine.py`, `hermes/{cron.cmd,scripts/susulan_cron.py,skills/evaluasi-harian/SKILL.md}`, `referensi/playbook.md`, tests, docs.
+
 ## 2026-10-13 (pagi, 09:40) — laptop Windows — dashboard dibangun ulang: "Meja analis"
 
 **Apa:** `dashboard/{index.html,style.css,app.js}` ditulis ulang (skill impeccable, code-led): satu halaman gulir dengan lompat-bagian; bagian

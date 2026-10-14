@@ -17,6 +17,7 @@ import random
 import csv
 import json
 import logging
+import os
 import sys
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -75,6 +76,9 @@ class EngineConfig:
     acak_seed: str = "acak-v1"             # sisi acak = Random(f"{seed}:{order_id}") → deterministik, bisa diverifikasi
     acak_budget: float = 1.00
     tiket_breakeven_mfe: float = 0.8   # tiket/acak: setelah harga menempuh >= 80% jalan ke TP, SL dipindah ke harga masuk (pengaman; 0 = mati)
+    # P-19: untung bersih di TP harus >= 0.5x risiko hangus (margin + fee masuk); 0 = mati. Hanya akun persona (kind tiket).
+    # Env PAPER_TIKET_MIN_RR mengubah bawaan (tes memakai 0 agar fixture lama tetap berlaku).
+    tiket_min_rr: float = field(default_factory=lambda: float(os.environ.get("PAPER_TIKET_MIN_RR", "0.5")))
 
 
 # --------------------------------------------------------------------------- budget harian bergulir
@@ -594,6 +598,12 @@ class PaperEngine:
                 raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} > maksimum per tiket ${bs['max_per_order']:.2f}")
             if need > bs["remaining"] + 1e-9:
                 raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} (margin {margin:.4f} + fee {fee_in:.4f}), sisa saldo {req.account} hari ini ${bs['remaining']:.4f}")
+            if tag == "TIKET" and self.cfg.tiket_min_rr and req.tp_price is not None:
+                reward = abs(req.tp_price - ref_price) * float(qty) - fee_in - fee_amount(req.tp_price * float(qty), True, self.cfg)
+                risk = margin + fee_in
+                rr = reward / risk if risk > 0 else 0.0
+                if rr < self.cfg.tiket_min_rr:
+                    raise Reject("RR_TOO_LOW", f"P-19: untung bersih di TP ${reward:.4f} < {self.cfg.tiket_min_rr:.2f}× risiko hangus ${risk:.4f} (R:R {rr:.2f}); perlebar TP atau turunkan leverage")
         else:
             if margin > self.cfg.swing_margin + 1e-9:
                 raise Reject("BUDGET_SWING", f"margin ${margin:.2f} > ${self.cfg.swing_margin:.2f} per trade")

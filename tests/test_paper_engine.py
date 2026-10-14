@@ -427,6 +427,26 @@ class TestCatchUpAndDeterminism(unittest.TestCase):
         self.assertEqual(live.cursor_for(BTC), t("15:00", C.day_start_wib_ms(DAY2)))
 
 
+class TestRrTiket(unittest.TestCase):
+    def test_t28_rr_minimum_tiket(self):
+        import tempfile
+        from pathlib import Path
+        from common import connect
+        tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        conn = connect(Path(tmp.name) / 'paper.sqlite')
+        eng = PaperEngine(conn, FixtureMarket(), clock=lambda: t('10:00'), cfg=EngineConfig(acak_enabled=False, tiket_min_rr=0.5))
+        sempit = eng.place_order(OrderRequest(account='tiket', symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82700.0, tp_price=82900.0))
+        self.assertEqual(sempit.reject_code, 'RR_TOO_LOW', sempit.reject_reason)      # untung ~$0.2 - fee vs hangus ~$0.83
+        self.assertIn('P-19', sempit.reject_reason)
+        lebar = eng.place_order(OrderRequest(account='tiket', symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82700.0, tp_price=83300.0))
+        self.assertTrue(lebar.ok, lebar.reject_reason)                                  # untung ~$0.6 - fee >= 0.5 x $0.83
+        tanpa_tp = eng.place_order(OrderRequest(account='tiket', symbol=BTC, side=SHORT, qty=0.001, leverage=100, price=82750.0))
+        self.assertNotEqual(tanpa_tp.reject_code, 'RR_TOO_LOW')                          # tanpa TP: gate tidak berlaku
+        eng0 = PaperEngine(conn, FixtureMarket(), clock=lambda: t('10:00'), cfg=EngineConfig(acak_enabled=False, tiket_min_rr=0))
+        self.assertNotEqual(eng0.place_order(OrderRequest(account='tiket', symbol=BTC, side=LONG, qty=0.001, leverage=100, price=82650.0, tp_price=82800.0)).reject_code, 'RR_TOO_LOW')
+        conn.close(); tmp.cleanup()
+
+
 class TestConcurrency(unittest.TestCase):
     def test_t19_two_connections(self):
         with tempfile.TemporaryDirectory() as d:

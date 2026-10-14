@@ -1,6 +1,6 @@
 ---
 name: evaluasi-harian
-description: Evaluasi harian paper trading pukul 23:55 WIB: laporan hasil, biaya API, catatan psikologi pasar, maksimal 3 hipotesis terukur, dan usulan pelajaran. Dipakai oleh cron evaluasi-harian atau saat pemilik minta "evaluasi hari ini".
+description: Evaluasi harian paper trading pukul 21:30 WIB (posisi yang ditutup sesudahnya, termasuk EOD 23:50, masuk evaluasi besok): laporan hasil, biaya API, catatan psikologi pasar, maksimal 3 hipotesis terukur, dan usulan pelajaran. Dipakai oleh cron evaluasi-harian atau saat pemilik minta "evaluasi hari ini".
 version: 1.4.0
 metadata:
   hermes:
@@ -38,7 +38,7 @@ metadata:
 8. Balasan Telegram ≤ 20 baris: hasil hari ini (jumlah tiket, TP/HANGUS/TIDAK_TERISI, net), biaya API vs cap,
    pelajaran singkat, hipotesis baru (ID), hal yang perlu pemilik putuskan.
 
-## Evaluasi susulan (laptop mati pukul 23:55)
+## Evaluasi susulan (laptop mati pukul 21:30)
 Jika pesan cron/pemilik menyebut tanggal tertentu, evaluasi **tanggal itu**: `hari="YYYY-MM-DD"` pada `mcp_paper_laporan_paper`,
 `mcp_paper_riwayat`, `mcp_paper_biaya_api`, `mcp_paper_baca_memori("jurnal", hari)`, dan `mcp_paper_tulis_catatan_harian(..., hari=...)`.
 Panel psikologi & ohlcv tetap kondisi sekarang (sebutkan itu). Hipotesis baru boleh dibuat seperti biasa (bertanggal hari ini).

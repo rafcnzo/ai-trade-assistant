@@ -1,7 +1,10 @@
 """Fixture bersama untuk tes: pasar sintetis tanpa jaringan."""
 from __future__ import annotations
 
+import os
 import sys
+
+os.environ.setdefault("PAPER_TIKET_MIN_RR", "0")   # gate P-19 mati untuk fixture lama; T28 menyalakannya eksplisit
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional

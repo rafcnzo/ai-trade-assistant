@@ -37,6 +37,7 @@ Kategori: risiko · psikologi · price action · proses · fundamental. Sumber `
 | P-15 | Pola chart dinyatakan hanya setelah breakout dikonfirmasi close (bukan wick) dan volume; target = tinggi pola dari titik breakout | price action | goodcrypto-pola-chart bab 02 hal. 3–6, bab 03 hal. 12 | aktif | 2026-10-11 |
 | P-16 | Koin kecil masuk watchlist tiket hanya jika lolos cek cepat: bukan MLM/Ponzi, tidak berlabel scam, bukan listing < 30 hari (flag BARU) | fundamental | panduan-analisis-crypto bab 08 hal. 19 ("Stay away from MLM-based coins."); flag BARU pemindai | uji | 2026-10-11 |
 | P-18 | Tiket: setelah harga menempuh ≥ 80% jalan ke TP, stop otomatis dipindah ke harga masuk (pengaman: tesis yang sudah hampir benar tidak boleh berakhir hangus) | risiko | mesin (`tiket_breakeven_mfe`); autopsi SOL #1 11 Okt (89% ke TP lalu hangus) | aktif | 2026-10-12 |
+| P-19 | Tiket: untung bersih di TP harus ≥ 0,5× risiko hangus (margin + fee masuk); kalau tidak terpenuhi pada leverage mana pun → SKIP | risiko | mesin (`tiket_min_rr`, tolak `RR_TOO_LOW`); usulan agent U-001 (12 Okt): SOL #1 R:R 0,15 → hangus −$0,99 menghapus 3 TP; 13 Okt tiga hangus lagi | aktif | 2026-10-14 |
 | P-17 | Tiket harian diperlakukan sebagai proses: tujuan harian = patuh aturan (tag di jurnal), bukan nominal; target per hari ≤ 1 trade bagus | psikologi | mastering-trading-psychology bab 12 hal. 357, 364; bab 10 hal. 298–302 ("your P&L is not a signal") | uji | 2026-10-11 |
 
 Status: `uji` (baru, sedang diuji) · `aktif` (wajib; terbukti membantu / ditegakkan mesin) · `pensiun` (dihapus, alasan dicatat).
@@ -51,5 +52,6 @@ Status: `uji` (baru, sedang diuji) · `aktif` (wajib; terbukti membantu / ditega
 - 2026-10-11: versi awal (v1) dari aturan yang sudah ditegakkan mesin/skill + usulan dari 3 buku hasil konversi.
 - 2026-10-11 (malam): pemilik mengaktifkan P-09, P-11, P-15 (uji → aktif).
 - 2026-10-11 (malam): P-09 ditegakkan mekanis oleh pemindai (gate G9) atas permintaan pemilik.
+- 2026-10-14 (pagi): pemilik menerima usulan U-001 → P-19 aktif, ditegakkan mesin (`RR_TOO_LOW` untuk akun persona).
 - 2026-10-12: P-18 (breakeven setelah 80% jalan ke TP) ditambahkan dari autopsi SOL #1; ditegakkan mesin.
 - 2026-10-12: P-01 diubah pemilik: saldo harian bergulir (TP menambah jatah, minimum $0,50), bukan plafon $1/hari.

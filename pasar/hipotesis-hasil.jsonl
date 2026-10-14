@@ -1,0 +1,1 @@
+{"id": "H-0001", "dinilai_ms": 1791959225297, "dinilai": "2026-10-14 13:27:05 WIB", "hasil": "benar", "alasan": "low 80985 ≤ target 83439", "n_bar": 47, "ekstrem": 80985.0, "target": 83439.0, "baseline": {"rate": 0.9, "n_valid": 200, "n_benar": 180, "n_ambigu": 0, "seed": "uji-v1:H-0001"}, "versi": 1}

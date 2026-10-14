@@ -105,6 +105,13 @@ Satu wake pemindai = satu sesi skill `arena` yang memutuskan untuk semua persona
 - Pemilik: `paper_engine.py akun list|aktif <nama>|pensiun <nama> --alasan ...`. Menambah persona = tambah baris `account` (kind `tiket`)
   + aturannya di `hermes/skills/arena/SKILL.md`.
 
+## Gate R:R minimum tiket (P-19)
+
+Mesin menolak order akun persona (kind `tiket`) yang punya TP bila untung bersih di TP (setelah fee masuk + fee TP) < `tiket_min_rr` × risiko hangus
+(margin + fee masuk); kode tolak `RR_TOO_LOW`, pesan menyarankan perlebar TP atau turunkan leverage. Bawaan 0,5; env `PAPER_TIKET_MIN_RR` mengubahnya
+(0 = mati; tes memakai 0). Bayangan acak dan swing tidak kena gate ini (swing punya `swing_min_rr` 2,5 sendiri). Asal: usulan agent U-001, diterima
+pemilik 14 Okt (playbook P-19).
+
 ## Saldo tiket harian (bergulir)
 
 Tiap hari WIB saldo tiket mulai $1. Hasil bersih posisi tiket yang ditutup hari itu **menambah/mengurangi** saldo (TP → jatah bertambah,
@@ -252,12 +259,13 @@ apa pun bila sudah sesuai. Setelah mengubah skill/SOUL: `hermes gateway restart`
 ### 5. Gateway, Telegram, cron
 Wizard `hermes setup` sudah memasang `Hermes_Gateway.vbs` di folder Startup (fallback karena Task Scheduler butuh admin).
 `hermes gateway start|status|stop|restart`. Cron (baris `hermes cron create` dari `hermes/sync.py --snippet`; `--script` harus relatif terhadap `HERMES_HOME\scripts`): `pemindai-tiket`
-tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `evaluasi-harian` 23:55 WIB, dan `notif-paper`
+tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `evaluasi-harian` 21:30 WIB (dipindah dari 23:55 pada 14 Okt karena laptop biasanya sudah mati; posisi yang ditutup sesudahnya, termasuk EOD 23:50, masuk evaluasi besok), dan `notif-paper`
 tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM), serta `uji-hipotesis`
-23:40 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 23:55), dan `psikologi` menit ke-7 tiap jam
+21:15 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 21:30), dan `psikologi` menit ke-7 tiap jam
 (`--no-agent`, diam; mengisi `data/psikologi.sqlite`).
 `evaluasi-susulan` (08:20, 11:20, 14:20, 17:20, 20:20) hanya membangunkan agent bila catatan harian kemarin belum ada — pengganti
-evaluasi 23:55 yang terlewat karena laptop mati. Cron lain yang terlewat **tidak** dikejar (`catch_up_missed=false`).
+evaluasi 21:30 yang terlewat karena laptop mati; gate yang sama juga menjalankan `uji_hipotesis.py --cron` lebih dulu (hipotesis jatuh tempo yang
+terlewat ikut dinilai, hasilnya disertakan ke agent). Cron lain yang terlewat **tidak** dikejar (`catch_up_missed=false`).
 `hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
 + `base_url` tetap berfungsi, jadi ini opsional.
@@ -424,7 +432,7 @@ Agent menulis hipotesis **terstruktur** lewat `mcp_paper_tulis_hipotesis(pola, s
 (nilai = kelipatan ATR14 tf dari harga saat dibuat), `close_arah` (close bar terakhir horizon di sisi `arah`). `tf` 1h|4h|1d,
 `batas_hari` 1–7, maks 3/hari. Horizon mulai dari bucket **setelah** saat dibuat (tanpa look-back).
 
-Cron Hermes `uji-hipotesis` (`40 23 * * *`, `--no-agent`) menjalankan `uji_hipotesis.py --cron`:
+Cron Hermes `uji-hipotesis` (`15 21 * * *`, `--no-agent`) menjalankan `uji_hipotesis.py --cron`:
 1. hipotesis yang jatuh tempo (batas + 10 menit) dinilai dengan `kline_1h` (4h/1d di-resample): `benar | salah | ambigu`
    (ambigu bila bar < 90% dari yang diharapkan);
 2. **baseline** per hipotesis: 200 titik awal acak dalam 120 hari data, prediksi yang sama (jarak relatif/kelipatan ATR) →

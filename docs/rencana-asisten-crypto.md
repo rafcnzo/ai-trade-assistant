@@ -3,6 +3,10 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.10 (14 Okt 2026)
+- Evaluasi harian dipindah ke 21:30 WIB (laptop pemilik mati sebelum 23:55); uji hipotesis 21:15; gate susulan pagi mengejar keduanya.
+- Aturan P-19 (R:R minimum tiket 0,5× risiko hangus) ditegakkan mesin, bukan hanya skill.
+
 ### Perubahan v1.9 (12 Okt 2026, Arena)
 - **§19.7 arena**: bukan satu agent vs acak, melainkan beberapa persona (gaya) dengan jatah $1/hari masing-masing dan bayangan acak
   masing-masing; seleksi mekanis mingguan memensiunkan persona yang kalah dari acaknya (≥ 30 trade, ≥ 30 hari, p < 0,2). Kriteria
