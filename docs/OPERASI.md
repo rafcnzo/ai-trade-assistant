@@ -16,7 +16,7 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
-| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 28 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi, referensi buku) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
+| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 29 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi, referensi buku) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
 | `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
 | `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
@@ -232,11 +232,11 @@ Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
 1. `hermes/sync.py` — menyalin `SOUL.md`, skill `tiket` & `evaluasi-harian`, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`;
 2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
    `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
-   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (28 tool whitelist);
+   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (29 tool whitelist);
 3. menaruh launcher `crypto-analyst_proxy.vbs`, `crypto-analyst_collector.vbs`, dan `crypto-analyst_dashboard.vbs` di folder **Startup** user
    (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
 4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
-   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 28 tool), `hermes cron list`.
+   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 29 tool), `hermes cron list`.
 
 Log: `logs/hermes_setup.log`. Cek proxy: `curl http://127.0.0.1:8585/healthz` (`key_set` harus `true`).
 Log proxy: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya). Budget habis → Hermes menerima
@@ -285,8 +285,9 @@ tenggelam di antara ±120 perintah bawaan Hermes. Pesan kaya (`rich_messages: tr
 | `/psikologi` | Panel psikologi pasar BTC/ETH: zona takut/serakah per indikator, divergensi, siapa yang terjebak |
 | `/referensi <kata kunci>` | Cari & kutip buku referensi (judul, bab, halaman, kutipan ≤ 15 kata) |
 | `/arena-papan` | Papan peringkat 4 persona arena vs pembanding acak |
+| `/radar <N>` | Tambah jatah wake radar hari ini (1–24, kumulatif maks 24); ditolak bila biaya API hari ini sudah di batas |
 | `/tiket`, `/evaluasi-harian` | Skill inti (dipakai cron; bisa dipanggil manual) |
-| `/help`, `/new`, `/usage` | Bawaan Hermes (`/whoami`, `/model`, `/commands` keluar dari menu agar muat 14; tetap bisa diketik) |
+| `/help`, `/new` | Bawaan Hermes (`/usage`, `/whoami`, `/model`, `/commands` keluar dari menu agar muat 14; tetap bisa diketik) |
 
 Setiap perintah adalah satu sesi agent (≈ $0,02–0,10 lewat proxy). Chat bebas juga bisa; agent memilih skill sendiri.
 Jika menu tidak terlihat: tutup dan buka lagi chat bot (klien Telegram men-cache menu), atau ketik `/commands`.
@@ -356,7 +357,9 @@ lev layak: 75x liq 7.618 (2.7×ATR5m)`. Agent wajib memakai `plan_id` persis `K<
 (`mcp_paper_kandidat_terbaru` mengembalikan field `plan_id` dari run terakhir yang membangunkan agent).
 
 Knob: `PemindaiConfig` di `scripts/pemindai.py` (`top_n`, `lookback_h`, `score_min`, `x_atr5m_min`, `cooldown_min`,
-`max_wake_per_day`, `max_wake_per_hour`, `jam_mulai`/`jam_akhir`, `leverages`). Perkiraan biaya: ≤ 12 wake/hari × $0,05–0,15 < $2/hari.
+`max_wake_per_day`, `max_wake_per_hour`, `jam_mulai`/`jam_akhir`, `leverages`). Jatah harian bisa ditambah pemilik lewat Telegram `/radar <N>`:
+tool `tambah_jatah_radar` menulis `data/radar_jatah.json` (`day_wib`, `tambah` ≤ 24), pemindai menambahkannya ke `max_wake_per_day` untuk hari itu saja;
+batas per jam tetap; ditolak bila biaya hari ini ≥ batas proxy atau kill switch aktif. Perkiraan biaya: ≤ 12 wake/hari × $0,05–0,15 < $2/hari.
 
 Verifikasi nol biaya: catat `budget_guard.py status`, jalankan `hermes cron run pemindai-tiket` saat tidak ada kandidat
 (mis. gate G4 aktif) → `kandidat.sqlite` mendapat baris `pemindai_run` dengan `wake=0` dan `api_calls` tidak bertambah.

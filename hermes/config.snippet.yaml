@@ -59,5 +59,6 @@ mcp_servers:
         - baca_referensi
         - autopsi_posisi
         - papan_arena
+        - tambah_jatah_radar
     timeout: 60
     connect_timeout: 30

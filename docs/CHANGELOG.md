@@ -3,6 +3,15 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-14 (sore, 14:40) — laptop Windows — `/radar <N>`: pemilik menambah jatah wake hari ini
+
+**Apa:** tool MCP `tambah_jatah_radar(tambah)` (29 tool; hanya atas perintah pemilik, docstring + SOUL melarang inisiatif sendiri) menulis
+`data/radar_jatah.json` (penulis tunggal mcp_server; kumulatif maks 24/hari; ditolak bila biaya hari ini ≥ cap atau kill switch); `pemindai.py`
+`jatah_tambahan()` menambah `max_wake_per_day` untuk hari itu saja (cap per jam tetap), laporan `wake hari ini X/Y` memakai cap efektif. Skill `radar`,
+menu Telegram `/radar` menggantikan `/usage`, snippet include dibuat ulang. Tes M17, S13 (145 hijau). **Kenapa:** permintaan user: bila biaya masih jauh
+dari batas, pemilik ingin bisa menyuruh radar lanjut tanpa mengedit kode; AI sengaja tetap tidak bisa menambah jatahnya sendiri.
+**File:** `scripts/{mcp_server,pemindai}.py`, `hermes/{merge_config.py,SOUL.md,config.snippet.yaml,skills/radar}`, tests, docs, CLAUDE.md.
+
 ## 2026-10-14 (siang, 14:05) — laptop Windows — radar: cap 3 wake/jam, skor minimum 4
 
 **Apa:** `pemindai.py`: `max_wake_per_hour=3` (gate G5 baru `cap 3 wake/jam tercapai`, dihitung dari `pemindai_run` 60 menit terakhir) dan `score_min` 3 → 4;

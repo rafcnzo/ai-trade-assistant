@@ -251,7 +251,7 @@ class TestHipotesisStatistik(Base):
         self.assertTrue(str(s["akun"]["tiket"]["expectancy"]).startswith("tidak tersedia"))
         self.assertIn("# Statistik kelulusan", s["markdown"])
         self.assertIn("statistik_lulus", TOOL_NAMES)
-        self.assertEqual(len(TOOL_NAMES), 28)
+        self.assertEqual(len(TOOL_NAMES), 29)
 
 
 class TestPanelPsikologi(Base):
@@ -316,6 +316,29 @@ class TestSusulan(Base):
 
 
 class TestArenaTools(Base):
+    def test_m17_tambah_jatah_radar(self):
+        import json as _j
+        self.assertFalse(self.tools.tambah_jatah_radar(0)["ok"])
+        self.assertFalse(self.tools.tambah_jatah_radar(99)["ok"])
+        r = self.tools.tambah_jatah_radar(6)
+        self.assertTrue(r["ok"], r)
+        self.assertEqual((r["tambahan_sekarang"], r["ditambah"]), (6, 6))
+        d = _j.loads((self.root / "data" / "radar_jatah.json").read_text(encoding="utf-8"))
+        self.assertEqual((d["day_wib"], d["tambah"], d["oleh"]), (C.day_wib(self.clock[0]), 6, "pemilik:/radar"))
+        r2 = self.tools.tambah_jatah_radar(20)
+        self.assertEqual(r2["tambahan_sekarang"], 24)                                    # kumulatif, dipotong di 24
+        import pemindai as P
+        self.assertEqual(P.jatah_tambahan(C.day_wib(self.clock[0]), self.root / "data" / "radar_jatah.json"), 24)
+        self.assertEqual(P.jatah_tambahan("2000-01-01", self.root / "data" / "radar_jatah.json"), 0)   # hari lain → 0
+        g = self.ctx.guard_factory()
+        try:
+            with C.tx(g.conn):
+                g.conn.execute("INSERT INTO api_calls(ts,day_wib,month_wib,model_requested,model_served,purpose,input_tokens,output_tokens,cost_usd) VALUES(?,?,?,?,?,?,?,?,?)",
+                               (self.clock[0], C.day_wib(self.clock[0]), C.month_wib(self.clock[0]), "m", "m", "uji", 1, 1, g.daily_cap))
+        finally:
+            g.conn.close()
+        self.assertIn("batas", self.tools.tambah_jatah_radar(1)["error"])                 # biaya hari ini sudah di cap
+
     def test_m16_papan_arena_dan_budget_persona(self):
         b = self.tools.budget_tiket()
         self.assertEqual(sorted(b["persona"]), ["breakout", "fade", "rentang", "tiket"])
@@ -337,7 +360,7 @@ class TestRegistration(unittest.TestCase):
         from mcp.server.fastmcp import FastMCP
         mcp = FastMCP("paper-uji")
         names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
-        self.assertEqual(len(names), 28)
+        self.assertEqual(len(names), 29)
         listed = asyncio.run(mcp.list_tools())
         self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
         po = [x for x in listed if x.name == "pasang_order"][0]

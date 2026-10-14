@@ -28,6 +28,17 @@ from paper_engine import LONG, SHORT, TIKET, Bracket, EngineConfig, PaperEngine,
 
 SCHEMA_VERSION = "1"
 KANDIDAT_DB = C.DATA_DIR / "kandidat.sqlite"
+RADAR_JATAH = C.DATA_DIR / "radar_jatah.json"   # ditulis mcp_server (tool tambah_jatah_radar, perintah pemilik /radar); dibaca saja di sini
+
+
+def jatah_tambahan(day: str, path=None) -> int:
+    """Tambahan wake untuk hari `day` dari radar_jatah.json ({"day_wib","tambah"}); 0 bila tidak ada / hari lain / rusak."""
+    p = Path(path or RADAR_JATAH)
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return max(0, int(d.get("tambah", 0))) if d.get("day_wib") == day else 0
+    except (OSError, ValueError, TypeError, AttributeError):
+        return 0
 GATE_ON = '{"wakeAgent": true}'
 GATE_OFF = '{"wakeAgent": false}'
 
@@ -260,7 +271,7 @@ def format_text(res: RunResult, cfg: PemindaiConfig, verbose: bool = False) -> s
     if not res.wake and not verbose:
         return f"PEMINDAI {fmt_wib(res.ts)} | tidak membangunkan agent: {res.alasan}\n{GATE_OFF}"
     lines = [f"PEMINDAI {fmt_wib(res.ts)} | data {fmt_wib(tick) if tick else 'tidak tersedia'}"
-             + (f" (umur {umur} s)" if umur is not None else "") + f" | {res.n_symbols} simbol | budget tiket sisa {sisa} | wake hari ini {res.wake_hari_ini}/{cfg.max_wake_per_day}"]
+             + (f" (umur {umur} s)" if umur is not None else "") + f" | {res.n_symbols} simbol | budget tiket sisa {sisa} | wake hari ini {res.wake_hari_ini}/{cfg.max_wake_per_day + jatah_tambahan(res.day_wib)}"]
     if res.alasan and not res.wake:
         lines.append(f"Tidak membangunkan agent: {res.alasan}")
     for k in res.kandidat:
@@ -298,6 +309,7 @@ class Pemindai:
         self.engine = engine
         self.market = engine.market
         self.cfg = cfg or PemindaiConfig()
+        self.radar_jatah_path = RADAR_JATAH
         self.clock = clock or C.now_ms
         self.log = log or logging.getLogger("pemindai")
         C.init_schema(kandidat, C.SCRIPTS_DIR / "schema_kandidat.sql", SCHEMA_VERSION)
@@ -367,8 +379,9 @@ class Pemindai:
             if hb >= cfg.max_hangus_beruntun:
                 return f"{hb} tiket HANGUS beruntun hari ini (playbook P-09): berhenti sampai besok"
         w = self.wake_hari_ini(day)
-        if w >= cfg.max_wake_per_day:
-            return f"cap {cfg.max_wake_per_day} wake/hari tercapai"
+        cap = cfg.max_wake_per_day + jatah_tambahan(day, self.radar_jatah_path)
+        if w >= cap:
+            return f"cap {cap} wake/hari tercapai" + (" (termasuk jatah tambahan /radar)" if cap > cfg.max_wake_per_day else "")
         if cfg.max_wake_per_hour and self.wake_sejam(now) >= cfg.max_wake_per_hour:
             return f"cap {cfg.max_wake_per_hour} wake/jam tercapai"
         return None

@@ -11,6 +11,7 @@ uji_hipotesis.py), pasar/pelajaran-usulan.md. Nama file berasal dari jam, bukan 
 from __future__ import annotations
 
 import json
+import os
 import logging
 import math
 import re
@@ -45,8 +46,9 @@ MS_FIELDS = {"ts", "open_time", "funding_time", "opened_ts", "closed_ts", "creat
 TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
-    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi", "papan_arena",
+    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi", "papan_arena", "tambah_jatah_radar",
 )
+RADAR_JATAH_MAKS = 24   # tambahan maksimal per hari lewat /radar
 
 
 # --------------------------------------------------------------------------- util
@@ -402,6 +404,44 @@ class Tools:
             ar["markdown"] = E.render_arena(ar)
             return ar
         return self._call("papan_arena", run)
+
+    def tambah_jatah_radar(self, tambah: int) -> dict:
+        """HANYA atas perintah eksplisit pemilik di Telegram (/radar N). Menambah jatah wake radar HARI INI sebesar N (1–24, kumulatif maks 24/hari); ditolak bila biaya API hari ini sudah ≥ batas harian. Jangan pernah dipanggil atas inisiatif sendiri atau dari cron."""
+        def run():
+            n = int(tambah)
+            if n < 1 or n > RADAR_JATAH_MAKS:
+                return {"ok": False, "error": f"tambah harus 1–{RADAR_JATAH_MAKS}"}
+            if self.ctx.guard_factory:
+                g = self.ctx.guard_factory()
+                try:
+                    st = g.status()
+                finally:
+                    g.conn.close()
+                if st.get("kill_switch"):
+                    return {"ok": False, "error": "kill switch aktif (data/STOP_AGENT): radar tidak ditambah"}
+                if float(st.get("spent_today", 0.0)) >= float(st.get("daily_cap", 0.0)):
+                    return {"ok": False, "error": f"biaya API hari ini ${st['spent_today']:.2f} sudah mencapai batas ${st['daily_cap']:.2f}"}
+                sisa_biaya = float(st.get("daily_cap", 0.0)) - float(st.get("spent_today", 0.0))
+            else:
+                sisa_biaya = None
+            day = C.day_wib(self.ctx.clock())
+            p = Path(self.ctx.root) / "data" / "radar_jatah.json"
+            lama = 0
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+                lama = int(d.get("tambah", 0)) if d.get("day_wib") == day else 0
+            except (OSError, ValueError, TypeError, AttributeError):
+                lama = 0
+            total = min(RADAR_JATAH_MAKS, lama + n)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            tmp = p.with_suffix(".tmp")
+            tmp.write_text(json.dumps({"day_wib": day, "tambah": total, "ts": self.ctx.clock(), "oleh": "pemilik:/radar"}, ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, p)
+            self.ctx.log.info("tambah_jatah_radar %s: %d → %d", day, lama, total)
+            return {"ok": True, "hari": day, "tambahan_sebelumnya": lama, "tambahan_sekarang": total, "ditambah": total - lama,
+                    "berlaku_sampai": f"{day} 23:59 WIB", "sisa_biaya_hari_ini": sisa_biaya,
+                    "pesan": f"Jatah radar hari ini +{total - lama} (total tambahan {total}, maksimal {RADAR_JATAH_MAKS}); berlaku pada pemindaian berikutnya, batas 3 wake/jam tetap."}
+        return self._call("tambah_jatah_radar", run)
 
     def laporan_paper(self, hari: Optional[str] = None) -> dict:
         """Laporan paper harian (markdown): budget, posisi terbuka, posisi ditutup, order menunggu, hasil ambigu, event."""

@@ -146,6 +146,24 @@ class TestGates(Base):
             self.pasar.execute("DELETE FROM meta WHERE key='last_tick_ms'")
         self.assertIn("collector belum pernah tick", self.p.run(now=NOW + 60_000).alasan)
 
+    def test_s13_jatah_tambahan_radar(self):
+        import json as _j
+        self.seed()
+        with C.tx(self.kand):
+            for i in range(12):
+                self.kand.execute("INSERT INTO pemindai_run(ts,day_wib,wake,ok) VALUES(?,?,1,1)", (t("00:30") + i * 5 * MINUTE_MS, DAY))
+        self.assertIn("cap 12 wake/hari", self.p.run().alasan)
+        jp = self.root / "radar_jatah.json"
+        jp.write_text(_j.dumps({"day_wib": DAY, "tambah": 3}), encoding="utf-8")
+        self.p.radar_jatah_path = jp
+        self.fresh(NOW + 5 * MINUTE_MS)
+        self.p.radar_jatah_path = jp
+        self.assertTrue(self.p.run().wake)                                              # cap efektif 15
+        jp.write_text(_j.dumps({"day_wib": "2000-01-01", "tambah": 3}), encoding="utf-8")
+        self.fresh(NOW + 10 * MINUTE_MS)
+        self.p.radar_jatah_path = jp
+        self.assertIn("cap 12 wake/hari", self.p.run().alasan)                          # jatah hari lain tidak berlaku
+
     def test_s12_hourly_wake_cap(self):
         self.seed()
         with C.tx(self.kand):
