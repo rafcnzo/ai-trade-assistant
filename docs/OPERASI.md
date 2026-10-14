@@ -334,7 +334,7 @@ Cara kerja per simbol (top 20 volume ∪ simbol berposisi):
 5. Leverage layak = baris `tabel_leverage` (entry = level, sisa budget tiket hari ini) dengan jarak likuidasi ≥ 2×ATR 5m;
    dicoba 150/125/100x, atau leverage maks simbol bila lebih kecil.
 
-Kandidat = skor ≥ 3 **dan** ada leverage layak; peringkat (skor, jarak), maksimal 3, masing-masing mendapat ID `K<id>`.
+Kandidat = skor ≥ 4 (sejak 14 Okt; sebelumnya 3) **dan** ada leverage layak; peringkat (skor, jarak), maksimal 3, masing-masing mendapat ID `K<id>`.
 
 Gate (yang pertama gagal menang; alasan ada di baris pertama stdout dan `pemindai_run.alasan`):
 
@@ -344,7 +344,7 @@ Gate (yang pertama gagal menang; alasan ada di baris pertama stdout dan `peminda
 | G2 | `di luar jam 07:00–22:30 WIB` |
 | G3 | `budget tiket habis` — sisa < $0,10 |
 | G4 | `sudah 2 order tiket hidup` |
-| G5 | `cap 12 wake/hari tercapai` |
+| G5 | `cap 12 wake/hari tercapai` / `cap 3 wake/jam tercapai` (14 Okt: jatah harian tidak boleh habis di satu sesi ramai) |
 | G6 | simbol dengan order/posisi → `Ditahan: … (ada order/posisi)` |
 | G7 | `cooldown` 30 menit per simbol, kecuali skor naik |
 | G8 | `tidak ada kandidat (N simbol dipindai)` |
@@ -356,7 +356,7 @@ lev layak: 75x liq 7.618 (2.7×ATR5m)`. Agent wajib memakai `plan_id` persis `K<
 (`mcp_paper_kandidat_terbaru` mengembalikan field `plan_id` dari run terakhir yang membangunkan agent).
 
 Knob: `PemindaiConfig` di `scripts/pemindai.py` (`top_n`, `lookback_h`, `score_min`, `x_atr5m_min`, `cooldown_min`,
-`max_wake_per_day`, `jam_mulai`/`jam_akhir`, `leverages`). Perkiraan biaya: ≤ 12 wake/hari × $0,05–0,15 < $2/hari.
+`max_wake_per_day`, `max_wake_per_hour`, `jam_mulai`/`jam_akhir`, `leverages`). Perkiraan biaya: ≤ 12 wake/hari × $0,05–0,15 < $2/hari.
 
 Verifikasi nol biaya: catat `budget_guard.py status`, jalankan `hermes cron run pemindai-tiket` saat tidak ada kandidat
 (mis. gate G4 aktif) → `kandidat.sqlite` mendapat baris `pemindai_run` dengan `wake=0` dan `api_calls` tidak bertambah.

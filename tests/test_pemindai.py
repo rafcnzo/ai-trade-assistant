@@ -146,6 +146,19 @@ class TestGates(Base):
             self.pasar.execute("DELETE FROM meta WHERE key='last_tick_ms'")
         self.assertIn("collector belum pernah tick", self.p.run(now=NOW + 60_000).alasan)
 
+    def test_s12_hourly_wake_cap(self):
+        self.seed()
+        with C.tx(self.kand):
+            for i in range(3):
+                self.kand.execute("INSERT INTO pemindai_run(ts,day_wib,wake,ok) VALUES(?,?,1,1)", (NOW - (i + 1) * 10 * MINUTE_MS, DAY))
+        res = self.p.run()
+        self.assertFalse(res.wake)
+        self.assertIn("cap 3 wake/jam", res.alasan)
+        with C.tx(self.kand):
+            self.kand.execute("UPDATE pemindai_run SET ts=ts-? WHERE wake=1", (70 * MINUTE_MS,))   # semua lebih dari sejam lalu
+        self.fresh(NOW + 5 * MINUTE_MS)
+        self.assertTrue(self.p.run().wake)
+
     def test_s6_daily_wake_cap(self):
         self.seed()
         with C.tx(self.kand):

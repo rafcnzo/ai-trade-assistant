@@ -3,6 +3,12 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-14 (siang, 14:05) — laptop Windows — radar: cap 3 wake/jam, skor minimum 4
+
+**Apa:** `pemindai.py`: `max_wake_per_hour=3` (gate G5 baru `cap 3 wake/jam tercapai`, dihitung dari `pemindai_run` 60 menit terakhir) dan `score_min` 3 → 4;
+tes S12. **Kenapa:** 14 Okt jatah 12 wake/hari habis pukul 09:31 (pasar ramai), semua analis diam seharian; dari 59 kandidat hari itu 21 berskor 3
+(dekat level + satu tanda lemah) dan hampir semuanya di-SKIP agent — wake terbuang. Keputusan user (opsi 2 + 3). **File:** `scripts/pemindai.py`, tests, docs.
+
 ## 2026-10-14 (siang, 13:40) — laptop Windows — belajar dari kesalahan: gate R:R P-19, uji hipotesis ikut susulan, evaluasi 21:30
 
 **Apa:** `paper_engine.py`: `tiket_min_rr` (bawaan 0,5; env `PAPER_TIKET_MIN_RR`) — order persona dengan TP ditolak `RR_TOO_LOW` bila untung bersih di TP

@@ -48,13 +48,14 @@ class PemindaiConfig:
     leverages: tuple = (150, 125, 100)
     lev_max_fallback: bool = True
     x_atr5m_min: float = 2.0
-    score_min: int = 3
+    score_min: int = 4             # 14 Okt: dinaikkan dari 3 (skor 3 = dekat level + satu tanda lemah, hampir selalu di-SKIP agent)
     top_k: int = 5           # kandidat skor tertinggi yang dikirim ke agent per wake
     stale_s: int = 180
     budget_min: float = 0.10
     jam_mulai: str = "07:00"
     jam_akhir: str = "22:30"
     max_wake_per_day: int = 12
+    max_wake_per_hour: int = 3     # 14 Okt: jatah harian jangan habis di satu sesi ramai (12 wake dalam 2,5 jam)
     cooldown_min: int = 30
     max_live_tiket: int = 2        # per akun persona (arena)
     max_hangus_beruntun: int = 2   # playbook P-09: setelah 2 tiket HANGUS beruntun, tidak ada tiket baru hari itu
@@ -368,10 +369,15 @@ class Pemindai:
         w = self.wake_hari_ini(day)
         if w >= cfg.max_wake_per_day:
             return f"cap {cfg.max_wake_per_day} wake/hari tercapai"
+        if cfg.max_wake_per_hour and self.wake_sejam(now) >= cfg.max_wake_per_hour:
+            return f"cap {cfg.max_wake_per_hour} wake/jam tercapai"
         return None
 
     def wake_hari_ini(self, day: str) -> int:
         return int(self.kand.execute("SELECT COUNT(*) FROM pemindai_run WHERE day_wib=? AND wake=1", (day,)).fetchone()[0])
+
+    def wake_sejam(self, now: int) -> int:
+        return int(self.kand.execute("SELECT COUNT(*) FROM pemindai_run WHERE wake=1 AND ts>?", (now - 60 * MINUTE_MS,)).fetchone()[0])
 
     def cooldown(self, symbol: str, score: int, now: int) -> Optional[str]:
         r = self.kand.execute("SELECT MAX(score), MAX(run_ts) FROM kandidat WHERE symbol=? AND run_ts>=?",
