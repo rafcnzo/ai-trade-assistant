@@ -104,6 +104,8 @@ def account_stats(conn: sqlite3.Connection, account: str, now_ms: int, since_ms:
         "tp_n": reasons.count("TP"),
         "hangus_n": sum(1 for r in reasons if r in ("HANGUS", "FUNDING_LIQ")),
         "stop_n": reasons.count("STOP"),
+        "trail_n": reasons.count("TRAIL"),
+        "tp_sebagian_n": sum(1 for p in pos if p["close_reason"] != "TP" and conn.execute("SELECT 1 FROM fills WHERE position_id=? AND role='TP' LIMIT 1", (p["id"],)).fetchone()),
         "eod_n": reasons.count("EOD"),
         "manual_n": reasons.count("MANUAL"),
         "tidak_terisi_n": sum(1 for o in orders if o["status"] == "EXPIRED"),

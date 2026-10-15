@@ -67,6 +67,37 @@ class TestNotifikasi(Base):
         self.assertEqual(self.notif(), "")                      # tidak ada yang baru → stdout kosong → Hermes diam
         self.assertEqual(N.read_cursor(self.cur), 3)
 
+    def test_n5_rencana_swing(self):
+        from paper_engine import PlanRequest
+        from fixtures import PEM
+        self.notif()
+        self.market.set_mark(PEM, 100.0, t("10:03"))
+        r = self.eng.place_plan(PlanRequest(symbol=PEM, side="LONG", leverage=10, legs=[{"harga": 99.5, "persen": 50}, {"harga": 99.0, "persen": 50}],
+                                            tps=[{"harga": 104.0, "persen": 50}, {"harga": 106.0, "persen": 25}], sl_price=97.5, trail_dist=0.6, margin=10.0, created_by="hermes"))
+        self.assertTrue(r.ok, r)
+        msg = self.notif()
+        self.assertIn("leg 50% rencana #1", msg)
+        self.assertIn("📐 Rencana swing bertahap (order #1): swing PEMUSDT LONG 10x tangga: 2 leg", msg)
+        self.market.add_bar(PEM, t("10:04"), 100.0, 100.2, 98.9, 99.1)
+        self.run_bar(t("10:04"))
+        msg = self.notif()
+        self.assertIn("➕ TAMBAH posisi #1: PEMUSDT LONG leg 2", msg)
+        self.market.add_bar(PEM, t("10:05"), 99.1, 104.1, 99.0, 103.5)
+        self.run_bar(t("10:05"))
+        msg = self.notif()
+        self.assertIn("🎯 TP SEBAGIAN posisi #1 swing: PEMUSDT LONG TP1 50%", msg)
+        self.assertIn("🛡️ Pengaman posisi #1 PEMUSDT LONG: PEMUSDT LONG TP1 terisi; SL sisa dipindah ke harga masuk rata", msg)
+        self.market.add_bar(PEM, t("10:06"), 103.5, 106.1, 103.4, 105.8)
+        self.run_bar(t("10:06"))
+        self.assertIn("🪜 Trailing aktif posisi #1", self.notif())
+        self.market.add_bar(PEM, t("10:07"), 105.8, 106.5, 105.8, 106.2)
+        self.run_bar(t("10:07"))
+        self.assertEqual(self.notif(), "")                                       # TRAIL_GESER dilewati → diam
+        self.market.add_bar(PEM, t("10:08"), 106.2, 106.3, 105.0, 105.1)
+        self.run_bar(t("10:08"))
+        msg = self.notif()
+        self.assertIn("🏁 TRAILING STOP posisi #1 swing PEMUSDT LONG keluar", msg)
+
     def test_n2_cancel_and_expire(self):
         self.notif()
         self.order()

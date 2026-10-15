@@ -37,7 +37,7 @@ const GAYA_TIP = {
   swing: "Akun posisi lebih lama (bukan tiket harian); margin tetap per trade, maksimal beberapa posisi.",
 };
 const WARNA = { tiket: "#d9b35c", fade: "#8ab4f8", breakout: "#5bd4a3", rentang: "#e39bd0", acak: "#7d838b", swing: "#f0a35b" };
-const ALASAN = { TP: ["target tercapai", "up"], HANGUS: ["modal hangus", "down"], FUNDING_LIQ: ["hangus karena biaya funding", "down"], STOP: ["kena stop", "down"], EOD: ["ditutup jam 23:50", ""], MANUAL: ["ditutup manual", ""], DELISTED: ["koin dihapus", ""] };
+const ALASAN = { TP: ["target tercapai", "up"], HANGUS: ["modal hangus", "down"], FUNDING_LIQ: ["hangus karena biaya funding", "down"], STOP: ["kena stop", "down"], TRAIL: ["trailing stop (runner)", "up"], EOD: ["ditutup jam 23:50", ""], MANUAL: ["ditutup manual", ""], DELISTED: ["koin dihapus", ""] };
 const STATUS_ORDER = { EXPIRED: "harga tidak pernah tersentuh", CANCELED: "dibatalkan", REJECTED: "ditolak mesin", NEW: "menunggu aktif", ACTIVE: "menunggu harga" };
 const KODE = { BUDGET_TIKET: "saldo hari ini tidak cukup / di bawah $0,50", TIKET_EOD: "sudah lewat jam tutup", LIMIT_CROSSES: "harga sudah lewat level", LEVERAGE_CAP: "leverage melebihi batas", QTY_STEP: "jumlah tidak sesuai kelipatan", MIN_NOTIONAL: "nilai order terlalu kecil", RR_TOO_LOW: "untung:rugi di bawah 2,5", BAD_TP: "target di arah yang salah", BUDGET_ACAK: "jatah kembaran acak habis", ACAK_EOD: "kembaran: lewat jam tutup", ACCOUNT_PENSIUN: "akun sedang pensiun" };
 const ARTI = {
@@ -104,7 +104,9 @@ function posisiLi(p) {
   const rinci = [`Masuk ${jam(p.opened_ts)} WIB di ${px(p.entry_price)}`, p.tp_price ? `Target ${px(p.tp_price)}${keTarget !== null ? ` (${nf(2).format(Math.abs(keTarget))} % lagi)` : ""}` : null,
     p.sl_price ? `Stop ${px(p.sl_price)}` : null, jauh !== undefined ? `Hangus (likuidasi) ${nf(2).format(Math.abs(jauh))} % lagi` : null, p.plan_id ? `Rencana ${p.plan_id}` : null,
     `Harga sekarang ${px(p.mark)}`].filter(Boolean).join("\n");
-  const l2 = [`${px(p.entry_price)} <span class="ke">→</span> ${p.tp_price ? px(p.tp_price) : "—"}`, jauh !== undefined ? `<span class="${jauh < 1 ? "down" : ""}">hangus ${nf(1).format(Math.abs(jauh))} %</span>` : null].filter(Boolean).join("");
+  const tpDone = (p.tp_list || []).filter(t => t.status === "FILLED").length;
+  const l2 = [`${px(p.entry_price)} <span class="ke">→</span> ${p.tp_price ? px(p.tp_price) : (p.trail_on ? "trailing" : "—")}`, jauh !== undefined ? `<span class="${jauh < 1 ? "down" : ""}">hangus ${nf(1).format(Math.abs(jauh))} %</span>` : null,
+    p.plan_group ? `<span class="brass">sisa ${nf(0).format(p.persen_sisa ?? 100)} %${tpDone ? " · TP" + tpDone + " ✓" : ""}${p.legs_n > 1 ? " · " + p.legs_n + " leg" : ""}</span>` : null].filter(Boolean).join("");
   return `<li class="posisi"><div class="l1"><span class="tip" tabindex="0" data-tip="${esc(rinci)}"><b>${koin(p.symbol)}</b> ${arah(p.side)} ${p.leverage}×</span><b class="pl ${un === null ? "dim" : un >= 0 ? "up" : "down"}" data-k="pl-${p.id}">${un === null ? "harga?" : usd(un, true)}</b></div><div class="l2">${l2}</div></li>`;
 }
 function orderLi(o) {
@@ -154,7 +156,13 @@ function teksKejadian(e, pendek = false) {
     case "STOP": return `${k}: kena stop${e.net_result != null ? ", " + usd(e.net_result, true) : ""}`;
     case "EOD": return `${k}: ditutup jam 23:50${e.net_result != null ? ", " + usd(e.net_result, true) : ""}`;
     case "MANUAL": case "CLOSE_REQUEST": return `${k}: ditutup manual${e.net_result != null ? ", " + usd(e.net_result, true) : ""}`;
-    case "BREAKEVEN": return `${k}: stop digeser ke harga masuk (pengaman 80 % jalan ke target)`;
+    case "BREAKEVEN": return `${k}: stop digeser ke harga masuk${m.includes("TP1") ? " (setelah TP1)" : " (pengaman 80 % jalan ke target)"}`;
+    case "RENCANA": return `rencana swing bertahap: ${m}`;
+    case "ADD": return `${k}: tambah leg, ${m.replace(/^\S+ \S+ /, "")}`;
+    case "TP_SEBAGIAN": return `${k}: target sebagian, ${(m.match(/pnl ([+-][\d.]+)/) || [])[1] ? usd(Number((m.match(/pnl ([+-][\d.]+)/) || [])[1]), true) : ""} (${(m.match(/sisa qty [\d.]+ \((\d+)%\)/) || [])[1] || "?"} % tersisa)`;
+    case "TRAIL": return `${k}: runner kena trailing stop${e.net_result != null ? ", " + usd(e.net_result, true) : ""}`;
+    case "TRAIL_AKTIF": return `${k}: trailing stop aktif untuk sisa posisi`;
+    case "TRAIL_GESER": return `${k}: stop runner digeser`;
     case "ORDER_EXPIRED": return `order ${k} ${arah(e.side)} gugur, harga tidak pernah tersentuh`;
     case "ORDER_CANCEL": return `order ${k} ${arah(e.side)} dibatalkan`;
     case "ACAK_SHADOW": return `kembaran acak dibuat untuk order ${k}`;
@@ -289,7 +297,7 @@ const f = (x, fn, teks = "butuh lebih banyak trade") => (x === null || x === und
 
 // ---------------------------------------------------------------- RINGKASAN: koin teramai + kecenderungan analis
 const vol = (x) => x >= 1e9 ? nf(1).format(x / 1e9) + " M" : x >= 1e6 ? nf(0).format(x / 1e6) + " jt" : nf(0).format(x);
-const ALASAN_PENDEK = { TP: "target", HANGUS: "hangus", FUNDING_LIQ: "hangus", STOP: "stop", EOD: "jam 23:50", MANUAL: "manual", DELISTED: "dihapus" };
+const ALASAN_PENDEK = { TP: "target", HANGUS: "hangus", FUNDING_LIQ: "hangus", STOP: "stop", TRAIL: "trailing", EOD: "jam 23:50", MANUAL: "manual", DELISTED: "dihapus" };
 const POLA = { pullback_resistance_wick: "pullback ke resistance", pullback_support_wick: "pullback ke support", WICK_BREAKOUT_GAGAL_resisten: "tembus gagal di resistance", WICK_BREAKOUT_GAGAL_support: "tembus gagal di support", BREAKOUT_GAGAL_atas: "tembus gagal ke atas", BREAKOUT_GAGAL_bawah: "tembus gagal ke bawah", tepi_atas_range: "tepi atas range", tepi_bawah_range: "tepi bawah range" };
 function kalimatProfil(a) {
   if (!a.n_posisi) return `<span class="dim">belum pernah membuka posisi</span>`;

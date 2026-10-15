@@ -46,7 +46,7 @@ from common import (  # noqa: E402
     wib_clock_ms,
 )
 
-SCHEMA_VERSION = "3"   # v2: akun acak, orders.tp_pct/sl_pct; v3: arena (akun persona, account.status)
+SCHEMA_VERSION = "4"   # v4: rencana swing bertahap (swing_plan, plan_group, TP parsial, trailing)   # v2: akun acak, orders.tp_pct/sl_pct; v3: arena (akun persona, account.status)
 LONG, SHORT = "LONG", "SHORT"
 TIKET, SWING, ACAK = "tiket", "swing", "acak"
 DAILY_ACCOUNTS = (TIKET, ACAK)   # kompat; sumber kebenaran = tabel account (kind tiket|acak = harian). Lihat PaperEngine.is_daily
@@ -70,6 +70,8 @@ class EngineConfig:
     swing_min_rr: float = 2.5
     swing_liq_buffer: float = 0.005
     swing_entry_ttl_h: int = 72
+    swing_max_legs: int = 4            # rencana bertahap: maks leg entry (Turtle: 4 unit)
+    swing_max_tps: int = 3             # maks TP bertingkat (runner = sisa)
     bar_grace_ms: int = 5_000
     mark_fallback_to_last: bool = True
     acak_enabled: bool = True              # setiap order tiket (bukan dari mesin) dibuatkan bayangan acak di akun `acak`
@@ -299,6 +301,56 @@ class OrderRequest:
     shadow_of: Optional[int] = None    # order tiket asal (akun acak)
     tp_pct: Optional[float] = None     # jarak TP relatif terhadap entry (akun acak; diresolusi saat terisi)
     sl_pct: Optional[float] = None
+    plan_group: Optional[int] = None   # leg rencana swing (swing_plan.id); validasi plan-level dilakukan di place_plan/add_leg
+    leg_pct: Optional[float] = None
+
+
+@dataclass
+class PlanRequest:
+    """Rencana swing bertahap: beberapa leg entry (tangga di level pullback, atau piramida: 1 leg awal + add saat untung)
+    yang bergabung ke SATU posisi; TP bertingkat (% dari qty awal), runner sisa di-trail `trail_dist` (satuan harga)."""
+    symbol: str
+    side: str
+    leverage: int
+    legs: list                      # [{"harga": float, "persen": float}] urut dari yang terdekat ke mark
+    tps: list                       # [{"harga": float, "persen": float}] urut makin jauh ke arah untung; Σ persen ≤ 100
+    sl_price: float
+    trail_dist: Optional[float] = None
+    mode: str = "tangga"           # tangga | piramida
+    margin: Optional[float] = None  # total margin rencana (≤ swing_margin)
+    account: str = SWING
+    plan_id: Optional[str] = None
+    pattern: Optional[str] = None
+    note: Optional[str] = None
+    created_by: str = "cli"
+    trail_atr: Optional[float] = None
+    atr_ref: Optional[float] = None
+
+
+@dataclass
+class PlanResult:
+    ok: bool
+    plan_group: Optional[int] = None
+    order_ids: list = field(default_factory=list)
+    reject_code: Optional[str] = None
+    reject_reason: Optional[str] = None
+    qty_total: Optional[float] = None
+    margin_total: Optional[float] = None
+    avg_entry: Optional[float] = None
+    rr: Optional[float] = None
+    est_liq: Optional[float] = None
+    legs: list = field(default_factory=list)
+    tps: list = field(default_factory=list)
+    runner_pct: Optional[float] = None
+    runner_qty: Optional[float] = None
+
+    def __str__(self) -> str:
+        if self.ok:
+            return (f"OK rencana #{self.plan_group}: {len(self.order_ids)} leg (order {', '.join('#' + str(i) for i in self.order_ids)}), qty total {self.qty_total:g}, "
+                    f"margin ${self.margin_total:.2f}, entry rata ≈ {self.avg_entry:.6g}, est. likuidasi {self.est_liq:.6g}, R:R rencana {self.rr:.2f}; "
+                    "TP " + ", ".join(f"{t['persen']:g}% @ {t['harga']:.6g}" for t in self.tps)
+                    + (f", runner {self.runner_pct:g}% trailing" if self.runner_pct else ""))
+        return f"DITOLAK [{self.reject_code}] {self.reject_reason}"
 
 
 @dataclass
@@ -351,10 +403,18 @@ class PaperEngine:
         """Kolom baru pada DB lama (CREATE TABLE IF NOT EXISTS tidak menambah kolom)."""
         cols = {r[1] for r in self.conn.execute("PRAGMA table_info(orders)")}
         acols = {r[1] for r in self.conn.execute("PRAGMA table_info(account)")}
+        pcols = {r[1] for r in self.conn.execute("PRAGMA table_info(positions)")}
         with tx(self.conn):
             for col in ("tp_pct", "sl_pct"):
                 if col not in cols:
                     self.conn.execute(f"ALTER TABLE orders ADD COLUMN {col} REAL")
+            for col, typ in (("plan_group", "INTEGER"), ("leg_pct", "REAL"), ("tp_rank", "INTEGER")):   # v4
+                if col not in cols:
+                    self.conn.execute(f"ALTER TABLE orders ADD COLUMN {col} {typ}")
+            for col, typ in (("plan_group", "INTEGER"), ("mode", "TEXT"), ("qty_awal", "REAL"), ("legs_n", "INTEGER DEFAULT 1"),
+                             ("trail_dist", "REAL"), ("trail_on", "INTEGER DEFAULT 0"), ("breakeven_done", "INTEGER DEFAULT 0")):   # v4
+                if col not in pcols:
+                    self.conn.execute(f"ALTER TABLE positions ADD COLUMN {col} {typ}")
             if "status" not in acols:
                 self.conn.execute("ALTER TABLE account ADD COLUMN status TEXT DEFAULT 'aktif'")
             self.conn.execute("INSERT OR IGNORE INTO account(name, kind, budget_rule, budget_usdt) VALUES('acak','acak','daily_total',?)", (self.cfg.acak_budget,))
@@ -457,6 +517,13 @@ class PaperEngine:
                 d["mark_ts"] = ts
                 d["unrealized"] = (mark - d["entry_price"]) * d["qty"] * sign
                 d["liq_dist_pct"] = (mark - d["liq_price"]) / mark * 100 * sign
+            if d.get("plan_group"):
+                d["persen_sisa"] = round(d["qty"] / d["qty_awal"] * 100, 1) if d.get("qty_awal") else None
+                d["realized_sofar"] = d.get("realized_pnl")
+                d["tp_list"] = [{"rank": r["tp_rank"], "harga": r["price"], "qty": r["qty"], "persen": r["leg_pct"], "status": r["status"]} for r in self.conn.execute(
+                    "SELECT tp_rank, price, qty, leg_pct, status FROM orders WHERE position_id=? AND reduce_only=1 AND type='LIMIT' AND tp_rank IS NOT NULL ORDER BY tp_rank", (d["id"],))]
+                d["legs"] = [{"order_id": r["id"], "harga": r["price"], "qty": r["qty"], "persen": r["leg_pct"], "status": r["status"]} for r in self.conn.execute(
+                    "SELECT id, price, qty, leg_pct, status FROM orders WHERE plan_group=? AND reduce_only=0 AND status!='REJECTED' ORDER BY id", (d["plan_group"],))]
             out.append(d)
         return out
 
@@ -516,12 +583,20 @@ class PaperEngine:
             if info["status"] != "aktif":
                 out["boleh_buka"] = False
             return out
-        n_open = self.conn.execute("SELECT COUNT(*) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
+        # satu rencana bertahap = satu slot (posisi OPEN atau leg entry yang masih hidup); order tunggal lama = satu slot per baris
+        n_open = self.conn.execute("SELECT COUNT(DISTINCT COALESCE(plan_group, -id)) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
         n_pending = self.conn.execute(
-            "SELECT COUNT(*) FROM orders WHERE account='swing' AND reduce_only=0 AND status IN ('NEW','ACTIVE')"
+            "SELECT COUNT(DISTINCT COALESCE(plan_group, -id)) FROM orders WHERE account='swing' AND reduce_only=0 AND status IN ('NEW','ACTIVE') "
+            "AND (plan_group IS NULL OR plan_group NOT IN (SELECT plan_group FROM positions WHERE status='OPEN' AND plan_group IS NOT NULL))"
         ).fetchone()[0]
+        rencana = [dict(r) for r in self.conn.execute(
+            "SELECT sp.id, sp.symbol, sp.side, sp.mode, sp.qty_total, sp.margin_total, sp.rr, "
+            "(SELECT COUNT(*) FROM positions p WHERE p.plan_group=sp.id AND p.status='OPEN') AS posisi_open, "
+            "(SELECT COUNT(*) FROM orders o WHERE o.plan_group=sp.id AND o.reduce_only=0 AND o.status IN ('NEW','ACTIVE')) AS leg_hidup "
+            "FROM swing_plan sp ORDER BY sp.id DESC LIMIT 10")]
+        rencana = [r for r in rencana if r["posisi_open"] or r["leg_hidup"]]
         return {"account": SWING, "margin_per_trade": self.cfg.swing_margin, "open": n_open, "pending": n_pending,
-                "max_open": self.cfg.swing_max_open}
+                "max_open": self.cfg.swing_max_open, "rencana": rencana}
 
     # ---- validasi
     def _validate(self, req: OrderRequest, now: int) -> dict:
@@ -604,7 +679,7 @@ class PaperEngine:
                 rr = reward / risk if risk > 0 else 0.0
                 if rr < self.cfg.tiket_min_rr:
                     raise Reject("RR_TOO_LOW", f"P-19: untung bersih di TP ${reward:.4f} < {self.cfg.tiket_min_rr:.2f}× risiko hangus ${risk:.4f} (R:R {rr:.2f}); perlebar TP atau turunkan leverage")
-        else:
+        elif req.plan_group is None:
             if margin > self.cfg.swing_margin + 1e-9:
                 raise Reject("BUDGET_SWING", f"margin ${margin:.2f} > ${self.cfg.swing_margin:.2f} per trade")
             bs = self.budget_status(SWING)
@@ -648,10 +723,11 @@ class PaperEngine:
         with tx(self.conn):
             cur = self.conn.execute(
                 "INSERT INTO orders(account,symbol,side,type,reduce_only,price,qty,leverage,margin_usdt,notional,fee_reserved,tp_price,sl_price,post_only,"
-                "tp_pct,sl_pct,status,plan_id,pattern,note,created_by,created_ts,activate_ts,expire_ts,day_wib) "
-                "VALUES(?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,'NEW',?,?,?,?,?,?,?,?)",
+                "tp_pct,sl_pct,status,plan_id,pattern,note,created_by,created_ts,activate_ts,expire_ts,day_wib,plan_group,leg_pct) "
+                "VALUES(?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,'NEW',?,?,?,?,?,?,?,?,?,?)",
                 (req.account, req.symbol, req.side, req.type, req.price, v["qty"], req.leverage, v["margin"], v["notional"], fee_reserved,
-                 req.tp_price, req.sl_price, int(req.post_only), req.tp_pct, req.sl_pct, req.plan_id, req.pattern, req.note, req.created_by, now, activate, expire, day_wib(now)),
+                 req.tp_price, req.sl_price, int(req.post_only), req.tp_pct, req.sl_pct, req.plan_id, req.pattern, req.note, req.created_by, now, activate, expire, day_wib(now),
+                 req.plan_group, req.leg_pct),
             )
             oid = cur.lastrowid
             self._ledger(now, req.account, "MARGIN_LOCK", -(v["margin"] + fee_reserved), "orders", oid)
@@ -686,16 +762,30 @@ class PaperEngine:
                 self.event("WARNING", "ACAK_SKIP", f"[{res.reject_code}] {res.reject_reason}", order_id=oid, ts=now)
         return res.order_id if res.ok else None
 
+    def _cancel_row(self, r, ts: int, who: str, msg: Optional[str] = None) -> None:
+        """Batalkan satu order entry hidup (tanpa tx; pemanggil memegang transaksi)."""
+        self.conn.execute("UPDATE orders SET status='CANCELED', done_ts=?, note=COALESCE(note,'')||? WHERE id=?", (ts, f" [dibatalkan oleh {who}]", r["id"]))
+        self._ledger(ts, r["account"], "MARGIN_RELEASE", (r["margin_usdt"] or 0) + (r["fee_reserved"] or 0), "orders", r["id"])
+        self.event("INFO", "ORDER_CANCEL", msg or f"oleh {who}", order_id=r["id"], ts=ts)
+
+    def _cancel_plan_legs(self, plan_group: int, ts: int, who: str, msg: str) -> int:
+        rows = self.conn.execute("SELECT * FROM orders WHERE plan_group=? AND reduce_only=0 AND status IN ('NEW','ACTIVE')", (plan_group,)).fetchall()
+        for r in rows:
+            self._cancel_row(r, ts, who, msg)
+        return len(rows)
+
+    def cancel_plan(self, plan_group: int, who: str = "cli") -> int:
+        """Batalkan semua leg entry rencana yang masih hidup (posisi yang sudah terbuka tidak disentuh)."""
+        with tx(self.conn):
+            return self._cancel_plan_legs(int(plan_group), self.clock(), who, f"rencana #{plan_group} dibatalkan oleh {who}")
+
     def cancel_order(self, order_id: int, who: str = "cli") -> bool:
         now = self.clock()
         with tx(self.conn):
             r = self.conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
             if r is None or r["status"] not in ("NEW", "ACTIVE") or r["reduce_only"]:
                 return False
-            self.conn.execute("UPDATE orders SET status='CANCELED', done_ts=?, note=COALESCE(note,'')||? WHERE id=?",
-                              (now, f" [dibatalkan oleh {who}]", order_id))
-            self._ledger(now, r["account"], "MARGIN_RELEASE", (r["margin_usdt"] or 0) + (r["fee_reserved"] or 0), "orders", order_id)
-            self.event("INFO", "ORDER_CANCEL", f"oleh {who}", order_id=order_id, ts=now)
+            self._cancel_row(r, now, who)
             # bayangan acak yang belum terisi ikut dibatalkan supaya jumlah sampel sebanding
             for s in self.conn.execute("SELECT * FROM orders WHERE plan_id=? AND status IN ('NEW','ACTIVE') AND reduce_only=0", (f"ACAK:{order_id}",)).fetchall():
                 self.conn.execute("UPDATE orders SET status='CANCELED', done_ts=?, note=COALESCE(note,'')||' [ikut order asli]' WHERE id=?", (now, s["id"]))
@@ -835,6 +925,9 @@ class PaperEngine:
                     p["sl_price"] = p["entry_price"]
                     self.event("INFO", "BREAKEVEN", f"{p['symbol']} {p['side']} menempuh {tempuh / jarak_tp:.0%} jalan ke TP {p['tp_price']:.6g}; "
                                                     f"SL dipindah ke harga masuk {p['entry_price']:.6g}", position_id=p["id"], ts=ot)
+            if p.get("plan_group"):
+                self._process_plan_position(p, bar, mark, slip, rep)
+                continue
             # 3b. likuidasi (mark) → SL (mark) → TP (last)
             tp_fill = limit_fill(p["side"] == SHORT, p["tp_price"], bar) if p["tp_price"] else None
             sl_fill = stop_trigger(p["side"], p["sl_price"], mark, bar, slip) if p["sl_price"] else None
@@ -879,6 +972,8 @@ class PaperEngine:
                 continue
             px, rule = fill
             pos = self._open_position(o, px, is_maker, rule, bar, mark)
+            if pos is None:
+                continue
             rep["fills"] += 1
             # cek likuidasi / SL di bar yang sama (pesimis), tanpa TP
             if liq_hit(pos["side"], pos["liq_price"], mark):
@@ -903,7 +998,399 @@ class PaperEngine:
         self._ledger(ot, o["account"], "MARGIN_RELEASE", (o["margin_usdt"] or 0) + (o["fee_reserved"] or 0), "orders", o["id"])
         self.event("INFO", "ORDER_EXPIRED", "TIDAK_TERISI", order_id=o["id"], ts=ot)
 
-    def _open_position(self, o, px: float, is_maker: bool, rule: str, bar: Bar, mark: MarkBar) -> dict:
+
+    # ---- rencana swing bertahap (entry tangga/piramida, TP 50/25/runner trailing)
+    def _tp_split(self, qty_awal: float, tps: list, f) -> tuple[list, float]:
+        """Qty per TP (% dari qty awal, dibulatkan ke step; yang < min_qty digabung ke rank berikutnya) dan qty runner (sisa).
+        Tanpa runner (Σ persen = 100): sisa pembulatan masuk ke TP terakhir."""
+        step, min_qty = (f.qty_step, f.min_qty) if f else (D("0.00000001"), D(0))
+        out, carry, total = [], D(0), D(0)
+        for i, t in enumerate(tps):
+            q = C.round_step(D(str(qty_awal)) * D(str(t["persen"])) / 100, step, "down") + carry
+            if q < min_qty and i < len(tps) - 1:
+                carry, q = q, D(0)
+            else:
+                carry = D(0)
+            out.append(q)
+            total += q
+        runner = D(str(qty_awal)) - total
+        runner_pct = 100 - sum(float(t["persen"]) for t in tps)
+        if runner_pct <= 0.01 and out:          # tanpa runner: sisa pembulatan ke TP terakhir
+            out[-1] += runner
+            runner = D(0)
+        return [float(q) for q in out], float(runner)
+
+    def _validate_plan(self, req: PlanRequest, now: int) -> dict:
+        cfg = self.cfg
+        if req.account != SWING:
+            raise Reject("ACCOUNT", "rencana bertahap hanya untuk akun swing")
+        if req.mode not in ("tangga", "piramida"):
+            raise Reject("MODE", "mode harus 'tangga' atau 'piramida'")
+        if req.side not in (LONG, SHORT):
+            raise Reject("SIDE", "sisi harus LONG atau SHORT")
+        legs = [{"harga": float(l["harga"]), "persen": float(l["persen"])} for l in (req.legs or [])]
+        tps = [{"harga": float(t["harga"]), "persen": float(t["persen"])} for t in (req.tps or [])]
+        if not 1 <= len(legs) <= cfg.swing_max_legs:
+            raise Reject("PLAN_LEGS", f"jumlah leg harus 1–{cfg.swing_max_legs}")
+        if req.mode == "piramida" and len(legs) != 1:
+            raise Reject("PLAN_LEGS", "piramida dipasang dengan 1 leg awal; leg berikutnya lewat tambah_leg saat posisi untung")
+        if abs(sum(l["persen"] for l in legs) - 100) > 0.01 or any(l["persen"] <= 0 for l in legs):
+            raise Reject("PLAN_PCT", "persen leg harus > 0 dan berjumlah 100")
+        if not 1 <= len(tps) <= cfg.swing_max_tps:
+            raise Reject("PLAN_TP_PCT", f"jumlah TP harus 1–{cfg.swing_max_tps}")
+        if any(t["persen"] <= 0 for t in tps) or sum(t["persen"] for t in tps) > 100.01:
+            raise Reject("PLAN_TP_PCT", "persen TP harus > 0 dan berjumlah ≤ 100 (sisa = runner)")
+        runner_pct = round(100 - sum(t["persen"] for t in tps), 6)
+        if runner_pct > 0.01 and not (req.trail_dist and req.trail_dist > 0):
+            raise Reject("PLAN_NEEDS_TRAIL", f"runner {runner_pct:g}% butuh trail_dist > 0 (jarak trailing dalam satuan harga)")
+        f = self.market.filters(req.symbol)
+        if f is None or f.status != "TRADING":
+            raise Reject("SYMBOL_UNAVAILABLE", f"{req.symbol} tidak ada / tidak TRADING")
+        lm = self.market.last_mark(req.symbol)
+        if not lm:
+            raise Reject("NO_PRICE", "tidak ada harga referensi (mark) untuk simbol ini")
+        long = req.side == LONG
+        prices = [l["harga"] for l in legs]
+        if len(set(prices)) != len(prices) or prices != sorted(prices, reverse=long):
+            raise Reject("BAD_LEG_ORDER", "harga leg harus urut menjauh dari mark (LONG menurun, SHORT menaik) dan tidak sama")
+        tp_prices = [t["harga"] for t in tps]
+        if tp_prices != sorted(tp_prices, reverse=not long) or len(set(tp_prices)) != len(tp_prices):
+            raise Reject("BAD_TP", "harga TP harus urut makin jauh ke arah untung")
+        if (long and tp_prices[0] <= prices[0]) or (not long and tp_prices[0] >= prices[0]):
+            raise Reject("BAD_TP", "TP1 harus di arah untung dari leg terdekat")
+        sl = float(req.sl_price)
+        if (long and sl >= prices[-1]) or (not long and sl <= prices[-1]):
+            raise Reject("BAD_SL", "SL harus di arah rugi dari leg terjauh")
+        for label, px in [("SL", sl)] + [(f"TP{i + 1}", t["harga"]) for i, t in enumerate(tps)]:
+            if not is_multiple(D(str(px)), f.tick_size):
+                raise Reject("TICK_SIZE", f"harga {label} harus kelipatan tick {C.fmt_dec(f.tick_size)}")
+        margin_total = min(float(req.margin) if req.margin else cfg.swing_margin, cfg.swing_margin)
+        if margin_total <= 0:
+            raise Reject("BUDGET_SWING", "margin rencana harus > 0")
+        qtys, margin_sum, notional_sum = [], 0.0, 0.0
+        for i, l in enumerate(legs):
+            q = C.round_step(D(str(margin_total)) * D(str(l["persen"])) / 100 * req.leverage / D(str(l["harga"])), f.qty_step, "down")
+            if q < f.min_qty:
+                raise Reject("MIN_QTY", f"leg {i + 1} ({l['persen']:g}%): qty {C.fmt_dec(q)} < minimum {C.fmt_dec(f.min_qty)}; kurangi jumlah leg atau naikkan leverage")
+            if q * D(str(l["harga"])) < f.min_notional:
+                raise Reject("MIN_NOTIONAL", f"leg {i + 1} ({l['persen']:g}%): notional ${float(q) * l['harga']:.2f} < minimum ${C.fmt_dec(f.min_notional)}; kurangi jumlah leg atau naikkan leverage")
+            qtys.append(float(q))
+            margin_sum += float(q) * l["harga"] / req.leverage
+            notional_sum += float(q) * l["harga"]
+        if margin_sum > cfg.swing_margin + 1e-9:
+            raise Reject("BUDGET_SWING", f"margin rencana ${margin_sum:.2f} > ${cfg.swing_margin:.2f}")
+        # validasi per leg lewat jalur order biasa (tick, PRICE_BAND, LIMIT_CROSSES, LEVERAGE_CAP) tanpa menulis apa pun
+        for i, (l, q) in enumerate(zip(legs, qtys)):
+            try:
+                self._validate(OrderRequest(account=SWING, symbol=req.symbol, side=req.side, qty=q, leverage=req.leverage, type="LIMIT",
+                                            price=l["harga"], tp_price=tps[0]["harga"], sl_price=sl, plan_group=-1), now)
+            except Reject as e:
+                raise Reject(e.code, f"leg {i + 1}: {e.reason}")
+        qty_total = float(sum(D(str(q)) for q in qtys))
+        avg = notional_sum / qty_total
+        tp_qty, runner_qty = self._tp_split(qty_total, tps, f)
+        for i, q in enumerate(tp_qty):
+            if q <= 0 or D(str(q)) < f.min_qty:
+                raise Reject("PLAN_TP_TOO_SMALL", f"TP{i + 1} ({tps[i]['persen']:g}%) = {q:g} < minimum {C.fmt_dec(f.min_qty)}; gabungkan TP atau perbesar rencana")
+        if runner_pct > 0.01 and D(str(runner_qty)) < f.min_qty:
+            raise Reject("PLAN_TP_TOO_SMALL", f"runner {runner_pct:g}% = {runner_qty:g} < minimum {C.fmt_dec(f.min_qty)}")
+        brackets = self.market.brackets(req.symbol)
+        b = pick_bracket(brackets, notional_sum)
+        if b is None:
+            raise Reject("LEVERAGE_UNKNOWN", f"bracket leverage {req.symbol} tidak tersedia")
+        if req.leverage < 1 or req.leverage > b.max_leverage:
+            raise Reject("LEVERAGE_CAP", f"leverage {req.leverage}x di luar 1–{b.max_leverage}x untuk notional ${notional_sum:.0f}")
+        est_liq = liq_price(req.side, qty_total, avg, margin_sum, b.mmr, b.cum)
+        buf = cfg.swing_liq_buffer
+        if (long and est_liq > sl * (1 - buf)) or (not long and est_liq < sl * (1 + buf)):
+            raise Reject("LIQ_INSIDE_STOP", f"likuidasi rencana ≈ {est_liq:.6g} terlalu dekat dengan SL {sl} (buffer {buf:.1%})")
+        fee_in = sum(fee_amount(q * l["harga"], True, cfg) for q, l in zip(qtys, legs))
+        reward = sum(q * abs(t["harga"] - avg) - fee_amount(q * t["harga"], True, cfg) for q, t in zip(tp_qty, tps))
+        if runner_qty > 0:
+            reward += runner_qty * abs(tps[-1]["harga"] - avg) - fee_amount(runner_qty * tps[-1]["harga"], True, cfg)
+        reward -= fee_in
+        risk = qty_total * abs(avg - sl) + fee_in + fee_amount(qty_total * sl, False, cfg)
+        rr = reward / risk if risk > 0 else 0.0
+        if rr < cfg.swing_min_rr:
+            raise Reject("RR_TOO_LOW", f"R:R rencana setelah fee {rr:.2f} < {cfg.swing_min_rr} (reward ${reward:.4f} vs risiko ${risk:.4f})")
+        bs = self.budget_status(SWING)
+        if bs["open"] + bs["pending"] >= cfg.swing_max_open:
+            raise Reject("SWING_MAX_OPEN", f"sudah {bs['open']} posisi + {bs['pending']} rencana swing menunggu (maks {cfg.swing_max_open})")
+        return {"legs": [dict(l, qty=q) for l, q in zip(legs, qtys)], "tps": [dict(t, rank=i + 1, qty=q) for i, (t, q) in enumerate(zip(tps, tp_qty))],
+                "runner_pct": runner_pct, "runner_qty": runner_qty, "qty_total": qty_total, "margin_total": margin_sum, "avg": avg,
+                "est_liq": est_liq, "rr": rr, "sl": sl}
+
+    def place_plan(self, req: PlanRequest) -> PlanResult:
+        """Pasang rencana swing bertahap: satu baris swing_plan + satu order LIMIT per leg (plan_group). Gagal → satu baris REJECTED."""
+        now = self.clock()
+        try:
+            v = self._validate_plan(req, now)
+        except Reject as e:
+            with tx(self.conn):
+                self.conn.execute(
+                    "INSERT INTO orders(account,symbol,side,type,reduce_only,price,qty,leverage,tp_price,sl_price,post_only,status,reject_code,reject_reason,"
+                    "plan_id,pattern,note,created_by,created_ts,day_wib,done_ts) VALUES(?,?,?,'LIMIT',0,?,?,?,?,?,1,'REJECTED',?,?,?,?,?,?,?,?,?)",
+                    (req.account, req.symbol, req.side, (req.legs or [{}])[0].get("harga"), sum(float(l.get("persen", 0)) for l in (req.legs or [])) / 100,
+                     req.leverage, (req.tps or [{}])[0].get("harga"), req.sl_price, e.code, e.reason, req.plan_id, req.pattern,
+                     f"rencana {req.mode}: {req.note or ''}", req.created_by, now, day_wib(now), now),
+                )
+            return PlanResult(ok=False, reject_code=e.code, reject_reason=e.reason)
+        with tx(self.conn):
+            pg = self.conn.execute(
+                "INSERT INTO swing_plan(account,symbol,side,leverage,mode,legs_json,tps_json,sl_price,trail_dist,trail_atr,atr_ref,qty_total,margin_total,rr,"
+                "plan_id,pattern,note,created_by,created_ts,day_wib) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (req.account, req.symbol, req.side, req.leverage, req.mode, json.dumps(v["legs"]), json.dumps(v["tps"]), v["sl"],
+                 req.trail_dist if v["runner_pct"] > 0.01 else None, req.trail_atr, req.atr_ref, v["qty_total"], v["margin_total"], v["rr"],
+                 req.plan_id, req.pattern, req.note, req.created_by, now, day_wib(now)),
+            ).lastrowid
+        order_ids = []
+        for i, l in enumerate(v["legs"]):
+            res = self.place_order(OrderRequest(account=SWING, symbol=req.symbol, side=req.side, qty=l["qty"], leverage=req.leverage, type="LIMIT",
+                                                price=l["harga"], tp_price=v["tps"][0]["harga"], sl_price=v["sl"], plan_id=req.plan_id, pattern=req.pattern,
+                                                note=f"leg {i + 1}/{len(v['legs'])} {l['persen']:g}% rencana #{pg} ({req.mode})" + (f"; {req.note}" if req.note else ""),
+                                                created_by=req.created_by, plan_group=pg, leg_pct=l["persen"]))
+            if not res.ok:   # seharusnya tidak terjadi (sudah divalidasi); batalkan leg yang sempat dibuat
+                with tx(self.conn):
+                    self._cancel_plan_legs(pg, now, "engine", f"leg {i + 1} ditolak [{res.reject_code}]; rencana dibatalkan")
+                return PlanResult(ok=False, reject_code=res.reject_code, reject_reason=f"leg {i + 1}: {res.reject_reason}")
+            order_ids.append(res.order_id)
+        with tx(self.conn):
+            self.event("INFO", "RENCANA",
+                       f"swing {req.symbol} {req.side} {req.leverage}x {req.mode}: {len(v['legs'])} leg " + ", ".join(f"{l['persen']:g}%@{l['harga']:.6g}" for l in v["legs"])
+                       + " | TP " + ", ".join(f"{t['persen']:g}%@{t['harga']:.6g}" for t in v["tps"])
+                       + (f" | runner {v['runner_pct']:g}% trail {req.trail_dist:.6g}" if v["runner_pct"] > 0.01 else "")
+                       + f" | SL {v['sl']:.6g} | margin ${v['margin_total']:.2f} | R:R {v['rr']:.2f}", order_id=order_ids[0], ts=now)
+        return PlanResult(ok=True, plan_group=pg, order_ids=order_ids, qty_total=v["qty_total"], margin_total=v["margin_total"], avg_entry=v["avg"],
+                          rr=v["rr"], est_liq=v["est_liq"], legs=v["legs"], tps=v["tps"], runner_pct=v["runner_pct"], runner_qty=v["runner_qty"])
+
+    def add_leg(self, position_id: int, pct: float, sl_price: float, price: Optional[float] = None, market: bool = False,
+                who: str = "cli", note: Optional[str] = None) -> OrderResult:
+        """Piramida: tambah leg ke posisi rencana yang sedang untung. Ukuran ≤ leg sebelumnya, SL baru lebih ketat, margin total ≤ swing_margin."""
+        now = self.clock()
+        p = self.conn.execute("SELECT * FROM positions WHERE id=? AND status='OPEN'", (position_id,)).fetchone()
+        try:
+            if p is None:
+                raise Reject("POSITION", f"posisi #{position_id} tidak ada / tidak terbuka")
+            p = dict(p)
+            if not p["plan_group"]:
+                raise Reject("MODE_TANGGA", "posisi ini bukan rencana bertahap")
+            plan = dict(self.conn.execute("SELECT * FROM swing_plan WHERE id=?", (p["plan_group"],)).fetchone())
+            if plan["mode"] != "piramida":
+                raise Reject("MODE_TANGGA", "rencana ini bermode tangga: leg sudah ditentukan di awal, tidak ada add")
+            if p["breakeven_done"] or self.conn.execute("SELECT 1 FROM fills WHERE position_id=? AND role='TP'", (p["id"],)).fetchone():
+                raise Reject("ADD_AFTER_TP", "sudah ada TP yang terisi; tidak menambah posisi yang sedang dikurangi")
+            live = [dict(r) for r in self.conn.execute("SELECT * FROM orders WHERE plan_group=? AND reduce_only=0 AND status IN ('NEW','ACTIVE')", (p["plan_group"],))]
+            if (p["legs_n"] or 1) + len(live) >= self.cfg.swing_max_legs:
+                raise Reject("PLAN_LEGS", f"sudah {p['legs_n']} leg + {len(live)} menunggu (maks {self.cfg.swing_max_legs})")
+            lm = self.market.last_mark(p["symbol"])
+            if not lm:
+                raise Reject("NO_PRICE", "tidak ada mark")
+            sign = 1 if p["side"] == LONG else -1
+            if (lm[0] - p["entry_price"]) * sign <= 0:
+                raise Reject("ADD_NOT_IN_PROFIT", f"posisi belum untung di mark {lm[0]:.6g} vs entry rata {p['entry_price']:.6g}; piramida hanya menambah pemenang")
+            f = self.market.filters(p["symbol"])
+            first = self.conn.execute("SELECT qty FROM fills WHERE position_id=? AND role='ENTRY' ORDER BY id LIMIT 1", (p["id"],)).fetchone()[0]
+            last = self.conn.execute("SELECT qty FROM fills WHERE position_id=? AND role='ENTRY' ORDER BY id DESC LIMIT 1", (p["id"],)).fetchone()[0]
+            q = C.round_step(D(str(first)) * D(str(pct)) / 100, f.qty_step, "down")
+            if q < f.min_qty:
+                raise Reject("MIN_QTY", f"leg {pct:g}% = {C.fmt_dec(q)} < minimum {C.fmt_dec(f.min_qty)}")
+            if float(q) > float(last) + 1e-12:
+                raise Reject("ADD_TOO_BIG", f"leg {C.fmt_dec(q)} > leg sebelumnya {last:g}; ukuran add harus menurun")
+            ref = float(price) if (price and not market) else lm[0]
+            margin_new = float(q) * ref / p["leverage"]
+            margin_live = sum((o["margin_usdt"] or 0) for o in live)
+            if p["margin_initial"] + margin_live + margin_new > self.cfg.swing_margin + 1e-9:
+                raise Reject("BUDGET_SWING", f"margin rencana {p['margin_initial'] + margin_live + margin_new:.2f} > ${self.cfg.swing_margin:.2f}")
+            sl = float(sl_price)
+            if p["sl_price"] is not None and ((p["side"] == LONG and sl <= p["sl_price"]) or (p["side"] == SHORT and sl >= p["sl_price"])):
+                raise Reject("SL_LOOSER", f"SL baru {sl:.6g} harus lebih ketat dari SL sekarang {p['sl_price']:.6g} (stop naik mengikuti leg baru)")
+            qty_n = p["qty"] + float(q)
+            avg_n = (p["entry_price"] * p["qty"] + ref * float(q)) / qty_n
+            b = pick_bracket(self.market.brackets(p["symbol"]), avg_n * qty_n)
+            liq_n = liq_price(p["side"], qty_n, avg_n, p["margin_now"] + margin_new, b.mmr if b else p["mmr"], b.cum if b else p["cum"])
+            buf = self.cfg.swing_liq_buffer
+            if (p["side"] == LONG and liq_n > sl * (1 - buf)) or (p["side"] == SHORT and liq_n < sl * (1 + buf)):
+                raise Reject("LIQ_INSIDE_STOP", f"likuidasi gabungan ≈ {liq_n:.6g} terlalu dekat dengan SL {sl}")
+        except Reject as e:
+            with tx(self.conn):
+                self.event("WARNING", "ADD_SKIP", f"[{e.code}] {e.reason}", position_id=position_id if p else None, ts=now)
+            return OrderResult(ok=False, reject_code=e.code, reject_reason=e.reason)
+        legs_n = (p["legs_n"] or 1) + len(live) + 1
+        req = OrderRequest(account=SWING, symbol=p["symbol"], side=p["side"], qty=float(q), leverage=p["leverage"], type="MARKET" if market else "LIMIT",
+                           price=None if market else float(price), post_only=not market, sl_price=sl, plan_id=p["plan_id"], pattern=p["pattern"],
+                           note=f"leg {legs_n} piramida {pct:g}% rencana #{p['plan_group']}" + (f"; {note}" if note else ""), created_by=who,
+                           plan_group=p["plan_group"], leg_pct=float(pct))
+        return self.place_order(req)
+
+    def _add_to_position(self, p: dict, o, px: float, is_maker: bool, rule: str, bar: Bar, mark: MarkBar) -> Optional[dict]:
+        """Leg rencana terisi saat posisi rencana sudah OPEN → gabung (entry rata-rata, margin akumulasi, bracket & liq ulang, TP/SL di-resize)."""
+        ot = bar.open_time
+        ts = ot if rule in ("GAP_OPEN", "MARKET_OPEN") else ot + 30_000
+        plan = dict(self.conn.execute("SELECT * FROM swing_plan WHERE id=?", (p["plan_group"],)).fetchone())
+        sign = 1 if p["side"] == LONG else -1
+        if plan["mode"] == "piramida" and (bar.open - p["entry_price"]) * sign <= 0:
+            self._cancel_row(o, ot, "engine", f"posisi tidak untung saat leg aktif (open {bar.open:.6g} vs entry {p['entry_price']:.6g}); add dibatalkan")
+            return None
+        lq = float(o["qty"])
+        notional_add = lq * px
+        margin_add = notional_add / o["leverage"]
+        fee_in = fee_amount(notional_add, is_maker, self.cfg)
+        qty_n = p["qty"] + lq
+        entry_n = (p["entry_price"] * p["qty"] + px * lq) / qty_n
+        notional_n = (p["notional_entry"] or 0) + notional_add
+        b = pick_bracket(self.market.brackets(o["symbol"]), entry_n * qty_n)
+        mmr, cum, bno = (b.mmr, b.cum, b.bracket) if b else (p["mmr"], p["cum"], p["bracket"])
+        margin_now = p["margin_now"] + margin_add
+        liq = liq_price(p["side"], qty_n, entry_n, margin_now, mmr, cum)
+        sl_new = o["sl_price"] if (plan["mode"] == "piramida" and o["sl_price"]) else p["sl_price"]
+        fid = self.conn.execute(
+            "INSERT INTO fills(order_id,position_id,ts,bar_open_time,price,qty,notional,fee_usdt,is_maker,role,rule) VALUES(?,?,?,?,?,?,?,?,?,'ENTRY',?)",
+            (o["id"], p["id"], ts, ot, px, lq, notional_add, fee_in, int(is_maker), rule),
+        ).lastrowid
+        self.conn.execute("UPDATE orders SET status='FILLED', position_id=?, done_ts=? WHERE id=?", (p["id"], ts, o["id"]))
+        reserved = (o["margin_usdt"] or 0) + (o["fee_reserved"] or 0)
+        self._ledger(ts, o["account"], "MARGIN_RELEASE", reserved, "orders", o["id"])
+        self._ledger(ts, o["account"], "MARGIN_LOCK", -margin_add, "positions", p["id"])
+        self._ledger(ts, o["account"], "FEE", -fee_in, "fills", fid)
+        self.conn.execute(
+            "UPDATE positions SET qty=?, entry_price=?, margin_initial=margin_initial+?, margin_now=?, notional_entry=?, mmr=?, cum=?, bracket=?, liq_price=?, "
+            "fees_total=fees_total+?, qty_awal=?, legs_n=COALESCE(legs_n,1)+1, sl_price=? WHERE id=?",
+            (qty_n, entry_n, margin_add, margin_now, notional_n, mmr, cum, bno, liq, fee_in, qty_n, sl_new, p["id"]),
+        )
+        self._resize_brackets(p["id"], qty_n, plan, sl_new)
+        self.event("INFO", "ADD", f"{o['symbol']} {p['side']} leg {(p['legs_n'] or 1) + 1} +{lq:g} @ {px:.6g} ({rule}) → qty {qty_n:g} entry rata {entry_n:.6g} "
+                                  f"margin ${p['margin_initial'] + margin_add:.4f} liq {liq:.6g}" + (f" SL {sl_new:.6g}" if sl_new else ""), position_id=p["id"], order_id=o["id"], ts=ts)
+        return dict(self.conn.execute("SELECT * FROM positions WHERE id=?", (p["id"],)).fetchone())
+
+    def _resize_brackets(self, pid: int, qty_awal: float, plan: dict, sl_price: Optional[float]) -> None:
+        """TP per rank = % dari qty awal (yang masih ACTIVE); SL = qty posisi."""
+        f = self.market.filters(plan["symbol"])
+        tps = json.loads(plan["tps_json"])
+        qtys, _ = self._tp_split(qty_awal, tps, f)
+        for t, q in zip(tps, qtys):
+            self.conn.execute("UPDATE orders SET qty=? WHERE position_id=? AND reduce_only=1 AND type='LIMIT' AND tp_rank=? AND status='ACTIVE'", (q, pid, t["rank"]))
+        qty_now = self.conn.execute("SELECT qty FROM positions WHERE id=?", (pid,)).fetchone()[0]
+        self.conn.execute("UPDATE orders SET qty=?, stop_price=COALESCE(?, stop_price) WHERE position_id=? AND reduce_only=1 AND type='STOP_MARKET' AND status='ACTIVE'",
+                          (qty_now, sl_price, pid))
+
+    def _tick(self, symbol: str):
+        f = self.market.filters(symbol)
+        return f.tick_size if f else None
+
+    def _reduce_position(self, p: dict, o_tp, px: float, rule: str, bar: Bar) -> None:
+        """TP parsial (rencana swing): tutup sebagian qty, posisi tetap OPEN; rank 1 → SL sisa ke breakeven + batalkan leg sisa;
+        TP tetap terakhir dengan runner → trailing aktif."""
+        ot = bar.open_time
+        qc = min(float(o_tp["qty"]), p["qty"])
+        if qc >= p["qty"] - 1e-12:
+            self._close_position(p, px, "TP", True, rule, bar, order_id=o_tp["id"])
+            return
+        ts = ot if rule == "GAP_OPEN" else ot + 30_000
+        sign = 1 if p["side"] == LONG else -1
+        realized = (px - p["entry_price"]) * qc * sign
+        notional = px * qc
+        fee_out = fee_amount(notional, True, self.cfg)
+        rel = p["margin_now"] * qc / p["qty"]
+        qty_n = p["qty"] - qc
+        margin_n = p["margin_now"] - rel
+        liq = liq_price(p["side"], qty_n, p["entry_price"], margin_n, p["mmr"], p["cum"])
+        fid = self.conn.execute(
+            "INSERT INTO fills(order_id,position_id,ts,bar_open_time,price,qty,notional,fee_usdt,is_maker,role,rule) VALUES(?,?,?,?,?,?,?,?,1,'TP',?)",
+            (o_tp["id"], p["id"], ts, ot, px, qc, notional, fee_out, rule),
+        ).lastrowid
+        self.conn.execute("UPDATE orders SET status='FILLED', done_ts=? WHERE id=?", (ts, o_tp["id"]))
+        self.conn.execute("UPDATE positions SET qty=?, margin_now=?, liq_price=?, realized_pnl=COALESCE(realized_pnl,0)+?, fees_total=fees_total+? WHERE id=?",
+                          (qty_n, margin_n, liq, realized, fee_out, p["id"]))
+        self.conn.execute("UPDATE orders SET qty=? WHERE position_id=? AND reduce_only=1 AND type='STOP_MARKET' AND status='ACTIVE'", (qty_n, p["id"]))
+        nxt = self.conn.execute("SELECT id, price FROM orders WHERE position_id=? AND reduce_only=1 AND type='LIMIT' AND status='ACTIVE' ORDER BY tp_rank LIMIT 1", (p["id"],)).fetchone()
+        self.conn.execute("UPDATE positions SET tp_price=?, tp_order_id=? WHERE id=?", (nxt["price"] if nxt else None, nxt["id"] if nxt else None, p["id"]))
+        self._ledger(ts, p["account"], "FEE", -fee_out, "fills", fid)
+        self._ledger(ts, p["account"], "PNL", realized, "positions", p["id"])
+        self._ledger(ts, p["account"], "MARGIN_RELEASE", rel, "positions", p["id"])
+        sisa_pct = qty_n / p["qty_awal"] * 100 if p.get("qty_awal") else None
+        self.event("INFO", "TP_SEBAGIAN", f"{p['symbol']} {p['side']} TP{o_tp['tp_rank']} {o_tp['leg_pct']:g}% qty {qc:g} @ {px:.6g} ({rule}) pnl {realized:+.4f} fee {fee_out:.4f} "
+                                          f"sisa qty {qty_n:g}" + (f" ({sisa_pct:.0f}%)" if sisa_pct is not None else ""), position_id=p["id"], order_id=o_tp["id"], ts=ts)
+        p.update(qty=qty_n, margin_now=margin_n, liq_price=liq, tp_price=nxt["price"] if nxt else None, tp_order_id=nxt["id"] if nxt else None,
+                 realized_pnl=(p.get("realized_pnl") or 0) + realized, fees_total=p["fees_total"] + fee_out)
+        if o_tp["tp_rank"] == 1 and not p.get("breakeven_done"):
+            tick = self._tick(p["symbol"])
+            be = float(C.round_step(D(str(p["entry_price"])), tick, "up" if p["side"] == LONG else "down")) if tick else p["entry_price"]
+            self.conn.execute("UPDATE positions SET sl_price=?, breakeven_done=1 WHERE id=?", (be, p["id"]))
+            self.conn.execute("UPDATE orders SET stop_price=? WHERE position_id=? AND reduce_only=1 AND type='STOP_MARKET' AND status='ACTIVE'", (be, p["id"]))
+            p["sl_price"], p["breakeven_done"] = be, 1
+            self.event("INFO", "BREAKEVEN", f"{p['symbol']} {p['side']} TP1 terisi; SL sisa dipindah ke harga masuk rata {be:.6g}", position_id=p["id"], ts=ts)
+            n = self._cancel_plan_legs(p["plan_group"], ts, "engine", "TP1 terisi: leg rencana yang belum terisi dibatalkan")
+            if n:
+                self.event("INFO", "ADD_SKIP", f"{n} leg rencana dibatalkan setelah TP1", position_id=p["id"], ts=ts)
+        if nxt is None and p.get("trail_dist") and not p.get("trail_on"):
+            self.conn.execute("UPDATE positions SET trail_on=1 WHERE id=?", (p["id"],))
+            p["trail_on"] = 1
+            self.event("INFO", "TRAIL_AKTIF", f"{p['symbol']} {p['side']} semua TP tetap terisi; runner {qty_n:g} di-trail {p['trail_dist']:.6g} dari harga terbaik", position_id=p["id"], ts=ts)
+
+    def _trail_ratchet(self, p: dict, ot: int) -> None:
+        """Runner: geser SL mengikuti best_mark bar-bar sebelumnya dikurangi trail_dist (hanya makin ketat)."""
+        best = p.get("best_mark")
+        if not (p.get("trail_on") and p.get("trail_dist") and best is not None):
+            return
+        tick = self._tick(p["symbol"])
+        if p["side"] == LONG:
+            cand = best - p["trail_dist"]
+            cand = float(C.round_step(D(str(cand)), tick, "up")) if tick else cand
+            better = p["sl_price"] is None or cand > p["sl_price"]
+        else:
+            cand = best + p["trail_dist"]
+            cand = float(C.round_step(D(str(cand)), tick, "down")) if tick else cand
+            better = p["sl_price"] is None or cand < p["sl_price"]
+        if better:
+            self.conn.execute("UPDATE positions SET sl_price=? WHERE id=?", (cand, p["id"]))
+            self.conn.execute("UPDATE orders SET stop_price=? WHERE position_id=? AND reduce_only=1 AND type='STOP_MARKET' AND status='ACTIVE'", (cand, p["id"]))
+            self.event("INFO", "TRAIL_GESER", f"{p['symbol']} {p['side']} SL runner → {cand:.6g} (terbaik {best:.6g} − {p['trail_dist']:.6g})", position_id=p["id"], ts=ot)
+            p["sl_price"] = cand
+
+    def _process_plan_position(self, p: dict, bar: Bar, mark: MarkBar, slip: float, rep: dict) -> None:
+        """3b untuk posisi rencana: trailing dulu (dari bar sebelumnya), lalu likuidasi → SL → TP parsial urut rank."""
+        self._trail_ratchet(p, bar.open_time)
+        tp_orders = [dict(r) for r in self.conn.execute(
+            "SELECT * FROM orders WHERE position_id=? AND reduce_only=1 AND type='LIMIT' AND status='ACTIVE' AND qty>0 ORDER BY tp_rank", (p["id"],))]
+        tp_hits = []
+        for o in tp_orders:
+            fl = limit_fill(p["side"] == SHORT, o["price"], bar)
+            if fl:
+                tp_hits.append((o, fl))
+            else:
+                break   # harga monoton: rank berikutnya tidak mungkin terisi bila rank ini tidak
+        sl_fill = stop_trigger(p["side"], p["sl_price"], mark, bar, slip) if p["sl_price"] else None
+        if liq_hit(p["side"], p["liq_price"], mark):
+            alt = "TP" if tp_hits else ("STOP" if sl_fill else None)
+            self._liquidate(p, bar, mark, ambiguous=alt is not None, alt=alt)
+            rep["closes"] += 1
+            return
+        if sl_fill:
+            px, rule = sl_fill
+            self._close_position(p, px, "TRAIL" if p.get("trail_on") else "STOP", False, rule, bar, ambiguous=bool(tp_hits), alt="TP" if tp_hits else None,
+                                 order_id=p["sl_order_id"])
+            rep["closes"] += 1
+            return
+        for o, (px, rule) in tp_hits:
+            self._reduce_position(p, o, px, rule, bar)
+            rep["parsial"] = rep.get("parsial", 0) + 1
+            if p.get("status") == "CLOSED":
+                rep["closes"] += 1
+                return
+        self.conn.execute(
+            "UPDATE positions SET worst_mark=CASE WHEN side='LONG' THEN MIN(COALESCE(worst_mark, ?), ?) ELSE MAX(COALESCE(worst_mark, ?), ?) END,"
+            " best_mark=CASE WHEN side='LONG' THEN MAX(COALESCE(best_mark, ?), ?) ELSE MIN(COALESCE(best_mark, ?), ?) END WHERE id=?",
+            (mark.low, mark.low, mark.high, mark.high, mark.high, mark.high, mark.low, mark.low, p["id"]),
+        )
+
+    def _open_position(self, o, px: float, is_maker: bool, rule: str, bar: Bar, mark: MarkBar) -> Optional[dict]:
+        if o["plan_group"]:
+            existing = self.conn.execute("SELECT * FROM positions WHERE plan_group=? AND status='OPEN'", (o["plan_group"],)).fetchone()
+            if existing is not None:
+                return self._add_to_position(dict(existing), o, px, is_maker, rule, bar, mark)
+        return self._open_new_position(o, px, is_maker, rule, bar, mark)
+
+    def _open_new_position(self, o, px: float, is_maker: bool, rule: str, bar: Bar, mark: MarkBar) -> dict:
         ot = bar.open_time
         qty = float(o["qty"])
         notional = qty * px
@@ -924,13 +1411,16 @@ class PaperEngine:
                     o["tp_price"] = float(C.round_step(D(px) * (1 + D(o["tp_pct"]) if long else 1 - D(o["tp_pct"])), f.tick_size, "down" if long else "up"))
                 if o.get("sl_pct") and not o.get("sl_price"):
                     o["sl_price"] = float(C.round_step(D(px) * (1 - D(o["sl_pct"]) if long else 1 + D(o["sl_pct"])), f.tick_size, "up" if long else "down"))
+        plan = dict(self.conn.execute("SELECT * FROM swing_plan WHERE id=?", (o["plan_group"],)).fetchone()) if o.get("plan_group") else None
         cur = self.conn.execute(
             "INSERT INTO positions(account,symbol,side,qty,entry_price,leverage,margin_initial,margin_now,notional_entry,mmr,cum,bracket,liq_price,"
-            "tp_price,sl_price,entry_order_id,plan_id,pattern,day_wib,opened_ts,opened_bar,fees_total,funding_total,worst_mark,best_mark,status) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,'OPEN')",
+            "tp_price,sl_price,entry_order_id,plan_id,pattern,day_wib,opened_ts,opened_bar,fees_total,funding_total,worst_mark,best_mark,status,"
+            "plan_group,mode,qty_awal,legs_n,trail_dist,trail_on,breakeven_done) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,'OPEN',?,?,?,1,?,0,0)",
             (o["account"], o["symbol"], o["side"], qty, px, o["leverage"], margin, margin, notional, mmr, cum, bno, liq,
              o["tp_price"], o["sl_price"], o["id"], o["plan_id"], o["pattern"], o["day_wib"] or day_wib(ts), ts, ot, fee_in,
-             mark.low if o["side"] == LONG else mark.high, mark.high if o["side"] == LONG else mark.low),
+             mark.low if o["side"] == LONG else mark.high, mark.high if o["side"] == LONG else mark.low,
+             o.get("plan_group"), plan["mode"] if plan else None, qty, plan["trail_dist"] if plan else None),
         )
         pid = cur.lastrowid
         self.conn.execute(
@@ -944,7 +1434,19 @@ class PaperEngine:
         self._ledger(ts, o["account"], "MARGIN_LOCK", -margin, "positions", pid)
         self._ledger(ts, o["account"], "FEE", -fee_in, "fills", self.conn.execute("SELECT last_insert_rowid()").fetchone()[0])
         tp_id = sl_id = None
-        if o["tp_price"]:
+        if plan:
+            tps = json.loads(plan["tps_json"])
+            qtys, _ = self._tp_split(qty, tps, self.market.filters(o["symbol"]))
+            for t, q in zip(tps, qtys):
+                oid_tp = self.conn.execute(
+                    "INSERT INTO orders(account,symbol,side,type,reduce_only,price,qty,leverage,post_only,status,position_id,oco_group,created_by,created_ts,activate_ts,day_wib,plan_group,leg_pct,tp_rank) "
+                    "VALUES(?,?,?,'LIMIT',1,?,?,?,1,'ACTIVE',?,?,'engine',?,?,?,?,?,?)",
+                    (o["account"], o["symbol"], o["side"], t["harga"], q, o["leverage"], pid, pid, ts, ot + MINUTE_MS, day_wib(ts), o["plan_group"], t["persen"], t["rank"]),
+                ).lastrowid
+                if tp_id is None:
+                    tp_id = oid_tp
+            self.conn.execute("UPDATE positions SET tp_price=? WHERE id=?", (tps[0]["harga"], pid))
+        elif o["tp_price"]:
             tp_id = self.conn.execute(
                 "INSERT INTO orders(account,symbol,side,type,reduce_only,price,qty,leverage,post_only,status,position_id,oco_group,created_by,created_ts,activate_ts,day_wib) "
                 "VALUES(?,?,?,'LIMIT',1,?,?,?,1,'ACTIVE',?,?,'engine',?,?,?)",
@@ -993,7 +1495,7 @@ class PaperEngine:
             "INSERT INTO fills(order_id,position_id,ts,bar_open_time,price,qty,notional,fee_usdt,is_maker,role,rule) VALUES(NULL,?,?,?,?,?,?,0,0,'LIQUIDATION','LIQUIDATION')",
             (p["id"], ts, ot, p["liq_price"], p["qty"], p["qty"] * p["liq_price"]),
         )
-        realized = -margin_lost
+        realized = (p.get("realized_pnl") or 0) - margin_lost
         net = realized - p["fees_total"]  # funding sudah tercermin di margin_now
         self.conn.execute(
             "UPDATE positions SET status='CLOSED', closed_ts=?, closed_bar=?, close_reason=?, exit_price=?, realized_pnl=?, net_result=?, "
@@ -1006,6 +1508,8 @@ class PaperEngine:
                    f"{p['symbol']} {p['side']} liq {p['liq_price']:.6g} mark {mark.low if p['side']==LONG else mark.high:.6g} rugi ${margin_lost:.4f}"
                    + (f" [AMBIGU: alternatif {alt}]" if ambiguous else "") + (f" {note}" if note else ""),
                    position_id=p["id"], ts=ts)
+        if p.get("plan_group"):
+            self._cancel_plan_legs(p["plan_group"], ts, "engine", f"posisi rencana hangus ({reason}); leg sisa dibatalkan")
         p["status"] = "CLOSED"
 
     def _close_position(self, p: dict, px: float, reason: str, is_maker: bool, rule: str, bar: Bar,
@@ -1013,12 +1517,13 @@ class PaperEngine:
         ot = bar.open_time
         ts = ot if rule in ("GAP_OPEN", "MARKET_OPEN", "STOP_GAP") else ot + 30_000
         sign = 1 if p["side"] == LONG else -1
-        realized = (px - p["entry_price"]) * p["qty"] * sign
+        realized_part = (px - p["entry_price"]) * p["qty"] * sign
+        realized = (p.get("realized_pnl") or 0) + realized_part   # rencana swing: TP parsial sebelumnya ikut dihitung
         notional = px * p["qty"]
         fee_out = fee_amount(notional, is_maker, self.cfg)
         fees_total = p["fees_total"] + fee_out
         net = realized - fees_total + p["funding_total"]
-        role = {"TP": "TP", "STOP": "SL", "MANUAL": "MARKET_EXIT", "EOD": "EOD", "DELISTED": "DELISTED"}.get(reason, reason)
+        role = {"TP": "TP", "STOP": "SL", "TRAIL": "SL", "MANUAL": "MARKET_EXIT", "EOD": "EOD", "DELISTED": "DELISTED"}.get(reason, reason)
         fid = self.conn.execute(
             "INSERT INTO fills(order_id,position_id,ts,bar_open_time,price,qty,notional,fee_usdt,is_maker,role,rule) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             (order_id, p["id"], ts, ot, px, p["qty"], notional, fee_out, int(is_maker), role, rule),
@@ -1032,11 +1537,13 @@ class PaperEngine:
             self.conn.execute("UPDATE orders SET status='FILLED', done_ts=? WHERE id=?", (ts, order_id))
         self.conn.execute("UPDATE orders SET status='CANCELED', done_ts=? WHERE position_id=? AND reduce_only=1 AND status IN ('NEW','ACTIVE')", (ts, p["id"]))
         self._ledger(ts, p["account"], "FEE", -fee_out, "fills", fid)
-        self._ledger(ts, p["account"], "PNL", realized, "positions", p["id"])
+        self._ledger(ts, p["account"], "PNL", realized_part, "positions", p["id"])
         self._ledger(ts, p["account"], "MARGIN_RELEASE", p["margin_now"], "positions", p["id"])
         self.event("WARNING" if ambiguous else "INFO", reason,
                    f"{p['symbol']} {p['side']} keluar {px:.6g} ({rule}) pnl {realized:+.4f} fee {fees_total:.4f} funding {p['funding_total']:+.4f} net {net:+.4f}"
                    + (f" [AMBIGU: alternatif {alt}]" if ambiguous else ""), position_id=p["id"], ts=ts)
+        if p.get("plan_group"):
+            self._cancel_plan_legs(p["plan_group"], ts, "engine", f"posisi rencana ditutup ({reason}); leg sisa dibatalkan")
         p["status"] = "CLOSED"
 
     # ---- autopsi posisi (baca saja)
@@ -1052,8 +1559,12 @@ class PaperEngine:
         pairs = self.market.bars(p["symbol"], p["opened_ts"] - MINUTE_MS, end + MINUTE_MS)
         bars = [b for b, _ in pairs]
         marks = [m for _, m in pairs if m is not None]
+        tp_ref = p["tp_price"]
+        if p.get("plan_group"):
+            r1 = self.conn.execute("SELECT price FROM orders WHERE position_id=? AND reduce_only=1 AND tp_rank=1", (p["id"],)).fetchone()
+            tp_ref = r1[0] if r1 else tp_ref
         out = {"id": p["id"], "account": p["account"], "symbol": p["symbol"], "side": p["side"], "leverage": p["leverage"], "entry": p["entry_price"],
-               "tp": p["tp_price"], "sl": p["sl_price"], "liq": p["liq_price"], "dibuka": fmt_wib(p["opened_ts"]),
+               "tp": tp_ref, "sl": p["sl_price"], "liq": p["liq_price"], "dibuka": fmt_wib(p["opened_ts"]),
                "ditutup": fmt_wib(p["closed_ts"]) if p["closed_ts"] else None, "durasi_menit": (end - p["opened_ts"]) // 60000,
                "hasil": p["close_reason"] or "TERBUKA", "net": p["net_result"], "n_bar": len(bars)}
         if not bars:
@@ -1063,6 +1574,11 @@ class PaperEngine:
         best_px = fav.high if sign > 0 else fav.low
         adv = max(marks, key=lambda m: (m.high if sign < 0 else -m.low)) if marks else None
         worst_px = (adv.high if sign < 0 else adv.low) if adv else None
+        if p.get("plan_group"):
+            out["tp_terisi"] = [{"harga": r[0], "qty": r[1], "pada": fmt_wib(int(r[2]))} for r in self.conn.execute(
+                "SELECT price, qty, ts FROM fills WHERE position_id=? AND role='TP' ORDER BY id", (p["id"],))]
+            out["mode"], out["legs_n"], out["qty_awal"] = p.get("mode"), p.get("legs_n"), p.get("qty_awal")
+        p["tp_price"] = tp_ref
         jarak_tp = abs(p["tp_price"] - p["entry_price"]) if p["tp_price"] else None
         jarak_liq = abs(p["liq_price"] - p["entry_price"]) if p["liq_price"] else None
         out["mfe"] = {"harga": best_px, "pada": fmt_wib(fav.open_time), "menit_sejak_buka": (fav.open_time - p["opened_ts"]) // 60000,
@@ -1089,6 +1605,8 @@ class PaperEngine:
             pel.append("harga hampir tidak pernah ke arah tesis: level/arah salah sejak awal, bukan soal manajemen")
         if p["close_reason"] == "TP":
             pel.append("rencana berjalan sesuai tesis")
+        if out.get("tp_terisi") and p["close_reason"] in ("STOP", "TRAIL"):
+            pel.append(f"{len(out['tp_terisi'])} TP parsial terkunci sebelum stop/trailing: hasil bersih {p['net_result']:+.4f} (keluar bertahap bekerja)")
         out["pelajaran_mekanis"] = pel or ["tidak ada pola khusus"]
         return out
 
@@ -1215,6 +1733,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     po.add_argument("--pola", default=None)
     po.add_argument("--catatan", default=None)
     po.add_argument("--oleh", default="cli")
+    prs = sub.add_parser("rencana-swing", help="rencana swing bertahap: --leg HARGA:PERSEN ... --tp HARGA:PERSEN ... --sl --trail")
+    prs.add_argument("--symbol", required=True); prs.add_argument("--sisi", required=True, choices=(LONG, SHORT)); prs.add_argument("--lev", type=int, required=True)
+    prs.add_argument("--leg", action="append", required=True); prs.add_argument("--tp", action="append", required=True); prs.add_argument("--sl", type=float, required=True)
+    prs.add_argument("--trail", type=float, default=None, help="jarak trailing runner (satuan harga)"); prs.add_argument("--mode", default="tangga", choices=("tangga", "piramida"))
+    prs.add_argument("--margin", type=float, default=None); prs.add_argument("--plan-id", default=None); prs.add_argument("--pola", default=None); prs.add_argument("--catatan", default=None)
+    pal = sub.add_parser("tambah-leg", help="piramida: tambah leg ke posisi rencana yang untung"); pal.add_argument("id", type=int)
+    pal.add_argument("--persen", type=float, required=True); pal.add_argument("--sl", type=float, required=True); pal.add_argument("--harga", type=float, default=None); pal.add_argument("--market", action="store_true")
     pb = sub.add_parser("batal"); pb.add_argument("id", type=int)
     pt = sub.add_parser("tutup", help="minta tutup posisi (market di bar berikutnya)"); pt.add_argument("id", type=int)
     sub.add_parser("posisi")
@@ -1239,6 +1764,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         res = eng.place_order(req)
         print(res)
         return 0 if res.ok else 1
+    elif args.cmd == "rencana-swing":
+        pr_ = lambda s: {"harga": float(s.split(":")[0]), "persen": float(s.split(":")[1])}  # noqa: E731
+        res = eng.place_plan(PlanRequest(symbol=args.symbol, side=args.sisi, leverage=args.lev, legs=[pr_(x) for x in args.leg], tps=[pr_(x) for x in args.tp],
+                                         sl_price=args.sl, trail_dist=args.trail, mode=args.mode, margin=args.margin, plan_id=args.plan_id, pattern=args.pola, note=args.catatan))
+        print(res)
+    elif args.cmd == "tambah-leg":
+        print(eng.add_leg(args.id, args.persen, args.sl, price=args.harga, market=args.market))
     elif args.cmd == "batal":
         print("dibatalkan" if eng.cancel_order(args.id) else "tidak bisa dibatalkan (tidak ada / sudah selesai)")
     elif args.cmd == "tutup":

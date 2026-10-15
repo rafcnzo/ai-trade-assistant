@@ -17,6 +17,7 @@ metadata:
 
 **Posisi terbuka (n)**
 - `#id akun PAIR SISI lev×` entry → mark, **unrealized ±$x**, liq jarak y%, TP/SL
+- posisi rencana swing (`plan_group` terisi): tambahkan `sisa x% · TP1 ✓ · n leg · SL BE/trailing` dari `persen_sisa`, `tp_list`, `legs_n`, `trail_on`
 **Order menunggu (n)**
 - `#id akun PAIR SISI` limit harga, lev×, margin $x, TP, kedaluwarsa HH:MM
 

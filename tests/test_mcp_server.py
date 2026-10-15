@@ -251,7 +251,7 @@ class TestHipotesisStatistik(Base):
         self.assertTrue(str(s["akun"]["tiket"]["expectancy"]).startswith("tidak tersedia"))
         self.assertIn("# Statistik kelulusan", s["markdown"])
         self.assertIn("statistik_lulus", TOOL_NAMES)
-        self.assertEqual(len(TOOL_NAMES), 29)
+        self.assertEqual(len(TOOL_NAMES), 31)
 
 
 class TestPanelPsikologi(Base):
@@ -339,6 +339,26 @@ class TestArenaTools(Base):
             g.conn.close()
         self.assertIn("batas", self.tools.tambah_jatah_radar(1)["error"])                 # biaya hari ini sudah di cap
 
+    def test_m18_rencana_swing(self):
+        r = self.tools.pasang_rencana_swing(BTC, "LONG", 20, legs=[{"harga": 82700.0, "persen": 100}], tps=[{"harga": 88000.0, "persen": 50}], sl=81000.0, trail_atr=2.0, plan_id="SW")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual((r["plan_group"], len(r["order_ids"]), r["runner_pct"]), (1, 1, 50.0))
+        self.assertAlmostEqual(r["atr_15m"], 2.0, places=6)                       # bar fixture: range 2 → ATR 2 → trail 4.0
+        self.assertEqual(r["trail_dist"], 4.0)
+        self.assertIn("OK rencana #1", r["pesan"])
+        self.js(r)
+        b = self.tools.budget_tiket()["swing"]
+        self.assertEqual((b["open"], b["pending"], len(b["rencana"])), (0, 1, 1))
+        self.assertEqual(self.tools.pasang_rencana_swing(BTC, "LONG", 20, legs=[{"harga": 82700.0, "persen": 100}], tps=[{"harga": 83000.0, "persen": 50}], sl=81000.0)["reject_code"], "RR_TOO_LOW")
+        self.assertEqual(self.tools.tambah_leg_swing(99, 50, 82000.0, harga=82500.0)["reject_code"], "POSITION")
+        om = self.tools.order_menunggu()["order"]
+        self.assertEqual((om[0]["plan_group"], om[0]["leg_pct"]), (1, 100.0))
+        c = self.tools.batal_order(plan_group=1)
+        self.assertEqual((c["ok"], c["dibatalkan"]), (True, 1))
+        self.assertFalse(self.tools.batal_order()["ok"])
+        # tanpa ATR (simbol tanpa bar) + runner → ATR_TIDAK_TERSEDIA
+        self.assertEqual(self.tools.pasang_rencana_swing(CN, "SHORT", 5, legs=[{"harga": 2.1, "persen": 100}], tps=[{"harga": 1.9, "persen": 50}], sl=2.3)["reject_code"], "ATR_TIDAK_TERSEDIA")
+
     def test_m16_papan_arena_dan_budget_persona(self):
         b = self.tools.budget_tiket()
         self.assertEqual(sorted(b["persona"]), ["breakout", "fade", "rentang", "tiket"])
@@ -360,7 +380,7 @@ class TestRegistration(unittest.TestCase):
         from mcp.server.fastmcp import FastMCP
         mcp = FastMCP("paper-uji")
         names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
-        self.assertEqual(len(names), 29)
+        self.assertEqual(len(names), 31)
         listed = asyncio.run(mcp.list_tools())
         self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
         po = [x for x in listed if x.name == "pasang_order"][0]

@@ -32,7 +32,7 @@ import hipotesis as H  # noqa: E402
 import psikologi as PSI  # noqa: E402
 import referensi as RF  # noqa: E402
 from budget_guard import BudgetGuard  # noqa: E402
-from paper_engine import LONG, SHORT, SWING, TIKET, OrderRequest, PaperEngine, SqliteMarket  # noqa: E402
+from paper_engine import PlanRequest, LONG, SHORT, SWING, TIKET, OrderRequest, PaperEngine, SqliteMarket  # noqa: E402
 
 KANDIDAT_DB = C.DATA_DIR / "kandidat.sqlite"
 PROXY_HEALTH = "http://127.0.0.1:8585/healthz"
@@ -46,7 +46,7 @@ MS_FIELDS = {"ts", "open_time", "funding_time", "opened_ts", "closed_ts", "creat
 TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
-    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi", "papan_arena", "tambah_jatah_radar",
+    "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi", "papan_arena", "tambah_jatah_radar", "pasang_rencana_swing", "tambah_leg_swing",
 )
 RADAR_JATAH_MAKS = 24   # tambahan maksimal per hari lewat /radar
 
@@ -352,12 +352,55 @@ class Tools:
             return d
         return self._call("pasang_order", run)
 
-    def batal_order(self, order_id: int) -> dict:
-        """Batalkan order entry yang masih NEW/ACTIVE."""
+    def batal_order(self, order_id: Optional[int] = None, plan_group: Optional[int] = None) -> dict:
+        """Batalkan order entry yang masih NEW/ACTIVE (order_id), atau semua leg entry sebuah rencana swing yang belum terisi (plan_group). Posisi yang sudah terbuka tidak disentuh (pakai tutup_posisi)."""
         def run():
+            if plan_group is not None:
+                n = self.ctx.engine.cancel_plan(int(plan_group), who="hermes")
+                return {"ok": n > 0, "plan_group": int(plan_group), "dibatalkan": n, "pesan": f"{n} leg rencana #{plan_group} dibatalkan" if n else "tidak ada leg hidup pada rencana itu"}
+            if order_id is None:
+                return {"ok": False, "error": "isi order_id atau plan_group"}
             ok = self.ctx.engine.cancel_order(int(order_id), who="hermes")
             return {"ok": ok, "order_id": int(order_id), "pesan": "dibatalkan" if ok else "tidak bisa dibatalkan (tidak ada / sudah selesai / reduce-only)"}
         return self._call("batal_order", run)
+
+    def pasang_rencana_swing(self, symbol: str, sisi: str, leverage: int, legs: list, tps: list, sl: float, trail_atr: float = 2.0,
+                             mode: str = "tangga", margin: Optional[float] = None, plan_id: Optional[str] = None, pola: Optional[str] = None,
+                             catatan: Optional[str] = None) -> dict:
+        """Rencana swing BERTAHAP (P-20, akun swing, margin total ≤ $10, maks 2 rencana): legs=[{harga, persen}] urut dari yang terdekat ke mark (mode 'tangga' ≤ 4 leg limit di level pullback, atau 'piramida' = 1 leg awal lalu tambah_leg_swing saat untung); tps=[{harga, persen}] urut makin jauh (bawaan 50% TP1, 25% TP2, sisa 25% runner); runner di-trail trail_atr × ATR14 15m (dihitung saat pasang); sl wajib di arah rugi dari leg terjauh. Setelah TP1: SL sisa ke breakeven, leg yang belum terisi dibatalkan. Mesin memvalidasi R:R rencana ≥ 2,5, likuidasi, tick/step, dan mengembalikan kode penolakan."""
+        def run():
+            sym = symbol.strip()
+            legs_ = [{"harga": float(l["harga"]), "persen": float(l.get("persen", 100 / max(len(legs), 1)))} for l in legs]
+            tps_ = [{"harga": float(t["harga"]), "persen": float(t["persen"]) if t.get("persen") is not None else (50.0 if i == 0 else 25.0)} for i, t in enumerate(tps)]
+            runner = 100 - sum(t["persen"] for t in tps_)
+            trail_dist = atr15 = None
+            if runner > 0.01:
+                atr_map, _ = self._atr_map(sym, self.ctx.clock())
+                atr15 = atr_map.get("15m")
+                if not atr15:
+                    return {"ok": False, "reject_code": "ATR_TIDAK_TERSEDIA", "reject_reason": "ATR 15m tidak tersedia (bar 1m belum cukup); runner tidak bisa di-trail — isi TP hingga 100%",
+                            "pesan": "DITOLAK [ATR_TIDAK_TERSEDIA] ATR 15m tidak tersedia"}
+                f = self.ctx.market.filters(sym)
+                trail_dist = float(C.round_step(Decimal(str(float(trail_atr) * atr15)), f.tick_size, "up")) if f else float(trail_atr) * atr15
+            req = PlanRequest(symbol=sym, side=sisi.strip().upper(), leverage=int(leverage), legs=legs_, tps=tps_, sl_price=float(sl), trail_dist=trail_dist,
+                              mode=mode.strip().lower(), margin=float(margin) if margin else None, plan_id=plan_id, pattern=pola, note=catatan, created_by="hermes",
+                              trail_atr=float(trail_atr) if trail_dist else None, atr_ref=atr15)
+            res = self.ctx.engine.place_plan(req)
+            d = asdict(res)
+            d["trail_dist"], d["atr_15m"] = trail_dist, atr15
+            d["pesan"] = str(res)
+            return d
+        return self._call("pasang_rencana_swing", run)
+
+    def tambah_leg_swing(self, position_id: int, persen: float, sl: float, harga: Optional[float] = None, market: bool = False,
+                         catatan: Optional[str] = None) -> dict:
+        """Piramida (P-20): tambah leg ke posisi rencana swing yang SEDANG UNTUNG. persen = % dari leg pertama (harus ≤ leg sebelumnya), sl = stop baru yang lebih ketat (naik mengikuti leg), harga = limit (atau market=true). Ditolak bila posisi rugi, sudah ada TP terisi, leg > 4, atau margin total > $10."""
+        def run():
+            res = self.ctx.engine.add_leg(int(position_id), float(persen), float(sl), price=float(harga) if harga else None, market=bool(market), who="hermes", note=catatan)
+            d = asdict(res)
+            d["pesan"] = str(res)
+            return d
+        return self._call("tambah_leg_swing", run)
 
     def tutup_posisi(self, position_id: int) -> dict:
         """Minta tutup posisi terbuka: dieksekusi market (taker + slippage) di open bar berikutnya."""

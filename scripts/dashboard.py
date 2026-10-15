@@ -68,8 +68,10 @@ class Data:
             if out["status"] != "aktif":
                 out["boleh_buka"] = False
             return out
-        n_open = paper.execute("SELECT COUNT(*) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
-        n_pend = paper.execute("SELECT COUNT(*) FROM orders WHERE account='swing' AND reduce_only=0 AND status IN ('NEW','ACTIVE')").fetchone()[0]
+        # satu rencana bertahap = satu slot (sama dengan PaperEngine.budget_status)
+        n_open = paper.execute("SELECT COUNT(DISTINCT COALESCE(plan_group, -id)) FROM positions WHERE account='swing' AND status='OPEN'").fetchone()[0]
+        n_pend = paper.execute("SELECT COUNT(DISTINCT COALESCE(plan_group, -id)) FROM orders WHERE account='swing' AND reduce_only=0 AND status IN ('NEW','ACTIVE') "
+                               "AND (plan_group IS NULL OR plan_group NOT IN (SELECT plan_group FROM positions WHERE status='OPEN' AND plan_group IS NOT NULL))").fetchone()[0]
         return {"account": SWING, "margin_per_trade": self.cfg.swing_margin, "open": n_open, "pending": n_pend, "max_open": self.cfg.swing_max_open}
 
     def positions(self, paper, market) -> list[dict]:
@@ -232,13 +234,17 @@ class Data:
                 d = dict(r)
                 garis.append({"price": d["entry_price"], "label": f"entry #{d['id']} {d['side']}", "jenis": "entry", "account": d["account"]})
                 garis.append({"price": d["liq_price"], "label": f"liq #{d['id']}", "jenis": "liq", "account": d["account"]})
-                if d["tp_price"]:
+                if d.get("plan_group"):
+                    for o in paper.execute("SELECT tp_rank, price, leg_pct FROM orders WHERE position_id=? AND reduce_only=1 AND type='LIMIT' AND status='ACTIVE' ORDER BY tp_rank", (d["id"],)):
+                        garis.append({"price": o["price"], "label": f"TP{o['tp_rank']} #{d['id']} {o['leg_pct']:g}%", "jenis": "tp", "account": d["account"]})
+                elif d["tp_price"]:
                     garis.append({"price": d["tp_price"], "label": f"TP #{d['id']}", "jenis": "tp", "account": d["account"]})
                 if d["sl_price"]:
                     garis.append({"price": d["sl_price"], "label": f"SL #{d['id']}", "jenis": "sl", "account": d["account"]})
-            for r in paper.execute("SELECT id, side, price, account, type FROM orders WHERE symbol=? AND reduce_only=0 AND status IN ('NEW','ACTIVE')", (symbol,)):
+            for r in paper.execute("SELECT id, side, price, account, type, leg_pct, plan_group FROM orders WHERE symbol=? AND reduce_only=0 AND status IN ('NEW','ACTIVE')", (symbol,)):
                 if r["price"]:
-                    garis.append({"price": r["price"], "label": f"order #{r['id']} {r['side']} {r['type']}", "jenis": "order", "account": r["account"]})
+                    lbl = f"leg {r['leg_pct']:g}% #{r['plan_group']}" if r["plan_group"] else f"order #{r['id']} {r['side']} {r['type']}"
+                    garis.append({"price": r["price"], "label": lbl, "jenis": "order", "account": r["account"]})
             marker.sort(key=lambda m: m["time"])
             return {"marker": marker, "garis": garis}
         finally:

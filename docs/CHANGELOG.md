@@ -3,6 +3,23 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-15 (siang, 11:30) — laptop Windows — swing bertahap: entry tangga/piramida + TP 50/25/runner trailing (P-20)
+
+**Apa:** skema paper v4 (`swing_plan`; `orders.plan_group/leg_pct/tp_rank`; `positions.plan_group/mode/qty_awal/legs_n/trail_dist/trail_on/breakeven_done`).
+`paper_engine.py`: `PlanRequest/PlanResult`, `_validate_plan` (leg ≤ 4, Σ% = 100, TP ≤ 3 urut, runner ⇒ trail, Σ margin ≤ $10, liq buffer di keadaan penuh, R:R rencana ≥ 2,5,
+plafon = jumlah rencana), `place_plan`, `add_leg` (piramida: hanya saat untung, ukuran menurun, SL lebih ketat), `_add_to_position` (entry rata, bracket/liq ulang,
+TP/SL resize), `_reduce_position` (TP parsial, breakeven setelah TP1 berlaku bar berikutnya, leg sisa dibatalkan, trailing aktif setelah TP tetap terakhir),
+`_trail_ratchet` dari best_mark bar sebelumnya, `_process_plan_position` (liq → SL/TRAIL → TP parsial urut rank), `_close_position/_liquidate` akumulatif + batalkan leg,
+`budget_status(SWING)` per rencana, `positions()` (+persen_sisa, tp_list, legs), autopsi (`tp_terisi`), CLI `rencana-swing`/`tambah-leg`. MCP 31 tool:
+`pasang_rencana_swing` (trail = trail_atr × ATR15m saat pasang), `tambah_leg_swing`, `batal_order(plan_group)`. Notifikasi 📐/➕/🎯 sebagian/🪜/🏁 (`TRAIL_GESER` dilewati).
+Dashboard: garis TP per rank, label leg, `sisa x% · TP1 ✓`. `evaluasi.account_stats`: `trail_n`, `tp_sebagian_n`. Skill `swing`, SOUL, skill posisi/batal/budget,
+menu `/swing` (menggantikan `/evaluasi-harian`), playbook P-20 (uji). Tes T29–T37, M18, N5, D9 — 157 hijau; tiket/acak tidak berubah (T15 replay identik).
+
+**Kenapa:** permintaan user 15 Okt ("TP bertahap dan entry bertahap untuk swing, cari referensinya"). Buku Aziz & Baehr hanya memuat larangan averaging down;
+teknik dari LuxAlgo "Scaling In/Out", aturan Turtle (sekunder), dan konvensi "half off at +1R". Keputusan user: dua mode dipilih AI, 50/25/runner, $10 total.
+**File:** `scripts/{schema_paper.sql,paper_engine,mcp_server,notifikasi,dashboard,evaluasi}.py`, `dashboard/app.js`, `hermes/{SOUL.md,merge_config.py,config.snippet.yaml,skills/swing,skills/posisi,skills/batal,skills/budget}`,
+`referensi/playbook.md`, tests, docs, CLAUDE.md.
+
 ## 2026-10-14 (sore, 14:40) — laptop Windows — `/radar <N>`: pemilik menambah jatah wake hari ini
 
 **Apa:** tool MCP `tambah_jatah_radar(tambah)` (29 tool; hanya atas perintah pemilik, docstring + SOUL melarang inisiatif sendiri) menulis

@@ -78,6 +78,19 @@ class TestArenaApi(Base):
         self.assertEqual(len(self.client.get("/api/kejadian?limit=1").json()["kejadian"]), 1)
         pasar_ro.close()
 
+    def test_d9_marker_rencana_swing(self):
+        from paper_engine import PlanRequest
+        eng, pasar_ro = self.seed()
+        r = eng.place_plan(PlanRequest(symbol=PEM, side=LONG, leverage=10, legs=[{"harga": 99.5, "persen": 50}, {"harga": 99.0, "persen": 50}],
+                                       tps=[{"harga": 104.0, "persen": 50}, {"harga": 106.0, "persen": 25}], sl_price=97.5, trail_dist=0.6, margin=10.0))
+        self.assertTrue(r.ok, r)
+        eng.conn.close()
+        g = self.client.get(f"/api/marker?symbol={PEM}").json()["garis"]
+        self.assertEqual(sorted(x["label"] for x in g), ["leg 50% #1", "leg 50% #1"])
+        b = self.client.get("/api/ringkasan").json()["budget"]["swing"]
+        self.assertEqual((b["open"], b["pending"]), (0, 1))
+        pasar_ro.close()
+
     def test_d8_ringkas_top_koin_dan_profil_analis(self):
         self.assertEqual(self.client.get("/api/ringkas").json(), {"top_koin": [], "analis": []})
         eng, pasar_ro = self.seed()

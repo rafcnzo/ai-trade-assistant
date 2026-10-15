@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-14 14:40 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-15 11:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -14,7 +14,7 @@ Folder Startup user (login, tanpa jendela)
  ├─ crypto-analyst_proxy.vbs     → run_budget_proxy.cmd  127.0.0.1:8585 → Anthropic, cap $10/hari (JALAN, key_set)
  ├─ crypto-analyst_dashboard.vbs → run_dashboard.cmd     http://127.0.0.1:8586 dashboard baca-saja (chart + riwayat) (JALAN)
  └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron
-      ├─ MCP "paper"               scripts/mcp_server.py, 29 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi, autopsi_posisi, papan_arena, tambah_jatah_radar)
+      ├─ MCP "paper"               scripts/mcp_server.py, 31 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi, autopsi_posisi, papan_arena, tambah_jatah_radar, pasang_rencana_swing, tambah_leg_swing)
       ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM) → skill ARENA (4 persona);
       │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
       ├─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
@@ -41,6 +41,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Selesai & terpasang** (138 tes; cron pemindai → skill arena, nilai-arena mingguan, 28 tool, dashboard tab Arena) |
+| SW | Swing bertahap (P-20, uji): skema paper v4 (`swing_plan`, `plan_group`), tangga/piramida, TP 50/25/runner trailing, breakeven, 31 tool, skill `swing`, menu `/swing`; T29–T37, M18, N5, D9 (157 tes) | **Kode selesai**; deploy: restart collector + setup_hermes + gateway |
 | RD2 | `/radar <N>`: tool `tambah_jatah_radar` (29 tool) → `data/radar_jatah.json`, pemindai menambah cap hari itu; skill `radar`, menu menggantikan `/usage`; M17, S13 (145 tes) | **Selesai & terpasang** |
 | RD | Radar: cap 3 wake/jam (G5) + `score_min` 3 → 4, karena 12 wake harian habis pukul 09:31 dan skor 3 hampir selalu di-SKIP (S12, 143 tes) | **Selesai & terpasang** |
 | P19 | Gate R:R minimum tiket di mesin (`tiket_min_rr` 0,5, `RR_TOO_LOW`, playbook P-19 dari U-001); susulan menjalankan uji hipotesis terlewat; evaluasi-harian 21:30 & uji-hipotesis 21:15 (laptop mati malam) | **Selesai & terpasang** (142 tes; T28) |
@@ -121,6 +122,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 ## Keputusan yang berlaku
 
 - Jaringan rumah memblokir DNS Binance → DoH di dalam skrip; DNS Windows tidak diubah.
+- Swing bertahap (15 Okt, keputusan user): mode tangga/piramida dipilih AI per rencana; TP 50% / 25% / runner 25% trailing 2×ATR 15m; $10 total per rencana;
+  maks 2 rencana; R:R rencana ≥ 2,5; setelah TP1 breakeven + leg sisa dibatalkan; `close_reason=TRAIL` untuk runner; status playbook P-20 = uji.
 - Arena (12 Okt): persona = akun jenis `tiket` di tabel `account`; seleksi mekanis mingguan (≥ 30 trade, ≥ 30 hari, kalah dari acaknya
   p < 0,2 → pensiun); juara hanya dilaporkan, jatah tidak diubah (v1). Satu wake = satu sesi untuk semua persona (hemat konteks).
 - Saldo tiket harian bergulir (12 Okt, keputusan user): mulai $1, TP menambah, hangus mengurangi, minimum $0,50 untuk buka tiket baru,

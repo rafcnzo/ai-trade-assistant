@@ -16,7 +16,7 @@ Spesifikasi lengkap: `docs/rencana-asisten-crypto.md`. Konvensi proyek: `CLAUDE.
 | `scripts/paper_engine.py` | Simulasi order/posisi/likuidasi/fee/funding; CLI order manual; laporan | `data/paper.sqlite` |
 | `scripts/budget_guard.py` | Biaya API Anthropic: cap harian $10, bulanan $190, per panggilan $1; kill switch | `data/budget.sqlite` |
 | `scripts/budget_proxy.py` | Proxy 127.0.0.1:8585 → api.anthropic.com untuk Hermes; menegakkan cap lewat budget_guard; memegang API key asli | (lewat budget_guard) |
-| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 29 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi, referensi buku) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
+| `scripts/mcp_server.py` | Server MCP stdio untuk Hermes: 31 tool (data pasar, order paper, laporan, jurnal, hipotesis, statistik kelulusan, panel psikologi, referensi buku) | `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.md`, `pasar/pelajaran-usulan.md` |
 | `scripts/analisis.py` | Resample, EMA/RSI/ATR Wilder, swing & level, jejak psikologi, tabel leverage, top volume | — |
 | `scripts/common.py` | Waktu WIB, resolver DoH, HTTP + pacing weight, SQLite, Decimal, logging | — |
 | `hermes/` | Aset Hermes: `SOUL.md`, skill `tiket` & `evaluasi-harian`, pembungkus cron, snippet config, `sync.py` | → `HERMES_HOME` |
@@ -111,6 +111,29 @@ Mesin menolak order akun persona (kind `tiket`) yang punya TP bila untung bersih
 (margin + fee masuk); kode tolak `RR_TOO_LOW`, pesan menyarankan perlebar TP atau turunkan leverage. Bawaan 0,5; env `PAPER_TIKET_MIN_RR` mengubahnya
 (0 = mati; tes memakai 0). Bayangan acak dan swing tidak kena gate ini (swing punya `swing_min_rr` 2,5 sendiri). Asal: usulan agent U-001, diterima
 pemilik 14 Okt (playbook P-19).
+
+## Rencana swing bertahap (P-20)
+
+Akun `swing` memakai **rencana** (`swing_plan`, skema paper v4), bukan order tunggal: beberapa leg entry bergabung ke SATU posisi (`positions.plan_group`,
+entry rata tertimbang, margin akumulasi, likuidasi dihitung ulang), TP bertingkat sebagai order reduce-only per rank (qty = % dari `qty_awal`), runner
+sisa di-trail dari `best_mark` bar sebelumnya dikurangi `trail_dist` (= `trail_atr` × ATR14 15m, dihitung tool MCP saat pasang; tidak ada ATR di jalur bar
+→ replay deterministik). Mode `tangga` (≤ 4 leg limit di level pullback, Σ persen 100) atau `piramida` (1 leg awal, lalu `tambah_leg_swing` hanya saat
+posisi untung, ukuran ≤ leg sebelumnya, SL baru lebih ketat; add yang aktif saat posisi tidak untung di open bar **dibatalkan**, bukan diisi).
+Setelah TP1: SL sisa → breakeven (entry rata, bulat ke tick), leg tangga yang belum terisi dibatalkan, add piramida ditolak (`ADD_AFTER_TP`).
+Setelah TP tetap terakhir dengan runner: `trail_on=1`, event `TRAIL_GESER` tiap geser (tidak dinotifikasi), keluar `close_reason=TRAIL`.
+Prioritas satu bar tetap: likuidasi → SL/trailing → TP (bisa 2 TP di bar gap). `net_result` = Σ TP parsial + keluar terakhir − fee + funding;
+`realized_pnl` akumulatif selama posisi OPEN. Satu rencana = satu slot dari `swing_max_open` 2; $10 **total** per rencana.
+
+- CLI: `paper_engine.py rencana-swing --symbol BTCUSDT --sisi LONG --lev 10 --leg 82000:50 --leg 81500:30 --leg 81000:20 --tp 86000:50 --tp 88000:25 --sl 80000 --trail 400 [--mode piramida --margin 5]`,
+  `paper_engine.py tambah-leg <posisi> --persen 60 --sl 81800 --harga 82600` (atau `--market`), `batal`/`tutup` seperti biasa.
+- MCP: `pasang_rencana_swing(symbol, sisi, leverage, legs, tps, sl, trail_atr=2, mode, margin, plan_id, pola, catatan)`, `tambah_leg_swing(position_id, persen, sl, harga|market)`,
+  `batal_order(plan_group=…)`; `posisi` memuat `persen_sisa`, `tp_list`, `legs`, `legs_n`, `trail_on`; `budget_tiket.swing.rencana[]`.
+- Kode tolak baru: `PLAN_LEGS`, `PLAN_PCT`, `PLAN_TP_PCT`, `PLAN_NEEDS_TRAIL`, `PLAN_TP_TOO_SMALL`, `BAD_LEG_ORDER`, `MODE`, `ADD_NOT_IN_PROFIT`, `ADD_TOO_BIG`,
+  `ADD_AFTER_TP`, `SL_LOOSER`, `MODE_TANGGA`, `POSITION`, `ATR_TIDAK_TERSEDIA` (MCP, runner tanpa ATR 15m); `MIN_NOTIONAL`/`MIN_QTY` per leg (BTC nyata: min notional
+  $100 → leg 20% dari $10×10x ditolak; kurangi leg / pair lain / leverage lebih tinggi dalam buffer likuidasi).
+- Event: `RENCANA`, `ADD`, `ADD_SKIP`, `TP_SEBAGIAN`, `BREAKEVEN`, `TRAIL_AKTIF`, `TRAIL_GESER`, `TRAIL`. Notifikasi: 📐 ➕ 🎯 🛡️ 🪜 🏁.
+- Evaluasi: `trail_n`, `tp_sebagian_n` (posisi dengan TP parsial yang berakhir bukan TP); autopsi memuat `tp_terisi`, `mode`, `legs_n`.
+- **Deploy skema v4**: collector memuat `paper_engine` lama → restart collector setelah update kode (migrasi kolom otomatis saat engine start).
 
 ## Saldo tiket harian (bergulir)
 
@@ -232,11 +255,11 @@ Jalankan dari terminal Anda (atau klik dua kali). Skrip ini:
 1. `hermes/sync.py` — menyalin `SOUL.md`, skill `tiket` & `evaluasi-harian`, dan `scripts/pemindai_cron.py` ke `HERMES_HOME`;
 2. `hermes/merge_config.py` — mengubah `config.yaml` secara tekstual dengan backup: `cron.catch_up_missed=false`,
    `cron.allow_agent_scheduling=false`, `agent.disabled_toolsets`, `platform_toolsets` cli/telegram/cron →
-   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (29 tool whitelist);
+   `[clarify, memory, skills, mcp-paper]`, dan blok `mcp_servers.paper` (31 tool whitelist);
 3. menaruh launcher `crypto-analyst_proxy.vbs`, `crypto-analyst_collector.vbs`, dan `crypto-analyst_dashboard.vbs` di folder **Startup** user
    (proxy & collector otomatis jalan saat login, tanpa jendela; Task Scheduler "saat login" butuh admin di laptop ini);
 4. menyalakan proxy & collector sekarang (instance kedua keluar sendiri karena lock), lalu
-   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 29 tool), `hermes cron list`.
+   `hermes --version`, `hermes doctor`, `hermes mcp test paper` (harus 31 tool), `hermes cron list`.
 
 Log: `logs/hermes_setup.log`. Cek proxy: `curl http://127.0.0.1:8585/healthz` (`key_set` harus `true`).
 Log proxy: `logs/budget_proxy.log` (satu baris per panggilan: model, token, biaya). Budget habis → Hermes menerima
@@ -286,7 +309,9 @@ tenggelam di antara ±120 perintah bawaan Hermes. Pesan kaya (`rich_messages: tr
 | `/referensi <kata kunci>` | Cari & kutip buku referensi (judul, bab, halaman, kutipan ≤ 15 kata) |
 | `/arena-papan` | Papan peringkat 4 persona arena vs pembanding acak |
 | `/radar <N>` | Tambah jatah wake radar hari ini (1–24, kumulatif maks 24); ditolak bila biaya API hari ini sudah di batas |
-| `/tiket`, `/evaluasi-harian` | Skill inti (dipakai cron; bisa dipanggil manual) |
+| `/swing <koin>` | Rencana swing bertahap (P-20): tangga/piramida, TP 50/25/runner trailing, breakeven setelah TP1 |
+| `/batal rencana <id>` | Batalkan leg rencana swing yang belum terisi |
+| `/tiket`, `/evaluasi-harian` | Skill inti (dipakai cron; bisa dipanggil manual; `/evaluasi-harian` keluar dari menu agar muat 14) |
 | `/help`, `/new` | Bawaan Hermes (`/usage`, `/whoami`, `/model`, `/commands` keluar dari menu agar muat 14; tetap bisa diketik) |
 
 Setiap perintah adalah satu sesi agent (≈ $0,02–0,10 lewat proxy). Chat bebas juga bisa; agent memilih skill sendiri.

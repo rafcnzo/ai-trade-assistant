@@ -31,7 +31,8 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 - **Tidak ada API key exchange**, termasuk key read-only. Hanya endpoint publik. Jangan pernah menambahkan, meminta, atau menyimpan key.
 - Satu penulis per database/berkas:
   - `data/pasar.sqlite` ← hanya `scripts/collector.py`
-  - `data/paper.sqlite` ← hanya `scripts/paper_engine.py` (dipanggil collector, CLI, atau `mcp_server.py`); akun `acak`
+  - `data/paper.sqlite` ← hanya `scripts/paper_engine.py` (dipanggil collector, CLI, atau `mcp_server.py`); rencana swing bertahap (`swing_plan`,
+    `plan_group`) juga hanya lewat engine (`place_plan`/`add_leg`); akun `acak`
     (bayangan acak per order tiket) hanya dibuat mesin, tidak pernah lewat CLI/MCP. Akun persona arena (`tiket`, `fade`,
     `breakout`, `rentang`) didefinisikan di tabel `account`; status `aktif/pensiun` hanya lewat `paper_engine.py akun` atau
     `evaluasi.py --nilai-arena` (skrip), tidak pernah oleh agent

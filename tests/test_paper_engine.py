@@ -14,8 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import common as C  # noqa: E402
 from common import D, MINUTE_MS, connect, is_multiple  # noqa: E402
-from fixtures import BTC, CN, DAY, DAY2, DAY_MS, NOBR, XYZ, FixtureMarket, t  # noqa: E402
+from fixtures import BTC, CN, DAY, DAY2, DAY_MS, NOBR, PEM, XYZ, FixtureMarket, t  # noqa: E402
 from paper_engine import (  # noqa: E402
+    PlanRequest,
     LONG, SHORT, EngineConfig, OrderRequest, PaperEngine, liq_price, limit_fill, pick_bracket, size_for_margin,
 )
 from fixtures import FILTERS, BRACKETS  # noqa: E402
@@ -697,3 +698,230 @@ class TestArenaAkun(Base):
         rep = eng.report(DAY)
         self.assertIn("| fade | aktif |", rep)
         self.assertEqual([r["account"] for r in eng.rollover_day(DAY)], ["tiket", "breakout", "fade", "rentang", "acak", "swing"])
+
+
+class TestSwingRencana(Base):
+    """T29–T37: rencana swing bertahap (PEM: harga ~100, tick/step 0,01, min notional 5, 150x mmr 0,4%)."""
+
+    def setUp(self):
+        super().setUp()
+        self.market.set_mark(PEM, 100.0, t("10:03"))
+
+    def rencana(self, **kw):
+        base = dict(symbol=PEM, side=LONG, leverage=10, legs=[{"harga": 99.5, "persen": 50}, {"harga": 99.0, "persen": 30}, {"harga": 98.5, "persen": 20}],
+                    tps=[{"harga": 104.0, "persen": 50}, {"harga": 106.0, "persen": 25}], sl_price=97.5, trail_dist=0.6, mode="tangga", margin=10.0, plan_id="SW1")
+        base.update(kw)
+        return self.eng.place_plan(PlanRequest(**base))
+
+    def bar(self, hhmm, o, h, l, c):
+        self.market.add_bar(PEM, t(hhmm), o, h, l, c)
+        return self.run_bar(t(hhmm))
+
+    def tp_orders(self, pid):
+        return [dict(r) for r in self.eng.conn.execute("SELECT * FROM orders WHERE position_id=? AND reduce_only=1 AND type='LIMIT' ORDER BY tp_rank", (pid,))]
+
+    def ledger_sum(self, kinds):
+        q = f"SELECT COALESCE(SUM(amount),0) FROM ledger WHERE account='swing' AND kind IN ({','.join('?' * len(kinds))})"
+        return float(self.eng.conn.execute(q, kinds).fetchone()[0])
+
+    def isi_tangga(self):
+        r = self.rencana(); self.assertTrue(r.ok, r)
+        self.bar("10:04", 100.0, 100.2, 99.4, 99.6)     # leg 1 @ 99.5
+        self.bar("10:05", 99.6, 99.7, 98.9, 99.1)       # leg 2 @ 99.0
+        self.bar("10:06", 99.1, 99.2, 98.4, 98.8)       # leg 3 @ 98.5
+        return r
+
+    def test_t29_validasi_rencana(self):
+        self.assertEqual(self.rencana(legs=[{"harga": 99.5 - i * 0.5, "persen": 20} for i in range(5)]).reject_code, "PLAN_LEGS")
+        self.assertEqual(self.rencana(legs=[{"harga": 99.5, "persen": 60}, {"harga": 99.0, "persen": 30}]).reject_code, "PLAN_PCT")
+        self.assertEqual(self.rencana(legs=[{"harga": 99.0, "persen": 50}, {"harga": 99.5, "persen": 50}]).reject_code, "BAD_LEG_ORDER")
+        self.assertEqual(self.rencana(tps=[{"harga": 106.0, "persen": 50}, {"harga": 104.0, "persen": 25}]).reject_code, "BAD_TP")
+        self.assertEqual(self.rencana(tps=[{"harga": 99.0, "persen": 50}]).reject_code, "BAD_TP")
+        self.assertEqual(self.rencana(trail_dist=None).reject_code, "PLAN_NEEDS_TRAIL")
+        self.assertTrue(self.rencana(trail_dist=None, tps=[{"harga": 104.0, "persen": 60}, {"harga": 106.0, "persen": 40}], plan_id="X").ok)   # tanpa runner → tanpa trail
+        self.eng.cancel_plan(1)
+        self.assertEqual(self.rencana(sl_price=99.0).reject_code, "BAD_SL")
+        self.assertEqual(self.rencana(tps=[{"harga": 101.0, "persen": 50}, {"harga": 101.5, "persen": 25}]).reject_code, "RR_TOO_LOW")
+        self.assertEqual(self.rencana(leverage=100, sl_price=98.95, legs=[{"harga": 99.5, "persen": 100}], tps=[{"harga": 104.0, "persen": 75}]).reject_code, "LIQ_INSIDE_STOP")
+        self.assertEqual(self.rencana(mode="piramida").reject_code, "PLAN_LEGS")
+        self.assertEqual(self.rencana(mode="lain").reject_code, "MODE")
+        self.assertEqual(self.rencana(legs=[{"harga": 100.5, "persen": 100}]).reject_code, "LIMIT_CROSSES")   # per leg lewat _validate
+        r1 = self.rencana(); self.assertTrue(r1.ok, r1)
+        self.assertEqual([l["qty"] for l in r1.legs], [0.5, 0.3, 0.2])
+        self.assertEqual(([t["qty"] for t in r1.tps], r1.runner_qty), ([0.5, 0.25], 0.25))
+        self.assertAlmostEqual(r1.avg_entry, 99.15, places=6)
+        self.assertGreaterEqual(r1.rr, 2.5)
+        bs = self.eng.budget_status("swing")
+        self.assertEqual((bs["open"], bs["pending"]), (0, 1))                    # tiga leg = satu rencana
+        r2 = self.rencana(plan_id="SW2"); self.assertTrue(r2.ok, r2)
+        self.assertEqual(self.rencana(plan_id="SW3").reject_code, "SWING_MAX_OPEN")
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM orders WHERE status='REJECTED'").fetchone()[0], 13)   # satu baris per penolakan
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM orders WHERE plan_group=? AND status='NEW'", (r1.plan_group,)).fetchone()[0], 3)
+
+    def test_t30_tangga_merge(self):
+        r = self.isi_tangga()
+        p = self.pos()
+        self.assertEqual((p["account"], p["plan_group"], p["legs_n"], p["status"]), ("swing", r.plan_group, 3, "OPEN"))
+        self.assertAlmostEqual(p["qty"], 1.0, places=9)
+        self.assertAlmostEqual(p["entry_price"], 99.15, places=6)
+        self.assertAlmostEqual(p["margin_initial"], 0.5 * 99.5 / 10 + 0.3 * 99.0 / 10 + 0.2 * 98.5 / 10, places=9)
+        self.assertAlmostEqual(p["qty_awal"], 1.0, places=9)
+        self.assertEqual([f["role"] for f in self.fills()], ["ENTRY"] * 3)
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM events WHERE type='ADD'").fetchone()[0], 2)
+        tps = self.tp_orders(p["id"])
+        self.assertEqual([(o["tp_rank"], o["price"], round(o["qty"], 6)) for o in tps], [(1, 104.0, 0.5), (2, 106.0, 0.25)])
+        self.assertAlmostEqual(self.order(p["sl_order_id"])["qty"], 1.0, places=9)
+        self.assertEqual(p["tp_price"], 104.0)
+        self.assertAlmostEqual(p["liq_price"], (1.0 * 99.15 - p["margin_now"]) / (1.0 * (1 - 0.004)), places=6)
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(DISTINCT plan_group) FROM positions").fetchone()[0], 1)
+        self.assertAlmostEqual(self.ledger_sum(["MARGIN_LOCK", "MARGIN_RELEASE"]), -p["margin_initial"], places=9)   # hanya margin posisi yang masih terkunci
+
+    def test_t31_tp_parsial_breakeven_lalu_stop(self):
+        self.isi_tangga()
+        self.bar("10:07", 99.0, 104.1, 98.9, 103.5)     # TP1 @ 104 (THROUGH)
+        p = self.pos()
+        self.assertEqual(p["status"], "OPEN")
+        self.assertAlmostEqual(p["qty"], 0.5, places=9)
+        self.assertAlmostEqual(p["realized_pnl"], 0.5 * (104.0 - 99.15), places=9)
+        self.assertEqual((p["breakeven_done"], p["sl_price"], p["tp_price"]), (1, 99.15, 106.0))
+        self.assertEqual(self.order(p["sl_order_id"])["stop_price"], 99.15)
+        self.assertAlmostEqual(self.order(p["sl_order_id"])["qty"], 0.5, places=9)
+        self.assertEqual([o["status"] for o in self.tp_orders(p["id"])], ["FILLED", "ACTIVE"])
+        self.assertAlmostEqual(p["margin_now"], p["margin_initial"] * 0.5, places=9)
+        self.assertEqual([e[0] for e in self.eng.conn.execute("SELECT type FROM events WHERE position_id=? AND type IN ('TP_SEBAGIAN','BREAKEVEN') ORDER BY id", (p["id"],))], ["TP_SEBAGIAN", "BREAKEVEN"])
+        self.bar("10:08", 103.0, 103.2, 99.1, 99.3)     # SL breakeven kena (bar berikutnya)
+        p = self.pos()
+        self.assertEqual((p["status"], p["close_reason"]), ("CLOSED", "STOP"))
+        self.assertEqual([f["role"] for f in self.fills()], ["ENTRY", "ENTRY", "ENTRY", "TP", "SL"])
+        self.assertGreater(p["net_result"], 2.3)                                   # TP1 terkunci, sisa keluar ≈ breakeven
+        self.assertAlmostEqual(p["net_result"], self.ledger_sum(["FEE", "PNL", "FUNDING"]), places=9)
+        self.assertAlmostEqual(self.ledger_sum(["MARGIN_LOCK", "MARGIN_RELEASE"]), 0.0, places=9)
+        self.assertEqual([o["status"] for o in self.tp_orders(p["id"])], ["FILLED", "CANCELED"])
+
+    def test_t32_tp2_lalu_trailing(self):
+        self.isi_tangga()
+        self.bar("10:07", 99.0, 104.1, 98.9, 103.5)     # TP1
+        self.bar("10:08", 103.5, 106.1, 103.4, 105.8)   # TP2 → trailing aktif
+        p = self.pos()
+        self.assertEqual((p["status"], p["trail_on"], p["tp_price"], p["tp_order_id"]), ("OPEN", 1, None, None))
+        self.assertAlmostEqual(p["qty"], 0.25, places=9)
+        self.assertEqual(p["sl_price"], 99.15)                                       # ratchet baru di bar berikutnya
+        self.bar("10:09", 105.8, 106.5, 105.8, 106.2)   # ratchet: 106.1 - 0.6 = 105.5
+        p = self.pos()
+        self.assertEqual(p["sl_price"], 105.5)
+        self.assertEqual(self.order(p["sl_order_id"])["stop_price"], 105.5)
+        self.bar("10:10", 106.2, 106.3, 105.0, 105.1)   # ratchet 106.5-0.6=105.9 lalu stop kena
+        p = self.pos()
+        self.assertEqual((p["status"], p["close_reason"]), ("CLOSED", "TRAIL"))
+        self.assertEqual([f["role"] for f in self.fills()], ["ENTRY", "ENTRY", "ENTRY", "TP", "TP", "SL"])
+        self.assertAlmostEqual(p["net_result"], self.ledger_sum(["FEE", "PNL", "FUNDING"]), places=9)
+        self.assertGreater(p["net_result"], 5.5)
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM events WHERE position_id=? AND type='TRAIL_GESER'", (p["id"],)).fetchone()[0], 2)
+        self.assertEqual(self.eng.day_counts("swing", DAY)["other_close_n"], 1)
+
+    def test_t33_pesimis_satu_bar(self):
+        self.isi_tangga()
+        self.bar("10:07", 99.0, 104.1, 97.4, 103.5)     # SL asli & TP1 di bar yang sama → STOP (ambigu)
+        p = self.pos()
+        self.assertEqual((p["close_reason"], p["ambiguous"], p["alt_outcome"]), ("STOP", 1, "TP"))
+        self.assertLess(p["net_result"], 0)
+        # gap menembus TP1 dan TP2 sekaligus → dua TP parsial berurutan
+        self.eng.conn.execute("DELETE FROM positions"); self.eng.conn.execute("DELETE FROM orders"); self.eng.conn.execute("DELETE FROM fills"); self.eng.conn.commit()
+        r = self.rencana(plan_id="SW2"); self.assertTrue(r.ok, r)
+        self.bar("10:11", 100.0, 100.2, 98.4, 98.6)     # tiga leg terisi
+        self.bar("10:12", 107.0, 107.5, 106.8, 107.2)   # gap: TP1 & TP2 GAP_OPEN @ 107
+        p = self.pos(self.eng.conn.execute("SELECT MAX(id) FROM positions").fetchone()[0])
+        self.assertEqual((p["status"], p["trail_on"]), ("OPEN", 1))
+        self.assertAlmostEqual(p["qty"], 0.25, places=9)
+        self.assertEqual([round(f["price"], 2) for f in self.fills(p["id"]) if f["role"] == "TP"], [107.0, 107.0])
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM events WHERE position_id=? AND type='TP_SEBAGIAN'", (p["id"],)).fetchone()[0], 2)
+
+    def test_t34_piramida(self):
+        r = self.rencana(mode="piramida", legs=[{"harga": 99.5, "persen": 100}], margin=5.0, plan_id="PY")
+        self.assertTrue(r.ok, r)
+        self.bar("10:04", 100.0, 100.2, 99.4, 99.6)
+        p = self.pos(); self.assertEqual((p["mode"], round(p["qty"], 6)), ("piramida", 0.5))
+        self.market.set_mark(PEM, 99.0, t("10:05"))
+        self.assertEqual(self.eng.add_leg(p["id"], 60, 98.0, price=98.5).reject_code, "ADD_NOT_IN_PROFIT")
+        self.market.set_mark(PEM, 101.0, t("10:05"))
+        self.assertEqual(self.eng.add_leg(p["id"], 120, 98.0, price=100.5).reject_code, "ADD_TOO_BIG")
+        self.assertEqual(self.eng.add_leg(p["id"], 60, 97.0, price=100.5).reject_code, "SL_LOOSER")
+        ok = self.eng.add_leg(p["id"], 60, 98.0, price=100.5)
+        self.assertTrue(ok.ok, ok)
+        self.assertEqual(self.eng.add_leg(p["id"], 60, 98.0, price=100.4).reject_code, "BUDGET_SWING")     # leg hidup ikut dihitung: 4.98 + 3.02 + 3.01 > $10
+        self.bar("10:05", 100.9, 101.0, 100.8, 100.9)   # order baru aktif menit berikutnya
+        self.bar("10:06", 100.8, 100.9, 100.4, 100.6)   # untung di open → add terisi @ 100.5
+        p = self.pos()
+        self.assertEqual(p["legs_n"], 2)
+        self.assertAlmostEqual(p["qty"], 0.8, places=9)
+        self.assertAlmostEqual(p["entry_price"], (0.5 * 99.5 + 0.3 * 100.5) / 0.8, places=9)
+        self.assertEqual(p["sl_price"], 98.0)
+        self.assertEqual([round(o["qty"], 6) for o in self.tp_orders(p["id"])], [0.4, 0.2])
+        self.assertLessEqual(p["margin_initial"], 10.0)
+        # add ketiga: aktif saat posisi tidak untung di open bar → dibatalkan, bukan diisi
+        ok3 = self.eng.add_leg(p["id"], 40, 98.5, price=100.0)
+        self.assertTrue(ok3.ok, ok3)
+        self.bar("10:07", 100.6, 100.7, 100.5, 100.6)
+        self.bar("10:08", 99.5, 100.3, 99.4, 100.1)     # open 99.5 < entry rata 99.875
+        self.assertEqual(self.order(ok3.order_id)["status"], "CANCELED")
+        self.assertEqual(self.pos()["legs_n"], 2)
+        tangga = self.rencana(plan_id="TG", legs=[{"harga": 99.0, "persen": 100}], margin=2.0); self.assertTrue(tangga.ok, tangga)
+        self.bar("10:09", 100.0, 100.1, 99.9, 100.0)
+        self.bar("10:10", 100.0, 100.1, 98.9, 99.2)
+        pid2 = self.eng.conn.execute("SELECT MAX(id) FROM positions").fetchone()[0]
+        self.assertEqual(self.eng.add_leg(pid2, 50, 98.0, price=99.5).reject_code, "MODE_TANGGA")
+
+    def test_t35_tutup_manual_batalkan_leg_dan_budget(self):
+        r = self.rencana(); self.assertTrue(r.ok, r)
+        self.bar("10:04", 100.0, 100.2, 99.4, 99.6)     # hanya leg 1
+        bs = self.eng.budget_status("swing")
+        self.assertEqual((bs["open"], bs["pending"]), (1, 0))
+        self.assertEqual(len(bs["rencana"]), 1)
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM orders WHERE plan_group=? AND reduce_only=0 AND status='ACTIVE'", (r.plan_group,)).fetchone()[0], 2)
+        self.assertTrue(self.eng.close_position_request(1, who="uji"))        # aktif di menit berikutnya (10:06)
+        self.bar("10:05", 99.6, 99.8, 99.5, 99.7)
+        self.assertEqual(self.pos()["status"], "OPEN")
+        self.bar("10:06", 99.7, 99.8, 99.6, 99.7)
+        p = self.pos()
+        self.assertEqual((p["status"], p["close_reason"]), ("CLOSED", "MANUAL"))
+        self.assertEqual(self.eng.conn.execute("SELECT COUNT(*) FROM orders WHERE plan_group=? AND reduce_only=0 AND status='CANCELED'", (r.plan_group,)).fetchone()[0], 2)
+        self.assertAlmostEqual(self.ledger_sum(["MARGIN_LOCK", "MARGIN_RELEASE"]), 0.0, places=9)
+        self.assertAlmostEqual(p["net_result"], self.ledger_sum(["FEE", "PNL", "FUNDING"]), places=9)
+        self.assertEqual(self.eng.budget_status("swing")["open"], 0)
+
+    def test_t36_determinisme_rencana(self):
+        def scenario(live):
+            market = FixtureMarket().set_mark(BTC, 82800.0, t("10:03")).set_mark(PEM, 100.0, t("10:03"))
+            clock = [t("10:03", sec=27)]
+            eng = PaperEngine(connect(":memory:"), market, clock=lambda: clock[0], cfg=EngineConfig(acak_enabled=False))
+            r = eng.place_plan(PlanRequest(symbol=PEM, side=LONG, leverage=10, legs=[{"harga": 99.5, "persen": 50}, {"harga": 99.0, "persen": 30}, {"harga": 98.5, "persen": 20}],
+                                           tps=[{"harga": 104.0, "persen": 50}, {"harga": 106.0, "persen": 25}], sl_price=97.5, trail_dist=0.6, margin=10.0))
+            assert r.ok, r
+            bars = [(t("10:04"), 100.0, 100.2, 98.4, 98.6), (t("10:05"), 98.6, 104.1, 98.5, 103.5), (t("10:06"), 103.5, 106.1, 103.4, 105.8),
+                    (t("10:07"), 105.8, 106.5, 105.8, 106.2), (t("10:08"), 106.2, 106.3, 105.0, 105.1)]
+            for b in bars:
+                market.add_bar(PEM, *b)
+                if live:
+                    clock[0] = b[0] + 2 * MINUTE_MS
+                    eng.step()
+            if not live:
+                clock[0] = bars[-1][0] + 2 * MINUTE_MS
+                eng.step()
+            out = {}
+            for table in ("positions", "orders", "fills", "ledger", "swing_plan"):
+                out[table] = [tuple(r) for r in eng.conn.execute(f"SELECT * FROM {table} ORDER BY rowid")]
+            return out
+        a, b = scenario(True), scenario(False)
+        self.assertEqual(a, b)
+        self.assertEqual(a["positions"][0][tuple(c[1] for c in self.eng.conn.execute("PRAGMA table_info(positions)")).index("close_reason")], "TRAIL")
+
+    def test_t37_autopsi_dan_evaluasi(self):
+        self.isi_tangga()
+        self.bar("10:07", 99.0, 104.1, 98.9, 103.5)
+        self.bar("10:08", 103.0, 103.2, 99.1, 99.3)
+        a = self.eng.autopsi(1)
+        self.assertEqual((a["tp"], a["mode"], a["legs_n"], len(a["tp_terisi"])), (104.0, "tangga", 3, 1))
+        self.assertTrue(any("parsial terkunci" in s for s in a["pelajaran_mekanis"]))
+        import evaluasi as E
+        st = E.account_stats(self.eng.conn, "swing", t("12:00"))
+        self.assertEqual((st["stop_n"], st["tp_sebagian_n"]), (1, 1))

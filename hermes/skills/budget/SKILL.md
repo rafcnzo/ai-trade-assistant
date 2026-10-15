@@ -15,7 +15,7 @@ metadata:
 2. Jawab dalam ≤ 8 baris:
 
 **Tiket hari ini**: sisa **$x** dari $1 (terpakai $a, tertahan order $b)
-**Swing**: n posisi terbuka, m order menunggu (maks 2)
+**Swing**: n rencana terbuka, m rencana menunggu (maks 2) — satu rencana bertahap = satu slot; sebutkan `rencana[]` (simbol, mode, margin) bila ada
 **Biaya API**: hari ini $c / $10, bulan ini $d / $190; blokir: -/jam; kill switch: ya/tidak
 
 Jika `biaya_api` tidak tersedia, tulis "biaya API: tidak tersedia (proxy?)".

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS orders(
   reject_code TEXT, reject_reason TEXT,
   position_id INTEGER, oco_group INTEGER,
   plan_id TEXT, pattern TEXT, note TEXT, created_by TEXT,
-  created_ts INTEGER NOT NULL, activate_ts INTEGER, expire_ts INTEGER, day_wib TEXT, done_ts INTEGER
+  created_ts INTEGER NOT NULL, activate_ts INTEGER, expire_ts INTEGER, day_wib TEXT, done_ts INTEGER,
+  plan_group INTEGER, leg_pct REAL, tp_rank INTEGER                  -- rencana swing bertahap: swing_plan.id, % leg/TP dari qty awal, urutan TP
 );
 CREATE INDEX IF NOT EXISTS ix_orders_live ON orders(status, symbol);
 CREATE INDEX IF NOT EXISTS ix_orders_day ON orders(account, day_wib);
@@ -43,20 +44,32 @@ CREATE TABLE IF NOT EXISTS positions(
   tp_order_id INTEGER, sl_order_id INTEGER, entry_order_id INTEGER,
   plan_id TEXT, pattern TEXT, day_wib TEXT,
   opened_ts INTEGER, opened_bar INTEGER, closed_ts INTEGER, closed_bar INTEGER,
-  close_reason TEXT,                       -- TP|HANGUS|STOP|MANUAL|EOD|DELISTED|FUNDING_LIQ
+  close_reason TEXT,                       -- TP|HANGUS|STOP|TRAIL|MANUAL|EOD|DELISTED|FUNDING_LIQ
   exit_price REAL, realized_pnl REAL, fees_total REAL DEFAULT 0, funding_total REAL DEFAULT 0, net_result REAL,
   worst_mark REAL, best_mark REAL,
   ambiguous INTEGER NOT NULL DEFAULT 0, alt_outcome TEXT,
-  status TEXT NOT NULL                     -- OPEN|CLOSED
+  status TEXT NOT NULL,                    -- OPEN|CLOSED
+  plan_group INTEGER, mode TEXT, qty_awal REAL, legs_n INTEGER DEFAULT 1,   -- rencana swing: tangga|piramida, qty total leg terisi
+  trail_dist REAL, trail_on INTEGER DEFAULT 0, breakeven_done INTEGER DEFAULT 0   -- runner: jarak trailing (satuan harga), status
 );
 CREATE INDEX IF NOT EXISTS ix_pos_open ON positions(status, symbol);
 CREATE INDEX IF NOT EXISTS ix_pos_day ON positions(account, day_wib);
+
+-- Rencana swing bertahap (entry tangga/piramida, TP 50/25/runner). Satu posisi per rencana (positions.plan_group).
+CREATE TABLE IF NOT EXISTS swing_plan(
+  id INTEGER PRIMARY KEY, account TEXT NOT NULL, symbol TEXT NOT NULL, side TEXT NOT NULL, leverage INTEGER,
+  mode TEXT,                               -- tangga | piramida
+  legs_json TEXT, tps_json TEXT,           -- [{harga, persen, qty}], [{rank, harga, persen}] (runner = 100 - Σ persen)
+  sl_price REAL, trail_dist REAL, trail_atr REAL, atr_ref REAL,
+  qty_total REAL, margin_total REAL, rr REAL,
+  plan_id TEXT, pattern TEXT, note TEXT, created_by TEXT, created_ts INTEGER, day_wib TEXT
+);
 
 CREATE TABLE IF NOT EXISTS fills(
   id INTEGER PRIMARY KEY, order_id INTEGER, position_id INTEGER,
   ts INTEGER, bar_open_time INTEGER,
   price REAL, qty REAL, notional REAL, fee_usdt REAL, is_maker INTEGER,
-  role TEXT,                               -- ENTRY|TP|SL|MARKET_EXIT|EOD|LIQUIDATION|DELISTED
+  role TEXT,                               -- ENTRY|TP|SL|MARKET_EXIT|EOD|LIQUIDATION|DELISTED (TP bisa parsial: rencana swing)
   rule TEXT                                -- THROUGH|GAP_OPEN|MARKET_OPEN|STOP_TRIGGER|STOP_GAP|LIQUIDATION|EOD
 );
 CREATE INDEX IF NOT EXISTS ix_fills_pos ON fills(position_id);

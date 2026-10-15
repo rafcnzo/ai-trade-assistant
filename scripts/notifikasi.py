@@ -28,17 +28,18 @@ SELECT e.id, e.ts, e.level, e.type, e.position_id, e.order_id, e.msg,
        p.account AS p_account, p.symbol AS p_symbol, p.side AS p_side, p.qty AS p_qty, p.entry_price AS p_entry, p.leverage AS p_lev,
        p.margin_initial AS p_margin, p.liq_price AS p_liq, p.tp_price AS p_tp, p.sl_price AS p_sl, p.plan_id AS p_plan,
        p.exit_price AS p_exit, p.realized_pnl AS p_pnl, p.fees_total AS p_fees, p.funding_total AS p_funding, p.net_result AS p_net,
-       p.alt_outcome AS p_alt
+       p.alt_outcome AS p_alt, p.qty_awal AS p_qty_awal, p.plan_group AS p_plan_group, o.leg_pct AS o_leg_pct, o.plan_group AS o_plan_group
 FROM events e LEFT JOIN orders o ON o.id = e.order_id LEFT JOIN positions p ON p.id = e.position_id
 """
 
-TUTUP = {"TP": "🎯 TP", "STOP": "🛑 STOP", "MANUAL": "🔚 TUTUP MANUAL", "EOD": "🌙 TUTUP EOD", "DELISTED": "🚫 DELISTING"}
+TUTUP = {"TP": "🎯 TP", "STOP": "🛑 STOP", "TRAIL": "🏁 TRAILING STOP", "MANUAL": "🔚 TUTUP MANUAL", "EOD": "🌙 TUTUP EOD", "DELISTED": "🚫 DELISTING"}
 
 
 @dataclass
 class NotifConfig:
     max_events: int = 20     # per pesan; sisanya diringkas sebagai "+n lebih lama"
     skip_accounts: tuple = ("acak",)   # bayangan acak (pembanding mesin) tidak dinotifikasi
+    skip_types: tuple = ("TRAIL_GESER",)   # geser SL runner tiap bar: terlalu ramai untuk Telegram
 
 
 # --------------------------------------------------------------------------- format
@@ -70,6 +71,8 @@ def format_event(e: dict) -> str:
     if typ == "ORDER_NEW":
         line = (f"🆕 Order #{oid} {acc} {sym} {side} {e['o_type'] or ''} {fmt_px(e['o_qty'])} @ {fmt_px(e['o_price']) if e['o_price'] else 'MARKET'} "
                 f"{e['o_lev']}x · TP {fmt_px(e['o_tp'])} · SL {fmt_px(e['o_sl'])}")
+        if e.get("o_plan_group"):
+            line += f" · leg {e['o_leg_pct']:g}% rencana #{e['o_plan_group']}"
         if plan:
             line += f" · {plan}"
         if e["o_by"]:
@@ -80,6 +83,18 @@ def format_event(e: dict) -> str:
         line = f"⌛ Order #{oid} {acc} {sym} {side} @ {fmt_px(e['o_price'])} kedaluwarsa — tidak terisi"
     elif typ == "BREAKEVEN":
         line = f"🛡️ Pengaman posisi #{pid} {sym} {side}: {msg}"
+    elif typ == "RENCANA":
+        line = f"📐 Rencana swing bertahap (order #{oid}): {msg}"
+    elif typ == "ADD":
+        line = f"➕ TAMBAH posisi #{pid}: {msg}"
+    elif typ == "ADD_SKIP":
+        line = f"➕ Leg rencana{(' posisi #' + str(pid)) if pid else ''}: {msg}"
+    elif typ == "TP_SEBAGIAN":
+        line = f"🎯 TP SEBAGIAN posisi #{pid} {acc}: {msg}"
+    elif typ == "TRAIL_AKTIF":
+        line = f"🪜 Trailing aktif posisi #{pid}: {msg}"
+    elif typ == "TRAIL_GESER":
+        line = f"🪜 Posisi #{pid}: {msg}"
     elif typ == "AKUN_STATUS":
         line = f"🏟️ Arena: {msg}"
     elif typ == "ACAK_SHADOW":
@@ -170,7 +185,7 @@ def run(conn: sqlite3.Connection, cursor_path: Path, cfg: Optional[NotifConfig] 
     if not rows:
         return ""
     last_id = rows[-1]["id"]
-    rows = [e for e in rows if (e["p_account"] or e["o_account"]) not in cfg.skip_accounts]
+    rows = [e for e in rows if (e["p_account"] or e["o_account"]) not in cfg.skip_accounts and e["type"] not in cfg.skip_types]
     if not rows:
         write_cursor(cursor_path, last_id, now)
         return ""

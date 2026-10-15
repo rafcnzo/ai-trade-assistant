@@ -94,7 +94,7 @@ PLATFORMS_BLOCK = """platforms:  # crypto-analyst: menu perintah Telegram ringka
       command_menu:
         max_commands: 14
         priority_mode: replace
-        priority: [posisi, budget, laporan, cek, tiket, batal, status, psikologi, referensi, arena-papan, radar, evaluasi-harian, help, new]
+        priority: [posisi, budget, laporan, cek, tiket, swing, batal, status, psikologi, referensi, arena-papan, radar, help, new]
 """
 
 

@@ -60,5 +60,7 @@ mcp_servers:
         - autopsi_posisi
         - papan_arena
         - tambah_jatah_radar
+        - pasang_rencana_swing
+        - tambah_leg_swing
     timeout: 60
     connect_timeout: 30
