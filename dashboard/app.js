@@ -300,7 +300,7 @@ const vol = (x) => x >= 1e9 ? nf(1).format(x / 1e9) + " M" : x >= 1e6 ? nf(0).fo
 const ALASAN_PENDEK = { TP: "target", HANGUS: "hangus", FUNDING_LIQ: "hangus", STOP: "stop", TRAIL: "trailing", EOD: "jam 23:50", MANUAL: "manual", DELISTED: "dihapus" };
 const POLA = { pullback_resistance_wick: "pullback ke resistance", pullback_support_wick: "pullback ke support", WICK_BREAKOUT_GAGAL_resisten: "tembus gagal di resistance", WICK_BREAKOUT_GAGAL_support: "tembus gagal di support", BREAKOUT_GAGAL_atas: "tembus gagal ke atas", BREAKOUT_GAGAL_bawah: "tembus gagal ke bawah", tepi_atas_range: "tepi atas range", tepi_bawah_range: "tepi bawah range" };
 function kalimatProfil(a) {
-  if (!a.n_posisi) return `<span class="dim">belum pernah membuka posisi</span>`;
+  if (!a.n_posisi) return `<span class="dim">belum pernah membuka posisi</span>` + (a.skip && a.skip.akurasi != null ? ` · SKIP tepat <b class="${a.skip.akurasi >= 0.5 ? "up" : "down"}">${nf(0).format(a.skip.akurasi * 100)} %</b> dari ${a.skip.benar + a.skip.salah}` : "");
   const tot = a.long_n + a.short_n, arahS = a.short_n > a.long_n ? "jual" : a.long_n > a.short_n ? "beli" : "beli/jual seimbang";
   const bag = [];
   bag.push(a.short_n === a.long_n ? `<b>${arahS}</b>` : `cenderung <b>${arahS}</b> (${Math.max(a.long_n, a.short_n)}/${tot})`);
@@ -312,6 +312,7 @@ function kalimatProfil(a) {
   if (al.length) bag.push(`keluar: <b>${al.join(", ")}</b>`);
   if (a.pola && a.pola.length) bag.push(`pola <b>${POLA[a.pola[0].pola] || a.pola[0].pola.replace(/_/g, " ")}</b>`);
   if (a.jam_sibuk !== null && a.jam_sibuk !== undefined) bag.push(`sering jam <b>${String(a.jam_sibuk).padStart(2, "0")}</b>`);
+  if (a.skip && a.skip.akurasi !== null && a.skip.akurasi !== undefined) bag.push(`<span class="tip" tabindex="0" data-tip="${esc(`SKIP 30 hari dinilai dengan order bayangan mekanis: ${a.skip.benar} benar (bayangan rugi), ${a.skip.salah} salah (peluang terlewat), ${a.skip.netral} netral (tidak terisi). Lihat pasar/skip.md.`)}">SKIP tepat</span> <b class="${a.skip.akurasi >= 0.5 ? "up" : "down"}">${nf(0).format(a.skip.akurasi * 100)} %</b> dari ${a.skip.benar + a.skip.salah}`);
   return bag.join(" · ");
 }
 async function loadRingkas() {

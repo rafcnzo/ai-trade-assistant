@@ -205,6 +205,8 @@ def render_hipotesis_md(records: list[dict], hasil: dict) -> str:
 def render_pelajaran_md(lessons: list[dict]) -> str:
     lines = ["# Pelajaran", "", "_Ditulis skrip `uji_hipotesis.py` dari hipotesis yang dinilai (§16.6): naik bila sampel ≥ 10 dan hit rate ≥ baseline + 15 poin; "
              "dinilai ulang tiap 30 hari dengan data 90 hari; pensiun bila turun ke sekitar baseline. Jangan diedit manual._", ""]
+    skip = [l for l in lessons if l.get("sumber") == "skip"]
+    lessons = [l for l in lessons if l.get("sumber") != "skip"]
     for status, judul in (("aktif", "## Aktif"), ("pensiun", "## Pensiun")):
         rows = [l for l in lessons if l["status"] == status]
         lines += [judul, "", "| ID | Pola | Ringkasan | Sampel | Hit rate | Baseline | Rezim | Status | Dinilai ulang |", "|---|---|---|---|---|---|---|---|---|"]
@@ -214,4 +216,15 @@ def render_pelajaran_md(lessons: list[dict]) -> str:
         if not rows:
             lines.append("| — | | | | | | | | |")
         lines.append("")
+    lines += ["## Dari keputusan SKIP", "",
+              "_Kandidat yang di-SKIP dinilai dengan order bayangan mekanis (lihat pasar/skip.md). Naik bila ≥ 15 SKIP non-netral dalam 30 hari dan "
+              "akurasinya berbeda ≥ 15 poin dari SKIP acak; \"menyaring\" = alasan itu terbukti membuang kandidat buruk, \"melewatkan\" = alasan itu sering "
+              "membuang peluang. Status aturan playbook tetap diputuskan pemilik._", "",
+              "| ID | Analis | Alasan | Arah | Ringkasan | Sampel | Akurasi | SKIP acak | Status | Dinilai ulang |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for l in sorted(skip, key=lambda x: (x["status"] != "aktif", x["id"])):
+        lines.append(f"| {l['id']} | {l['persona']} | {l['kategori']} | {l['arah']} | {_cell(l['ringkasan'])} | {l['sampel']} | {l['hit_rate']:.0%} | "
+                     f"{l['baseline']:.0%} | {l['status']}{(' (' + _cell(l['alasan_pensiun']) + ')') if l.get('alasan_pensiun') else ''} | {l['dinilai_ulang']} |")
+    if not skip:
+        lines.append("| — | | | | belum cukup sampel | | | | | |")
+    lines.append("")
     return "\n".join(lines)

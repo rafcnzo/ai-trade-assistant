@@ -3,6 +3,10 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.12 (22 Okt 2026, penilaian SKIP)
+- §16.6 belajar: selain hipotesis, setiap kandidat pemindai dinilai dengan order bayangan mekanis; keputusan SKIP tiap analis diberi label
+  benar/salah/netral dan alasan yang terbukti menjadi pelajaran otomatis `LS-NN` (skrip, bukan AI). Rincian: OPERASI "Penilaian SKIP".
+
 ### Perubahan v1.11 (15 Okt 2026, swing bertahap)
 - §5.1 swing: dari satu order + satu TP/SL menjadi **rencana bertahap** (P-20): entry tangga/piramida ke satu posisi, TP 50/25/runner
   trailing 2×ATR 15m, breakeven setelah TP1; $10 total per rencana, maks 2 rencana, R:R rencana ≥ 2,5. Rincian di OPERASI "Rencana swing bertahap".

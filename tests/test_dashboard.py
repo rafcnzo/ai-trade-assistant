@@ -102,6 +102,12 @@ class TestArenaApi(Base):
         tiket = next(a for a in r["analis"] if a["akun"] == "tiket")
         self.assertEqual((tiket["kind"], tiket["n_selesai"], tiket["win_rate"]), ("tiket", 0, None))
         self.assertIn(tiket["long_n"] + tiket["short_n"], (0, 1))
+        self.assertIsNone(tiket["skip"])
+        import hipotesis as H
+        H.append_jsonl(self.root / "pasar" / "skip-hasil.jsonl", {"kandidat_id": 1, "run_ts": END, "hasil": "HANGUS", "net": -1.0,
+                                                                "keputusan": {"tiket": {"keputusan": "SKIP", "alasan": "RR_P19", "label": "benar"}}})
+        sk = next(a for a in self.client.get("/api/ringkas").json()["analis"] if a["akun"] == "tiket")["skip"]
+        self.assertEqual((sk["n"], sk["benar"], sk["akurasi"]), (1, 1, 1.0))
         pasar_ro.close()
 
 

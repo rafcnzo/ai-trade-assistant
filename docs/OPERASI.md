@@ -112,6 +112,25 @@ Mesin menolak order akun persona (kind `tiket`) yang punya TP bila untung bersih
 (0 = mati; tes memakai 0). Bayangan acak dan swing tidak kena gate ini (swing punya `swing_min_rr` 2,5 sendiri). Asal: usulan agent U-001, diterima
 pemilik 14 Okt (playbook P-19).
 
+## Penilaian SKIP (kontrafaktual)
+
+Setiap kandidat pemindai dari hari WIB yang sudah tutup dinilai sekali oleh `uji_hipotesis.py` (cron 21:15 dan gate susulan pagi; modul
+`kontrafaktual.py`) dengan **order bayangan mekanis** yang sama untuk semua analis: sisi = `arah_dugaan`, limit di `level`, leverage layak
+terendah dari `lev_layak` ($1), TP = 1,5×ATR15m, tanpa SL + breakeven P-18, keluar 23:50; simulasi bar 1m mengikuti urutan mesin paper
+(EOD → breakeven → likuidasi → stop → TP; bar entry hanya likuidasi). Hasil `TP | HANGUS | STOP_BE | EOD | TIDAK_TERISI | ambigu` (cakupan
+bar < 90 %; ditunda sampai 36 jam setelah 23:50 bila bar mungkin menyusul). Keputusan tiap persona dibaca dari `jurnal/agent/<hari>.md`
+(judul `[persona] K<id> … - SKIP|order #n`, rentang `K175-K179`, meta `alasan=`): SKIP **benar** bila bayangan rugi, **salah** bila untung
+(peluang terlewat), **netral** bila tidak terisi. Kategori alasan dari parameter `alasan_skip` di `tulis_jurnal` (skill arena/tiket mengisinya),
+atau klasifikasi kata kunci untuk entri lama.
+
+- Hasil: `pasar/skip-hasil.jsonl` (satu baris per kandidat), rekap `pasar/skip.md` (per analis, per alasan, peluang terbesar terlewat 7 hari),
+  baris 🚦 di pesan Telegram uji hipotesis, frasa "SKIP tepat x %" di dashboard Ringkasan.
+- Pelajaran otomatis `LS-NN` (`pasar/pelajaran.jsonl`, `sumber="skip"`, bagian "Dari keputusan SKIP" di `pelajaran.md`): kelompok (analis, alasan)
+  dan (semua, alasan), jendela 30 hari, ≥ 15 SKIP non-netral, akurasi berbeda ≥ 15 poin dari baseline (= akurasi SKIP acak = porsi bayangan
+  terisi yang rugi): "menyaring" atau "melewatkan". Dinilai ulang tiap 30 hari, pensiun bila selisih < 5 poin. Aturan playbook tetap pemilik.
+- Batas: bar 1m disimpan 21 hari (collector) → kandidat lebih tua tidak bisa dinilai; templat tidak meniru arah khusus persona (fade/rentang).
+- Manual: `uji_hipotesis.py --once` (menilai + cetak ringkasan), `--json`.
+
 ## Rencana swing bertahap (P-20)
 
 Akun `swing` memakai **rencana** (`swing_plan`, skema paper v4), bukan order tunggal: beberapa leg entry bergabung ke SATU posisi (`positions.plan_group`,
@@ -460,7 +479,7 @@ Agent menulis hipotesis **terstruktur** lewat `mcp_paper_tulis_hipotesis(pola, s
 (nilai = kelipatan ATR14 tf dari harga saat dibuat), `close_arah` (close bar terakhir horizon di sisi `arah`). `tf` 1h|4h|1d,
 `batas_hari` 1–7, maks 3/hari. Horizon mulai dari bucket **setelah** saat dibuat (tanpa look-back).
 
-Cron Hermes `uji-hipotesis` (`15 21 * * *`, `--no-agent`) menjalankan `uji_hipotesis.py --cron`:
+Cron Hermes `uji-hipotesis` (`15 21 * * *`, `--no-agent`; juga menilai SKIP kandidat kemarin, lihat "Penilaian SKIP") menjalankan `uji_hipotesis.py --cron`:
 1. hipotesis yang jatuh tempo (batas + 10 menit) dinilai dengan `kline_1h` (4h/1d di-resample): `benar | salah | ambigu`
    (ambigu bila bar < 90% dari yang diharapkan);
 2. **baseline** per hipotesis: 200 titik awal acak dalam 120 hari data, prediksi yang sama (jarak relatif/kelipatan ATR) →

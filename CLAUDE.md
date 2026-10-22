@@ -42,7 +42,8 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
   - `data/psikologi.sqlite` ← hanya `scripts/psikologi.py` (panel psikologi pasar, cron tiap jam)
   - `data/radar_jatah.json` ← hanya `scripts/mcp_server.py` (tool `tambah_jatah_radar`, hanya atas perintah pemilik `/radar N`); `pemindai.py` membacanya
   - `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.jsonl` (append), `pasar/pelajaran-usulan.md` ← hanya `scripts/mcp_server.py`
-  - `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/pelajaran.jsonl`, `pasar/pelajaran.md` ← hanya `scripts/uji_hipotesis.py`
+  - `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/skip-hasil.jsonl`, `pasar/skip.md`, `pasar/pelajaran.jsonl`, `pasar/pelajaran.md`
+    ← hanya `scripts/uji_hipotesis.py` (penilaian SKIP lewat modul murni `scripts/kontrafaktual.py`)
     (skrip yang menilai; agent dan manusia tidak mengedit view ini — pemilik memutuskan usulan di `pelajaran-usulan.md`)
   Jangan menulis SQL ke DB ini dari tempat lain. Agent hanya memakai tool MCP (`place_order`/`cancel_order`/…).
 - Agent (Hermes) tidak diberi toolset terminal/file/browser; integritas mesin bergantung pada itu. Jangan melonggarkan
@@ -63,7 +64,7 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 ```
 scripts/   common.py, collector.py, paper_engine.py, budget_guard.py, budget_proxy.py, analisis.py,
            mcp_server.py, pemindai.py, notifikasi.py, evaluasi.py, hipotesis.py, uji_hipotesis.py, psikologi.py,
-           referensi.py, konversi_buku.py, dashboard.py (baca saja, 127.0.0.1:8586),
+           referensi.py, konversi_buku.py, kontrafaktual.py, dashboard.py (baca saja, 127.0.0.1:8586),
            schema_{pasar,paper,budget,kandidat,psikologi}.sql
 hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron,uji_cron,psikologi_cron,susulan_cron,arena_cron}.py, config.snippet.yaml, cron.cmd, sync.py
 tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)

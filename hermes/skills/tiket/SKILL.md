@@ -42,6 +42,8 @@ metadata:
    Kode tolak: `LIMIT_CROSSES` → harga sudah lewat level, nilai ulang sekali atau SKIP (jangan `market=true`);
    `BUDGET_TIKET`/`TIKET_EOD` → SKIP; lainnya → laporkan apa adanya.
 8. **Selalu** `mcp_paper_tulis_jurnal(jenis="keputusan", judul, isi=<rencana + alasan>, symbol, kandidat_id, order_id, aturan_dilanggar=<ID playbook atau kosong>)`, termasuk saat SKIP.
+   Saat SKIP isi juga `alasan_skip` (satu kategori: RR_P19, TP_ATR15, TREN_15M, SENTUHAN, LIQ_ATR5, SUDAH_LARI, FUNDING, BASI, LIMIT_CROSSES, BUDGET, EOD,
+   DUPLIKAT, PLAYBOOK, LAIN); SKIP dinilai skrip esok hari dengan order bayangan mekanis.
 9. Balasan Telegram ≤ 12 baris: keputusan per kandidat, id order, alasan utama, risiko, satu kalimat
    "ini paper trading; untuk uang sungguhan keputusan ada di Anda".
 

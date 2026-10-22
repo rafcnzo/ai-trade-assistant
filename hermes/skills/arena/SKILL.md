@@ -31,8 +31,12 @@ Semua persona tunduk pada playbook (`mcp_paper_baca_memori("playbook")`) dan mes
    | `rentang` | tren 15m `sideways` **dan** ada `KOMPRESI` atau level adalah tepi range (≥ 3 sentuhan) dengan sisi lain range jelas | melawan gerakan ke tepi: di tepi atas SHORT, tepi bawah LONG; TP = tengah range (≤ 1×ATR 15m) |
 
    Semua persona: leverage dari `tabel_tiket` dengan `x_atr.5m ≥ 2`; `LIMIT_CROSSES` → SKIP (jangan market).
-5. Jurnal **per persona per kandidat**: `mcp_paper_tulis_jurnal(jenis="keputusan", judul="[<persona>] K<id> SIMBOL ARAH - order #n|SKIP", isi, symbol, kandidat_id, order_id, aturan_dilanggar)`.
-   SKIP cukup satu kalimat alasan (syarat mana yang gagal).
+5. Jurnal **per persona per kandidat**: `mcp_paper_tulis_jurnal(jenis="keputusan", judul="[<persona>] K<id> SIMBOL ARAH - order #n|SKIP", isi, symbol, kandidat_id, order_id, aturan_dilanggar, alasan_skip)`.
+   SKIP cukup satu kalimat alasan (syarat mana yang gagal) **dan** `alasan_skip` = satu kategori syarat yang paling menentukan:
+   `RR_P19` · `TP_ATR15` · `TREN_15M` · `SENTUHAN` · `LIQ_ATR5` · `SUDAH_LARI` · `FUNDING` · `BASI` · `LIMIT_CROSSES` · `BUDGET` · `EOD` · `DUPLIKAT` ·
+   `PANEL_FADE` (fade) · `NO_VOL_TEMBUS` (breakout) · `NO_SIDEWAYS` (rentang) · `PLAYBOOK` · `LAIN`.
+   Setiap SKIP dinilai skrip esok hari dengan order bayangan mekanis; alasan yang terbukti menyaring atau sering melewatkan peluang
+   muncul di `pasar/pelajaran.md` bagian "Dari keputusan SKIP" — jangan mengubah keputusan supaya angka itu terlihat bagus.
 6. Balasan Telegram ≤ 14 baris: satu baris per persona yang masuk (akun, simbol, arah, lev, entry, TP, liq) dan satu baris ringkas untuk
    persona yang SKIP ("fade: SKIP, tidak ada divergensi"). Tutup: "paper trading; keputusan uang sungguhan ada di Anda".
 

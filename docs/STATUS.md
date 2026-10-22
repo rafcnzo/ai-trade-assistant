@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-15 11:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-22 15:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -41,6 +41,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Selesai & terpasang** (138 tes; cron pemindai → skill arena, nilai-arena mingguan, 28 tool, dashboard tab Arena) |
+| SK | Setiap SKIP jadi sampel: `kontrafaktual.py` + tahap `nilai_skip` di `uji_hipotesis.py` (order bayangan mekanis per kandidat, label SKIP per analis/alasan), `pasar/skip-hasil.jsonl`, `pasar/skip.md`, pelajaran otomatis `LS-NN`, `tulis_jurnal(alasan_skip)`, dashboard "SKIP tepat"; K1–K5, M6+, D8+ (164 tes); backfill 11–21 Okt | **Selesai & terpasang** |
 | SW | Swing bertahap (P-20, uji): skema paper v4 (`swing_plan`, `plan_group`), tangga/piramida, TP 50/25/runner trailing, breakeven, 31 tool, skill `swing`, menu `/swing`; T29–T37, M18, N5, D9 (157 tes) | **Kode selesai**; deploy: restart collector + setup_hermes + gateway |
 | RD2 | `/radar <N>`: tool `tambah_jatah_radar` (29 tool) → `data/radar_jatah.json`, pemindai menambah cap hari itu; skill `radar`, menu menggantikan `/usage`; M17, S13 (145 tes) | **Selesai & terpasang** |
 | RD | Radar: cap 3 wake/jam (G5) + `score_min` 3 → 4, karena 12 wake harian habis pukul 09:31 dan skor 3 hampir selalu di-SKIP (S12, 143 tes) | **Selesai & terpasang** |
@@ -122,6 +123,9 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 ## Keputusan yang berlaku
 
 - Jaringan rumah memblokir DNS Binance → DoH di dalam skrip; DNS Windows tidak diubah.
+- Penilaian SKIP (22 Okt, keputusan user): order bayangan = templat mekanis (bukan rencana tulisan AI); pelajaran SKIP ditulis skrip; AI hanya
+  menambah satu kategori `alasan_skip`. Temuan awal backfill 11–21 Okt: templat semua kandidat rata-rata −$0,31/trade (TP 86, HANGUS 92) →
+  SKIP secara umum tepat, tetapi akurasi per analis 54–57 % ≈ SKIP acak 54 %: analis belum memilih kandidat lebih baik dari acak.
 - Swing bertahap (15 Okt, keputusan user): mode tangga/piramida dipilih AI per rencana; TP 50% / 25% / runner 25% trailing 2×ATR 15m; $10 total per rencana;
   maks 2 rencana; R:R rencana ≥ 2,5; setelah TP1 breakeven + leg sisa dibatalkan; `close_reason=TRAIL` untuk runner; status playbook P-20 = uji.
 - Arena (12 Okt): persona = akun jenis `tiket` di tabel `account`; seleksi mekanis mingguan (≥ 30 trade, ≥ 30 hari, kalah dari acaknya

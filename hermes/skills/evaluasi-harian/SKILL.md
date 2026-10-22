@@ -14,7 +14,7 @@ metadata:
 1. `mcp_paper_waktu_sekarang`, lalu `mcp_paper_status_sistem` (collector, proxy, pemindai, kill switch).
 2. FAKTA hari ini: `mcp_paper_laporan_paper`, `mcp_paper_riwayat`, `mcp_paper_budget_tiket`, `mcp_paper_biaya_api`.
 3. Baca memori: `mcp_paper_baca_memori("pelajaran")` (pelajaran yang sudah dinilai skrip — pakai sebagai konteks),
-   `mcp_paper_baca_memori("hipotesis")` (hasil uji hipotesis 23:40 malam ini: benar/salah/ambigu + baseline),
+   `mcp_paper_baca_memori("hipotesis")` (hasil uji hipotesis 21:15 malam ini: benar/salah/ambigu + baseline),
    `mcp_paper_statistik_lulus` (sampel, expectancy, tiket vs akun `acak`, kepatuhan; tulis "tidak tersedia" apa adanya).
    Lalu keputusan sendiri: `mcp_paper_baca_memori("jurnal")`. **Untuk setiap posisi yang ditutup hari itu panggil
    `mcp_paper_autopsi_posisi(id)`** dan tulis 2–3 kalimat per posisi: seberapa dekat ke TP (`persen_jalan_ke_tp`, kapan), kapan

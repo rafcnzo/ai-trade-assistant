@@ -3,6 +3,19 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-22 (sore, 15:30) — laptop Windows — setiap SKIP jadi sampel belajar (kontrafaktual mekanis + pelajaran otomatis)
+
+**Apa:** modul murni `scripts/kontrafaktual.py` (parser keputusan jurnal termasuk rentang `K175-K179`, klasifikasi 17 kategori alasan, templat order
+bayangan per kandidat: limit di level, leverage layak terendah, TP 1,5×ATR15m, breakeven P-18, tutup 23:50; simulasi bar 1m dengan helper mesin
+paper; label SKIP benar/salah/netral/ambigu; pelajaran `LS-NN`; rekap `pasar/skip.md`). `uji_hipotesis.py`: tahap `nilai_skip` (kandidat hari
+yang sudah tutup, sekali per kandidat, ambigu ditunda ≤ 36 jam), pelajaran hipotesis & SKIP digabung di `pelajaran.jsonl/md` (bagian "Dari keputusan
+SKIP"), baris 🚦 di pesan Telegram. `mcp_server.tulis_jurnal(alasan_skip)` (validasi kosakata, meta `alasan=`); skill arena & tiket mengisinya;
+dashboard Ringkasan "SKIP tepat x %" per analis. Tes K1–K5 + M6/D8 diperluas (164 hijau). Backfill kandidat 11–21 Okt.
+
+**Kenapa:** permintaan user 22 Okt: SKIP (~60/hari, vs ~1 order/hari) harus dipantau apakah tepat dan menjadi pengalaman walau tidak ada posisi.
+Keputusan user: templat mekanis, pelajaran ditulis skrip. **File:** `scripts/{kontrafaktual,uji_hipotesis,hipotesis,mcp_server,dashboard}.py`,
+`dashboard/app.js`, `hermes/skills/{arena,tiket,evaluasi-harian}`, `tests/{test_kontrafaktual,test_mcp_server,test_dashboard}.py`, docs, CLAUDE.md.
+
 ## 2026-10-15 (siang, 11:30) — laptop Windows — swing bertahap: entry tangga/piramida + TP 50/25/runner trailing (P-20)
 
 **Apa:** skema paper v4 (`swing_plan`; `orders.plan_group/leg_pct/tp_rank`; `positions.plan_group/mode/qty_awal/legs_n/trail_dist/trail_on/breakeven_done`).

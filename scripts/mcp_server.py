@@ -29,6 +29,7 @@ import analisis as A  # noqa: E402
 import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
+import kontrafaktual as K  # noqa: E402
 import psikologi as PSI  # noqa: E402
 import referensi as RF  # noqa: E402
 from budget_guard import BudgetGuard  # noqa: E402
@@ -548,14 +549,18 @@ class Tools:
         return p
 
     def tulis_jurnal(self, jenis: str, judul: str, isi: str, symbol: Optional[str] = None, kandidat_id: Optional[int] = None,
-                     order_id: Optional[int] = None, position_id: Optional[int] = None, aturan_dilanggar: Optional[str] = None) -> dict:
-        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP. aturan_dilanggar: ID playbook (mis. "P-03,P-07") bila rencana melanggar aturan playbook."""
+                     order_id: Optional[int] = None, position_id: Optional[int] = None, aturan_dilanggar: Optional[str] = None,
+                     alasan_skip: Optional[str] = None) -> dict:
+        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP. aturan_dilanggar: ID playbook (mis. "P-03,P-07") bila rencana melanggar aturan playbook. alasan_skip (saat SKIP, satu kategori): RR_P19|TP_ATR15|TREN_15M|SENTUHAN|LIQ_ATR5|SUDAH_LARI|FUNDING|BASI|LIMIT_CROSSES|BUDGET|EOD|DUPLIKAT|PANEL_FADE|NO_VOL_TEMBUS|NO_SIDEWAYS|PLAYBOOK|LAIN — setiap SKIP dinilai skrip esok hari dengan order bayangan mekanis."""
         def run():
             if jenis not in ("keputusan", "catatan"):
                 raise ValueError("jenis harus keputusan|catatan")
+            alasan = alasan_skip.strip().upper() if alasan_skip else None
+            if alasan and alasan not in K.KATEGORI:
+                raise ValueError(f"alasan_skip harus salah satu dari: {', '.join(K.KATEGORI)}")
             now = self.ctx.clock()
             meta = " ".join(f"{k}={v}" for k, v in (("symbol", symbol), ("kandidat", kandidat_id), ("order", order_id), ("posisi", position_id),
-                                                 ("aturan_dilanggar", aturan_dilanggar)) if v)
+                                                 ("aturan_dilanggar", aturan_dilanggar), ("alasan", alasan)) if v)
             block = f"\n## {C.to_wib(now).strftime('%H:%M')} WIB — {jenis} — {judul.strip()}\n" + (f"_{meta}_\n\n" if meta else "\n") + isi.strip() + "\n"
             p = self._append(f"jurnal/agent/{C.day_wib(now)}.md", block)
             return {"ok": True, "path": p.relative_to(self.ctx.root).as_posix(), "bytes": len(block.encode('utf-8'))}

@@ -22,6 +22,7 @@ import analisis as A  # noqa: E402
 import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
+import kontrafaktual as K  # noqa: E402
 import psikologi as PSI  # noqa: E402
 from paper_engine import ACAK, LONG, SWING, TIKET, EngineConfig, SqliteMarket, budget_harian  # noqa: E402
 from evaluasi import daftar_akun, papan_arena  # noqa: E402
@@ -354,6 +355,7 @@ class Data:
                     top = [dict(x) for x in pasar.execute(
                         "SELECT ts, symbol, rank, last, pct_24h, quote_volume FROM ticker_24h WHERE ts=? ORDER BY rank LIMIT ?", (int(r[0]), int(top_n)))]
             analis: list[dict] = []
+            skip = K.akurasi_persona(H.load_jsonl(self.root / "pasar" / "skip-hasil.jsonl"), self.clock() - K.LS_JENDELA_HARI * C.DAY_MS)
             if paper:
                 for a in daftar_akun(paper):
                     rows = [dict(x) for x in paper.execute("SELECT * FROM positions WHERE account=? ORDER BY id", (a["name"],))]
@@ -374,6 +376,7 @@ class Data:
                         "rata_durasi_mnt": (sum(durasi) / len(durasi)) if durasi else None,
                         "alasan": dict(alasan), "pola": [{"pola": k, "n": n} for k, n in pola],
                         "jam_sibuk": (jam.most_common(1)[0][0] if jam else None),
+                        "skip": skip.get(a["name"]),   # akurasi SKIP 30 hari (pasar/skip-hasil.jsonl, ditulis uji_hipotesis.py)
                     })
             return {"top_koin": top, "analis": analis}
         finally:
