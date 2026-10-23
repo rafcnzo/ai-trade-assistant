@@ -3,6 +3,21 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-23 (pagi, 08:30) — laptop Windows — laporan wake arena selalu tabel baku (Telegram Rich Message) + dashboard Keputusan analis
+
+**Apa:** modul murni `scripts/keputusan.py` (`kelompok()` keputusan per kandidat dari jurnal + fakta kandidat + order/posisi + penilaian SKIP;
+`render_markdown()` judul · fakta · tabel `Persona | Hasil | Alasan`; harga tanpa notasi ilmiah; sel tanpa pipa). `mcp_server.tulis_jurnal` mengembalikan
+`ringkasan_markdown` + `n_persona` bila `kandidat_id` diisi; skill arena (v1.1) & tiket wajib menyalinnya persis, SOUL menyebut tabel baku.
+`kontrafaktual.parse_keputusan` menambah `symbol`, `arah`, `order_id`. Dashboard: `/api/keputusan?hari=`, Catatan AI "Keputusan analis" (tabel per
+kandidat, kolom Penilaian, kolom sejajar, versi ponsel), baris keputusan terakhir di kolom analis, berkas statis `Cache-Control: no-cache`.
+Tes KP1–KP3 (termasuk pola pemisah tabel Hermes), M6 & D11 diperluas — 168 hijau.
+
+**Kenapa:** keluhan user 23 Okt: pesan K221 tampil sebagai tabel kaya, K222 kembali jadi daftar. Teks mentah (`cron/output/6841faf27e63/*.md`)
+menunjukkan AI menulis format bebas; adapter Telegram Hermes hanya memakai `sendRichMessage` bila ada tabel (`_needs_rich_rendering`), selain itu
+MarkdownV2. User juga meminta dashboard dirombak dengan format yang sama. **File:** `scripts/{keputusan,kontrafaktual,mcp_server,dashboard}.py`,
+`dashboard/{index.html,app.js,style.css}`, `hermes/{SOUL.md,skills/arena,skills/tiket}`, `tests/{test_keputusan,test_mcp_server,test_dashboard}.py`,
+docs, DESIGN.md, CLAUDE.md.
+
 ## 2026-10-22 (sore, 15:30) — laptop Windows — setiap SKIP jadi sampel belajar (kontrafaktual mekanis + pelajaran otomatis)
 
 **Apa:** modul murni `scripts/kontrafaktual.py` (parser keputusan jurnal termasuk rentang `K175-K179`, klasifikasi 17 kategori alasan, templat order

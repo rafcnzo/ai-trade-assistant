@@ -157,6 +157,12 @@ class TestNotes(Base):
         r2 = self.tools.tulis_jurnal("keputusan", "[tiket] K8 BTCUSDT LONG - SKIP", "P-19", symbol=BTC, kandidat_id=8, alasan_skip="rr_p19")
         self.assertTrue(r2["ok"], r2)
         self.assertIn("kandidat=8 alasan=RR_P19", (self.root / "jurnal" / "agent" / f"{DAY}.md").read_text(encoding="utf-8"))
+        self.assertIn("| tiket | SKIP | P-19 |", r2["ringkasan_markdown"])                     # tabel baku untuk balasan Telegram
+        self.assertEqual(r2["n_persona"], 1)
+        r3 = self.tools.tulis_jurnal("keputusan", "[fade] K8 BTCUSDT LONG - SKIP", "tanpa divergensi", symbol=BTC, kandidat_id=8, alasan_skip="PANEL_FADE")
+        self.assertEqual(r3["n_persona"], 2)
+        self.assertTrue(r3["ringkasan_markdown"].startswith("**Arena K8 · BTCUSDT LONG · 10:03 WIB** — semua persona SKIP"))
+        self.assertNotIn("ringkasan_markdown", self.tools.tulis_jurnal("catatan", "x", "y", kandidat_id=8))
         bad = self.tools.tulis_jurnal("keputusan", "K9 SKIP", "x", alasan_skip="MALAS")
         self.assertFalse(bad["ok"])
         self.assertIn("alasan_skip harus salah satu", bad["error"])

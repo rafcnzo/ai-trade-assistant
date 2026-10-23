@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import common as C  # noqa: E402
 import dashboard as D  # noqa: E402
 from common import MINUTE_MS, connect  # noqa: E402
-from fixtures import BTC, PEM, bars_setup_long, seed_pasar, t  # noqa: E402
+from fixtures import BTC, DAY, PEM, bars_setup_long, seed_pasar, t  # noqa: E402
 from paper_engine import LONG, EngineConfig, OrderRequest, PaperEngine, SqliteMarket  # noqa: E402
 
 END = t("10:00")
@@ -90,6 +90,22 @@ class TestArenaApi(Base):
         b = self.client.get("/api/ringkasan").json()["budget"]["swing"]
         self.assertEqual((b["open"], b["pending"]), (0, 1))
         pasar_ro.close()
+
+    def test_d11_keputusan_per_kandidat(self):
+        self.assertEqual(self.client.get("/api/keputusan?hari=2026-01-01").json()["ada"], False)
+        (self.root / "jurnal" / "agent").mkdir(parents=True)
+        (self.root / "jurnal" / "agent" / f"{DAY}.md").write_text(
+            "## 10:01 WIB — keputusan — [tiket] K5 PEMUSDT LONG - SKIP\n_symbol=PEMUSDT kandidat=5 alasan=TREN_15M_\n\nMelawan tren.\n\n"
+            "## 10:02 WIB — catatan — lain\nCatatan bebas.\n", encoding="utf-8")
+        import hipotesis as H
+        H.append_jsonl(self.root / "pasar" / "skip-hasil.jsonl", {"kandidat_id": 5, "run_ts": END, "hasil": "TP", "net": 0.3,
+                                                                "keputusan": {"tiket": {"keputusan": "SKIP", "alasan": "TREN_15M", "label": "salah"}}})
+        k = self.client.get(f"/api/keputusan?hari={DAY}").json()
+        self.assertTrue(k["ada"])
+        g = k["kandidat"][0]
+        self.assertEqual((g["kandidat_id"], g["symbol"], g["arah"], g["fakta"]), (5, "PEMUSDT", "LONG", None))
+        self.assertEqual((g["baris"][0]["label_alasan"], g["baris"][0]["penilaian"]["jenis"]), ("melawan tren 15m", "salah"))
+        self.assertIn("Catatan bebas.", k["lain_md"])
 
     def test_d8_ringkas_top_koin_dan_profil_analis(self):
         self.assertEqual(self.client.get("/api/ringkas").json(), {"top_koin": [], "analis": []})

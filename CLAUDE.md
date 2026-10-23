@@ -64,7 +64,7 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 ```
 scripts/   common.py, collector.py, paper_engine.py, budget_guard.py, budget_proxy.py, analisis.py,
            mcp_server.py, pemindai.py, notifikasi.py, evaluasi.py, hipotesis.py, uji_hipotesis.py, psikologi.py,
-           referensi.py, konversi_buku.py, kontrafaktual.py, dashboard.py (baca saja, 127.0.0.1:8586),
+           referensi.py, konversi_buku.py, kontrafaktual.py, keputusan.py, dashboard.py (baca saja, 127.0.0.1:8586),
            schema_{pasar,paper,budget,kandidat,psikologi}.sql
 hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron,uji_cron,psikologi_cron,susulan_cron,arena_cron}.py, config.snippet.yaml, cron.cmd, sync.py
 tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)

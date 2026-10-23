@@ -133,8 +133,14 @@ def parse_keputusan(md: str) -> list[dict]:
             continue
         teks = " ".join(teks_lines)[:400]
         alasan = meta.get("alasan") if meta.get("alasan") in KATEGORI else (klasifikasi_alasan(judul + " " + teks, persona) if kep == "SKIP" else None)
+        om = re.search(r"order #(\d+)", judul, re.I)
+        order_id = int(meta["order"]) if meta.get("order", "").isdigit() else (int(om.group(1)) if om else None)
+        am = re.search(r"\b(LONG|SHORT)\b", judul)
+        sm = re.search(r"K\d+(?:\s*[-–]\s*K?\d+)?\s+([^\s\-]+USDT)\b", judul)
+        symbol = meta.get("symbol") or (sm.group(1) if sm else None)
         for kid in sorted(ids):
-            out.append({"persona": persona, "kandidat_id": kid, "keputusan": kep, "alasan": alasan, "teks": teks, "jam": jam})
+            out.append({"persona": persona, "kandidat_id": kid, "keputusan": kep, "alasan": alasan, "teks": teks, "jam": jam,
+                        "order_id": order_id if kep == "ORDER" else None, "arah": am.group(1) if am else None, "symbol": symbol})
     return out
 
 
@@ -145,7 +151,7 @@ def keputusan_per_kandidat(rows: Iterable[dict]) -> dict:
         d = out.setdefault(r["kandidat_id"], {})
         cur = d.get(r["persona"])
         if cur is None or (cur["keputusan"] == "SKIP" and r["keputusan"] == "ORDER"):
-            d[r["persona"]] = {"keputusan": r["keputusan"], "alasan": r["alasan"], "teks": r["teks"], "jam": r["jam"]}
+            d[r["persona"]] = {k: r.get(k) for k in ("keputusan", "alasan", "teks", "jam", "order_id", "arah", "symbol")}
     return out
 
 

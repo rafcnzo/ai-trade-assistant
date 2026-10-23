@@ -1,7 +1,7 @@
 ---
 name: arena
 description: Menilai kandidat pemindai untuk SEMUA persona arena (tiket = price action, fade = lawan kerumunan, breakout = tembus + uji ulang, rentang = mean reversion) dan memasang order paper di akun masing-masing. Dipakai oleh cron pemindai-tiket. Untuk permintaan pemilik "cek setup" pakai skill tiket/cek.
-version: 1.0.0
+version: 1.1.0
 metadata:
   hermes:
     tags: [trading, paper, arena, persona]
@@ -37,10 +37,19 @@ Semua persona tunduk pada playbook (`mcp_paper_baca_memori("playbook")`) dan mes
    `PANEL_FADE` (fade) · `NO_VOL_TEMBUS` (breakout) · `NO_SIDEWAYS` (rentang) · `PLAYBOOK` · `LAIN`.
    Setiap SKIP dinilai skrip esok hari dengan order bayangan mekanis; alasan yang terbukti menyaring atau sering melewatkan peluang
    muncul di `pasar/pelajaran.md` bagian "Dari keputusan SKIP" — jangan mengubah keputusan supaya angka itu terlihat bagus.
-6. Balasan Telegram ≤ 14 baris: satu baris per persona yang masuk (akun, simbol, arah, lev, entry, TP, liq) dan satu baris ringkas untuk
-   persona yang SKIP ("fade: SKIP, tidak ada divergensi"). Tutup: "paper trading; keputusan uang sungguhan ada di Anda".
+6. **Balasan Telegram = format baku, selalu sama** (dirender sebagai pesan kaya di Telegram dan identik dengan dashboard):
+   - Untuk setiap kandidat yang dinilai, salin **persis** field `ringkasan_markdown` dari hasil `tulis_jurnal` kandidat itu yang
+     `n_persona`-nya terbesar (biasanya panggilan terakhir untuk kandidat itu). Isinya: judul, satu baris fakta, tabel `Persona | Hasil | Alasan`.
+     Jangan mengubah tabel menjadi daftar berpoin atau paragraf, jangan menambah/menghapus kolom, jangan menulis ulang angkanya.
+   - Beberapa kandidat → tabel-tabel itu berurutan, dipisah satu baris kosong.
+   - Setelah semua tabel boleh **satu** baris `**Catatan:** …` (≤ 1 kalimat) hanya bila ada hal penting yang tidak ada di tabel.
+   - Baris terakhir selalu: `Paper trading; keputusan uang sungguhan ada di Anda.`
+   - Bila `ringkasan_markdown` tidak ada (tool gagal), tulis sendiri tabel dengan kolom yang sama — tetap tabel, bukan daftar.
+   - Tidak ada kandidat / data BASI: satu baris saja, lalu berhenti.
 
 ## Jebakan
 - Jangan memakai akun yang `boleh_buka=false`/`pensiun`; mesin menolak (`BUDGET_TIKET`, `ACCOUNT_PENSIUN`) dan itu pelanggaran.
 - Jangan memaksa persona masuk supaya "ada trade"; SKIP adalah hasil sah — arena mengukur persona yang disiplin, bukan yang rajin.
 - Satu kandidat boleh dipakai beberapa persona dengan arah berbeda (mis. breakout LONG, fade SHORT) — itu sah, akunnya terpisah.
+- Jangan memformat ulang balasan sesuka hati (daftar berpoin, paragraf "Interpretasi"): tanpa tabel, Telegram jatuh ke format biasa dan
+  pemilik melihat pesan yang berganti-ganti bentuk. Tabel baku dari `tulis_jurnal` adalah satu-satunya format laporan wake.

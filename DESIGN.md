@@ -505,6 +505,20 @@ Tabel Riwayat dipangkas ke kolom inti (posisi: Ditutup, Analis, Koin, Keluar, Ha
 Apa yang terjadi); sel Koin adalah label bergaris putus (`tabindex="0"`) yang tooltip-nya memuat harga masuk/keluar,
 leverage, fee, rencana, dan pembuat order.
 
+### Keputusan analis (Catatan AI)
+Format yang sama dengan pesan Telegram, satu blok per kandidat radar (terbaru dulu, 6 pertama terbuka, sisanya di `details` "N kandidat lebih
+awal"). Di atasnya kalimat ringkas `.ringkas`: "N kandidat · N order · N SKIP · SKIP tepat **a/b**" ("SKIP tepat" bergaris putus).
+Blok `.kep` dipisah garis rambut (bukan kartu): baris kepala `.kep-h` 14 px = **K221** tebal, label bergaris putus "**DOGE** beli" (tooltip:
+mark, level, sentuhan, ATR 15m, tren 15m, tanda, skor radar, hasil order bayangan), jam pudar 12.5 px, ringkas redup ("semua analis SKIP" /
+"1 order (fade) · 2 SKIP"); lalu `tablewrap` tanpa batas tinggi dengan `table-layout:fixed` dan kolom tetap agar semua tabel sejajar:
+Analis 110 px (nama dalam warna persona, 600) · Hasil 150 px ("SKIP" redup, atau "**order #31** beli" bergaris putus dengan tooltip limit/leverage/
+target/status) · Alasan (label kategori bergaris putus, tooltip = kalimat alasan utuh; sel `ellipsis`) · Penilaian 170 px (tag `ok` "tepat",
+tag `belum` "terlewat +$0,56" dua desimal dengan angka empat desimal di tooltip, "netral"/"belum dinilai"/"tidak tersedia" pudar ber-tooltip,
+atau hasil order nyata: angka mint/koral 600 + alasan keluar redup, "berjalan" kuningan). Tabel min 560 px (scroll di dalam tablewrap); ≤ 640 px
+min-width dilepas dan kolom 78 / 60 / sisa / 124 px sehingga Analis, Hasil, dan Penilaian langsung terlihat.
+Di kolom analis (Sekarang), baris `.terakhir` menampilkan yang lebih baru antara kejadian mesin dan keputusan jurnal: "12 mnt SKIP K222 1000PEPE ·
+**R:R < 0,5 (P-19)**" dengan label alasan bergaris putus (tooltip = kalimat alasan).
+
 ### Details
 Pembuka bagian sekunder: garis rambut atas, margin atas 14 px, summary redup 13.5 px padding 10 px dengan indent kiri
 18 px untuk chevron SVG pudar 12 px (mask) yang berputar 90° dalam 150 ms saat terbuka; marker bawaan disembunyikan;

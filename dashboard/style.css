@@ -147,6 +147,20 @@ tr.acak{color:var(--muted)}
 .profil li .c b{color:var(--ink);font-weight:500}
 @media(max-width:1100px){.ringkasan{grid-template-columns:1fr}}
 
+/* ---- KEPUTUSAN ANALIS (Catatan AI) */
+.keputusan .ringkas{margin:0 0 6px}
+.kep-list{list-style:none;margin:0;padding:0}
+.kep{padding:12px 0 14px;border-top:1px solid var(--line)}
+.kep-list>.kep:first-child{border-top:0;padding-top:6px}
+.kep-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:14px}
+.kep-h time{color:var(--dim);font-size:12.5px}
+.kep .tablewrap{max-height:none}
+.kep table{table-layout:fixed;min-width:560px}
+.kep th:nth-child(1){width:110px}.kep th:nth-child(2){width:150px}.kep th:nth-child(4){width:170px}
+.kep td{overflow:hidden;text-overflow:ellipsis}
+.keputusan+.md{margin-top:18px}
+.keputusan[hidden],.md[hidden]{display:none}
+
 /* ---- PERINGKAT */
 .peringkat{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
 #chart-arena{height:240px;width:100%}
@@ -196,6 +210,7 @@ details summary:hover{color:var(--ink)}
   .health{justify-content:flex-start}
   .meja{grid-template-columns:1fr}
   #chart{height:320px}
+  .kep table{min-width:0}.kep th:nth-child(1){width:78px}.kep th:nth-child(2){width:60px}.kep th:nth-child(4){width:124px}
   th,td{padding:7px 8px}
 }
 @media(prefers-reduced-motion:reduce){.pulse,.feed li.masuk{animation:none}}

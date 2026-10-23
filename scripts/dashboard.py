@@ -22,6 +22,7 @@ import analisis as A  # noqa: E402
 import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
+import keputusan as KP  # noqa: E402
 import kontrafaktual as K  # noqa: E402
 import psikologi as PSI  # noqa: E402
 from paper_engine import ACAK, LONG, SWING, TIKET, EngineConfig, SqliteMarket, budget_harian  # noqa: E402
@@ -384,6 +385,44 @@ class Data:
                 if c:
                     c.close()
 
+    def keputusan(self, hari: Optional[str] = None) -> dict:
+        """Keputusan arena per kandidat untuk satu hari WIB (format sama dengan pesan Telegram), ditambah hasil order nyata
+        dan penilaian SKIP (pasar/skip-hasil.jsonl). Baca saja."""
+        day = hari or C.day_wib(self.clock())
+        f = self.root / "jurnal" / "agent" / f"{day}.md"
+        if not f.exists():
+            return {"hari": day, "ada": False, "kandidat": [], "lain_md": ""}
+        md_text = f.read_text(encoding="utf-8")
+        rows = K.parse_keputusan(md_text)
+        ids = sorted({r["kandidat_id"] for r in rows})
+        oids = sorted({r["order_id"] for r in rows if r.get("order_id")})
+        kand: dict = {}
+        k = self._ro(self.kandidat_p)
+        if k is not None and ids:
+            try:
+                kand = {r["id"]: dict(r) for r in k.execute(f"SELECT * FROM kandidat WHERE id IN ({','.join('?' * len(ids))})", ids)}
+            finally:
+                k.close()
+        elif k is not None:
+            k.close()
+        orders: dict = {}
+        posisi: dict = {}
+        paper = self._ro(self.paper_p)
+        if paper is not None and oids:
+            try:
+                ph = ",".join("?" * len(oids))
+                orders = {r["id"]: dict(r) for r in paper.execute(f"SELECT * FROM orders WHERE id IN ({ph})", oids)}
+                posisi = {r["entry_order_id"]: dict(r) for r in paper.execute(f"SELECT * FROM positions WHERE entry_order_id IN ({ph})", oids)}
+            finally:
+                paper.close()
+        elif paper is not None:
+            paper.close()
+        want = set(ids)
+        skip = {int(r["kandidat_id"]): r for r in H.load_jsonl(self.root / "pasar" / "skip-hasil.jsonl") if int(r.get("kandidat_id", -1)) in want}
+        out = KP.kelompok(md_text, kand, orders, posisi, skip, day)
+        out["ada"] = True
+        return out
+
     def teks(self, jenis: str, hari: Optional[str]) -> dict:
         day = hari or C.day_wib(self.clock())
         if jenis == "hipotesis":
@@ -430,6 +469,8 @@ def make_app(data: Optional[Data] = None, static_dir: Path = STATIC_DIR):
     d = data or Data()
     log = logging.getLogger("dashboard")
 
+    NO_CACHE = {"Cache-Control": "no-cache"}   # browser selalu memeriksa versi baru app.js/style.css (304 bila tidak berubah)
+
     def guard(fn):
         async def handler(request):
             try:
@@ -445,14 +486,14 @@ def make_app(data: Optional[Data] = None, static_dir: Path = STATIC_DIR):
 
     async def index(request):
         f = static_dir / "index.html"
-        return FileResponse(str(f)) if f.exists() else PlainTextResponse("dashboard/index.html tidak ada", status_code=404)
+        return FileResponse(str(f), headers=NO_CACHE) if f.exists() else PlainTextResponse("dashboard/index.html tidak ada", status_code=404)
 
     async def static(request):
         name = request.path_params["name"]
         if "/" in name or "\\" in name or name.startswith(".") or ".." in name:
             return PlainTextResponse("ditolak", status_code=400)
         f = static_dir / name
-        return FileResponse(str(f)) if f.is_file() else PlainTextResponse("tidak ada", status_code=404)
+        return FileResponse(str(f), headers=NO_CACHE) if f.is_file() else PlainTextResponse("tidak ada", status_code=404)
 
     routes = [
         Route("/", index),
@@ -469,6 +510,7 @@ def make_app(data: Optional[Data] = None, static_dir: Path = STATIC_DIR):
         Route("/api/kandidat", guard(lambda r: d.kandidat())),
         Route("/api/kejadian", guard(lambda r: d.kejadian(int(qp(r, "limit", 40))))),
         Route("/api/ringkas", guard(lambda r: d.ringkas(int(qp(r, "n", 5))))),
+        Route("/api/keputusan", guard(lambda r: d.keputusan(qp(r, "hari")))),
         Route("/api/teks", guard(lambda r: d.teks(qp(r, "jenis", "jurnal"), qp(r, "hari")))),
     ]
     return Starlette(routes=routes)

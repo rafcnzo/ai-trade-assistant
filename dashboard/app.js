@@ -23,7 +23,7 @@ const wibT = (t) => new Date((t - OFF) * 1000).toLocaleString("id-ID", { timeZon
 const stripFm = (t) => (t.startsWith("---") && t.indexOf("\n---", 3) > 0) ? t.slice(t.indexOf("\n---", 3) + 4).trim() : t.trim();
 const api = async (p) => { const r = await fetch(p, { cache: "no-store" }); return r.json(); };
 const hasLWC = typeof LightweightCharts !== "undefined";
-const state = { symbol: null, tf: "5m", acak: false, lastBar: null, ps: "BTCUSDT", eq: "tiket", eqData: null, feedTop: null, symbolManual: false };
+const state = { kep: null, symbol: null, tf: "5m", acak: false, lastBar: null, ps: "BTCUSDT", eq: "tiket", eqData: null, feedTop: null, symbolManual: false };
 let akunList = [];
 
 const NAMA = { tiket: "Tiket", fade: "Fade", breakout: "Breakout", rentang: "Rentang", acak: "Kembaran acak", swing: "Swing" };
@@ -113,8 +113,19 @@ function orderLi(o) {
   const rinci = [`${STATUS_ORDER[o.status] || o.status}`, o.tp_price ? `Target ${px(o.tp_price)}` : null, `Gugur otomatis ${jam(o.expire_ts)} WIB`, o.plan_id ? `Rencana ${o.plan_id}` : null].filter(Boolean).join("\n");
   return `<li class="order"><div class="l1"><span class="tip" tabindex="0" data-tip="${esc(rinci)}"><b>${koin(o.symbol)}</b> ${arah(o.side)} ${o.leverage}×</span><span class="muted num">${o.price ? px(o.price) : "pasar"}</span></div><div class="l2">menunggu harga<span class="ke">·</span>gugur ${jam(o.expire_ts)}</div></li>`;
 }
+function keputusanTerakhir(acc) {
+  let best = null;
+  for (const g of (state.kep && state.kep.kandidat) || []) for (const b of g.baris) if (b.persona === acc && b.ts && (!best || b.ts > best.b.ts)) best = { g, b };
+  return best;
+}
 function terakhirDari(acc, feed) {
   const e = (feed || []).find(x => x.account === acc && x.type !== "ACAK_SHADOW" && x.type !== "ACAK_SKIP");
+  const k = keputusanTerakhir(acc);
+  if (k && (!e || k.b.ts > e.ts)) {
+    const apa = k.b.keputusan === "ORDER" ? `order #${k.b.order_id || "?"}` : "SKIP";
+    const why = k.b.keputusan === "SKIP" ? " · " + tip(esc(k.b.label_alasan || "alasan"), k.b.teks || "") : "";
+    return `<p class="terakhir"><time>${rel(k.b.ts)}</time> ${apa} K${k.g.kandidat_id} ${esc(koin(k.g.symbol))}${why}</p>`;
+  }
   return e ? `<p class="terakhir"><time>${rel(e.ts)}</time> ${esc(teksKejadian(e, true))}</p>` : "";
 }
 function renderMeja(r, feed) {
@@ -479,9 +490,75 @@ function md(src) {
   return out.join("");
 }
 
-// ---------------------------------------------------------------- CATATAN AI
+// ---------------------------------------------------------------- CATATAN AI: keputusan analis per kandidat (format sama dengan Telegram)
+const dtip = (label, text, cls = "") => `<span class="${cls}" tabindex="0" data-tip="${esc(text)}">${label}</span>`;
+function faktaTeks(g) {
+  const f = g.fakta;
+  const baris = f ? [`Mark ${px(f.mark)} · level ${px(f.level)}${f.sentuhan ? ` (${f.sentuhan} sentuhan)` : ""}`,
+    f.atr_15m ? `ATR 15m ${px(f.atr_15m)}${f.atr_15m_pct ? ` (${nf(2).format(f.atr_15m_pct)} %)` : ""}` : null,
+    f.tren_15m ? `Tren 15m ${f.tren_15m}` : null, (f.tanda || []).length ? `Tanda ${f.tanda.join(", ")}` : null, f.skor ? `Skor radar ${f.skor}` : null].filter(Boolean)
+    : ["Data kandidat tidak tersedia (sudah lewat retensi radar 30 hari)."];
+  if (g.bayangan && g.bayangan.hasil) baris.push(`Order bayangan mekanis: ${g.bayangan.hasil === "TIDAK_TERISI" ? "tidak terisi" : g.bayangan.hasil.toLowerCase()}${g.bayangan.net != null && g.bayangan.hasil !== "TIDAK_TERISI" ? ", " + usd(g.bayangan.net, true) : ""}`);
+  return baris.join("\n");
+}
+function hasilSel(b) {
+  if (b.keputusan !== "ORDER") return `<span class="muted">SKIP</span>`;
+  const o = b.order || {};
+  const rinci = [o.price ? `Limit ${px(o.price)}` : null, o.leverage ? `${o.leverage}×` : null, o.tp_price ? `Target ${px(o.tp_price)}` : null, o.status ? (STATUS_ORDER[o.status] || o.status.toLowerCase()) : null].filter(Boolean).join(" · ");
+  return dtip(`<b>order #${b.order_id || "?"}</b>${o.side ? " " + arah(o.side) : ""}`, rinci || "Rincian order tidak tersedia", "tip");
+}
+function alasanSel(b) {
+  const label = b.keputusan === "ORDER" ? "rencana" : (b.label_alasan || (b.teks ? b.teks.slice(0, 40) + (b.teks.length > 40 ? "…" : "") : "—"));
+  return b.teks ? tip(esc(label), b.teks) : `<span class="dim">${esc(label)}</span>`;
+}
+function penilaianSel(b) {
+  const p = b.penilaian || {};
+  const hasilKata = (h) => ({ TP: "kena target", HANGUS: "hangus", STOP_BE: "keluar di harga masuk", EOD: "ditutup 23:50" }[h] || (h || "").toLowerCase());
+  switch (p.jenis) {
+    case "benar": return dtip("tepat", `Order bayangan mekanis untuk kandidat ini ${hasilKata(p.hasil)} (${usd(p.net, true)}): SKIP menghindari rugi.`, "tag ok");
+    case "salah": return dtip(`terlewat ${(p.net > 0 ? "+" : "")}$${nf(2).format(Math.abs(p.net || 0))}`, `Order bayangan mekanis ${hasilKata(p.hasil)} (${usd(p.net, true)}): SKIP melewatkan peluang.`, "tag belum");
+    case "netral": return dtip("netral", "Harga tidak pernah menyentuh level kandidat; tidak ada untung atau rugi yang terlewat.", "dim");
+    case "ambigu": return dtip("tidak tersedia", "Data harga 1 menit hari itu tidak lengkap; kandidat tidak bisa dinilai.", "dim");
+    case "belum": return dtip("belum dinilai", "Dinilai skrip jam 21:15 setelah hari itu tutup (atau di susulan pagi bila laptop mati).", "dim");
+    case "hasil": return `<b class="${(p.net || 0) >= 0 ? "up" : "down"}">${usd(p.net, true)}</b> <span class="muted">${esc(ALASAN_PENDEK[p.hasil] || (p.hasil || "").toLowerCase())}</span>`;
+    case "berjalan": return `<span class="brass">berjalan</span>`;
+    case "order": return `<span class="muted">${esc(STATUS_ORDER[p.status] || (p.status || "").toLowerCase())}</span>`;
+    default: return `<span class="dim">—</span>`;
+  }
+}
+function grupKeputusan(g) {
+  return `<li class="kep"><div class="kep-h"><b>K${g.kandidat_id}</b> ${dtip(`<b>${esc(koin(g.symbol))}</b>${g.arah ? " " + arah(g.arah) : ""}`, faktaTeks(g), "tip")} <time>${esc(g.jam || "")}</time> <span class="muted">${esc((g.ringkas || "").replace("persona", "analis"))}</span></div>
+    <div class="tablewrap"><table><thead><tr><th>Analis</th><th>Hasil</th><th>Alasan</th><th>Penilaian</th></tr></thead><tbody>${g.baris.map(b => `<tr><td><b style="color:${WARNA[b.persona] || "inherit"}">${esc(nama(b.persona))}</b></td><td>${hasilSel(b)}</td><td>${alasanSel(b)}</td><td>${penilaianSel(b)}</td></tr>`).join("")}</tbody></table></div></li>`;
+}
+function renderKeputusan(k) {
+  const groups = k.kandidat || [];
+  if (!groups.length) return `<p class="empty">${k.ada ? "Belum ada keputusan analis untuk kandidat radar hari ini." : "Jurnal hari itu belum ada."}</p>`;
+  const semua = groups.flatMap(g => g.baris);
+  const nOrder = semua.filter(b => b.keputusan === "ORDER").length, nSkip = semua.length - nOrder;
+  const tepat = semua.filter(b => b.penilaian && b.penilaian.jenis === "benar").length, salah = semua.filter(b => b.penilaian && b.penilaian.jenis === "salah").length;
+  const head = `<p class="ringkas">${groups.length} kandidat · ${nOrder} order · ${nSkip} SKIP${tepat + salah ? ` · ${tip("SKIP tepat", "Dari SKIP yang sudah dinilai: berapa yang order bayangannya rugi (SKIP tepat) dibanding yang untung (peluang terlewat). Netral dan belum dinilai tidak dihitung.")} <b>${tepat}/${tepat + salah}</b>` : ""}</p>`;
+  const awal = groups.slice(0, 6), lama = groups.slice(6);
+  return head + `<ul class="kep-list">${awal.map(grupKeputusan).join("")}</ul>` +
+    (lama.length ? `<details><summary>${lama.length} kandidat lebih awal</summary><ul class="kep-list">${lama.map(grupKeputusan).join("")}</ul></details>` : "");
+}
+async function loadKeputusanHariIni() {
+  try { state.kep = await api("/api/keputusan"); } catch (e) { state.kep = null; }
+}
 async function loadJurnal() {
-  const q = new URLSearchParams({ jenis: $("#j-jenis").value }); if ($("#j-hari").value) q.set("hari", $("#j-hari").value);
+  const jenis = $("#j-jenis").value, hari = $("#j-hari").value;
+  if (jenis === "jurnal") {
+    const q = new URLSearchParams(); if (hari) q.set("hari", hari);
+    const k = await api("/api/keputusan?" + q.toString());
+    $("#keputusan").hidden = false;
+    setHTML("#keputusan", renderKeputusan(k));
+    const lain = (k.lain_md || "").trim();
+    $("#jurnal-md").hidden = !lain;
+    if (lain) setHTML("#jurnal-md", `<h3>Catatan lain</h3>` + md(lain));
+    return;
+  }
+  $("#keputusan").hidden = true;
+  $("#jurnal-md").hidden = false;
+  const q = new URLSearchParams({ jenis }); if (hari) q.set("hari", hari);
   const t = await api("/api/teks?" + q.toString());
   $("#jurnal-md").innerHTML = t.isi ? md(t.isi) : `<p class="dim">Belum ada catatan${t.path ? " (" + esc(t.path) + ")" : ""}.</p>`;
 }
@@ -491,6 +568,7 @@ $("#j-jenis").onchange = loadJurnal; $("#j-hari").onchange = loadJurnal;
 (async () => {
   initChart();
   try { await loadSymbols(); } catch (e) { $("#segar").textContent = "server tidak menjawab"; }
+  await loadKeputusanHariIni();
   await loadRingkasan();
   await loadChart(true);
   loadRingkas(); loadArena(); loadRiwayat(); loadPsikologi(); loadKandidat(); loadJurnal();
@@ -498,5 +576,6 @@ $("#j-jenis").onchange = loadJurnal; $("#j-hari").onchange = loadJurnal;
   setInterval(() => loadChart(false), 15000);
   setInterval(loadSymbols, 60000);
   setInterval(() => { loadRingkas(); loadArena(); loadEkuitas(); loadKandidat(); }, 60000);
+  setInterval(async () => { await loadKeputusanHariIni(); if ($("#j-jenis").value === "jurnal" && !$("#j-hari").value) loadJurnal(); }, 30000);
   setInterval(loadPsikologi, 300000);
 })();

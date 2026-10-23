@@ -112,6 +112,18 @@ Mesin menolak order akun persona (kind `tiket`) yang punya TP bila untung bersih
 (0 = mati; tes memakai 0). Bayangan acak dan swing tidak kena gate ini (swing punya `swing_min_rr` 2,5 sendiri). Asal: usulan agent U-001, diterima
 pemilik 14 Okt (playbook P-19).
 
+## Format laporan keputusan (Telegram = dashboard)
+
+Adapter Telegram Hermes (v0.21.6, `plugins/platforms/telegram/adapter.py`) mengirim pesan sebagai **Rich Message** (Bot API 10.1) hanya
+bila isinya memuat tabel pipa / daftar tugas / `<details>` / `$$`, dan `rich_messages: true` di config (sudah). Tanpa tabel, pesan dikirim
+MarkdownV2 biasa (judul "Cronjob Response" tampil dengan garis `-------------`, tabel apa pun diubah menjadi daftar). Karena itu laporan wake
+arena **selalu** memakai tabel baku yang dirakit mesin: `tulis_jurnal(..., kandidat_id)` mengembalikan `ringkasan_markdown` (judul `Arena K<id>
+· SIMBOL ARAH · HH:MM WIB`, baris fakta dari kandidat pemindai, tabel `Persona | Hasil | Alasan`) dan `n_persona`; skill arena/tiket menyalin
+tabel dengan `n_persona` terbesar per kandidat, lalu satu baris penutup. Perakitnya `scripts/keputusan.py` (fungsi murni), dipakai juga oleh
+dashboard `/api/keputusan?hari=` (Catatan AI → "Keputusan analis": tabel per kandidat + kolom Penilaian = SKIP tepat/terlewat dari
+`pasar/skip-hasil.jsonl` atau hasil order nyata) dan baris "keputusan terakhir" di kolom tiap analis. Berkas statis dashboard dikirim dengan
+`Cache-Control: no-cache` supaya browser tidak memakai `app.js` lama setelah pembaruan.
+
 ## Penilaian SKIP (kontrafaktual)
 
 Setiap kandidat pemindai dari hari WIB yang sudah tutup dinilai sekali oleh `uji_hipotesis.py` (cron 21:15 dan gate susulan pagi; modul
@@ -596,7 +608,7 @@ Desain: `PRODUCT.md` (kebenaran produk) + `DESIGN.md` (sistem visual) + `.impecc
   klik baris → chart. **Konteks**: suasana pasar BTC/ETH (bacaan + tabel indikator + catatan AI), mesin (collector, radar, cron Hermes, kandidat
   radar), biaya AI. **Catatan AI**: jurnal, catatan harian, hipotesis, pelajaran, usulan, playbook, indeks.
 - API JSON (GET): `/api/ringkasan`, `/api/simbol`, `/api/candles?symbol&tf&n`, `/api/marker?symbol`, `/api/riwayat?akun&hari&symbol`,
-  `/api/ekuitas`, `/api/statistik`, `/api/arena`, `/api/psikologi?symbol`, `/api/kandidat`, `/api/kejadian?limit`, `/api/ringkas?n`, `/api/teks?jenis&hari`.
+  `/api/ekuitas`, `/api/statistik`, `/api/arena`, `/api/psikologi?symbol`, `/api/kandidat`, `/api/kejadian?limit`, `/api/ringkas?n`, `/api/keputusan?hari`, `/api/teks?jenis&hari`.
 
 | Gejala | Tindakan |
 |---|---|

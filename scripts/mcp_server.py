@@ -29,6 +29,7 @@ import analisis as A  # noqa: E402
 import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
+import keputusan as KP  # noqa: E402
 import kontrafaktual as K  # noqa: E402
 import psikologi as PSI  # noqa: E402
 import referensi as RF  # noqa: E402
@@ -551,7 +552,7 @@ class Tools:
     def tulis_jurnal(self, jenis: str, judul: str, isi: str, symbol: Optional[str] = None, kandidat_id: Optional[int] = None,
                      order_id: Optional[int] = None, position_id: Optional[int] = None, aturan_dilanggar: Optional[str] = None,
                      alasan_skip: Optional[str] = None) -> dict:
-        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP. aturan_dilanggar: ID playbook (mis. "P-03,P-07") bila rencana melanggar aturan playbook. alasan_skip (saat SKIP, satu kategori): RR_P19|TP_ATR15|TREN_15M|SENTUHAN|LIQ_ATR5|SUDAH_LARI|FUNDING|BASI|LIMIT_CROSSES|BUDGET|EOD|DUPLIKAT|PANEL_FADE|NO_VOL_TEMBUS|NO_SIDEWAYS|PLAYBOOK|LAIN — setiap SKIP dinilai skrip esok hari dengan order bayangan mekanis."""
+        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP. aturan_dilanggar: ID playbook (mis. "P-03,P-07") bila rencana melanggar aturan playbook. alasan_skip (saat SKIP, satu kategori): RR_P19|TP_ATR15|TREN_15M|SENTUHAN|LIQ_ATR5|SUDAH_LARI|FUNDING|BASI|LIMIT_CROSSES|BUDGET|EOD|DUPLIKAT|PANEL_FADE|NO_VOL_TEMBUS|NO_SIDEWAYS|PLAYBOOK|LAIN — setiap SKIP dinilai skrip esok hari dengan order bayangan mekanis. Bila kandidat_id diisi, hasil memuat ringkasan_markdown = tabel baku semua persona untuk kandidat itu (judul, fakta, Persona | Hasil | Alasan) dan n_persona; salin tabel itu persis ke balasan Telegram."""
         def run():
             if jenis not in ("keputusan", "catatan"):
                 raise ValueError("jenis harus keputusan|catatan")
@@ -563,8 +564,37 @@ class Tools:
                                                  ("aturan_dilanggar", aturan_dilanggar), ("alasan", alasan)) if v)
             block = f"\n## {C.to_wib(now).strftime('%H:%M')} WIB — {jenis} — {judul.strip()}\n" + (f"_{meta}_\n\n" if meta else "\n") + isi.strip() + "\n"
             p = self._append(f"jurnal/agent/{C.day_wib(now)}.md", block)
-            return {"ok": True, "path": p.relative_to(self.ctx.root).as_posix(), "bytes": len(block.encode('utf-8'))}
+            out = {"ok": True, "path": p.relative_to(self.ctx.root).as_posix(), "bytes": len(block.encode('utf-8'))}
+            if jenis == "keputusan" and kandidat_id:
+                try:
+                    md, n = self._ringkasan_kandidat(int(kandidat_id), C.day_wib(now))
+                    if md:
+                        out["ringkasan_markdown"], out["n_persona"] = md, n
+                except Exception as e:  # noqa: BLE001 - ringkasan hanya pelengkap; jurnal sudah tersimpan
+                    self.ctx.log.warning("ringkasan kandidat %s gagal: %s", kandidat_id, e)
+            return out
         return self._call("tulis_jurnal", run)
+
+    def _ringkasan_kandidat(self, kid: int, day: str) -> tuple[str, int]:
+        """Tabel keputusan semua persona untuk satu kandidat dari jurnal hari ini (format baku Telegram = dashboard)."""
+        f = self.ctx.root / "jurnal" / "agent" / f"{day}.md"
+        md_text = f.read_text(encoding="utf-8") if f.exists() else ""
+        kand: dict = {}
+        kp = self.ctx.kandidat_path
+        if kp and Path(kp).exists():
+            kc = C.connect(kp, readonly=True)
+            try:
+                r = kc.execute("SELECT * FROM kandidat WHERE id=?", (kid,)).fetchone()
+                kand = {kid: dict(r)} if r else {}
+            finally:
+                kc.close()
+        oids = sorted({r["order_id"] for r in K.parse_keputusan(md_text) if r["kandidat_id"] == kid and r.get("order_id")})
+        orders: dict = {}
+        if oids:
+            orders = {r["id"]: dict(r) for r in self.ctx.engine.conn.execute(
+                f"SELECT * FROM orders WHERE id IN ({','.join('?' * len(oids))})", oids)}
+        g = next((g for g in KP.kelompok(md_text, kand, orders, None, None, day)["kandidat"] if g["kandidat_id"] == kid), None)
+        return (KP.render_markdown(g), len(g["baris"])) if g else ("", 0)
 
     def baca_memori(self, jenis: str, hari: Optional[str] = None) -> dict:
         """Baca pelajaran (pasar/pelajaran.md), hipotesis, catatan harian (pasar/harian/<hari>.md), jurnal agent (jurnal/agent/<hari>.md), pelajaran-usulan, playbook (referensi/playbook.md: aturan trading pemilik, status aktif/uji/pensiun), atau indeks (referensi/indeks.md: peta bab buku + kata kunci)."""

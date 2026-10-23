@@ -44,8 +44,10 @@ metadata:
 8. **Selalu** `mcp_paper_tulis_jurnal(jenis="keputusan", judul, isi=<rencana + alasan>, symbol, kandidat_id, order_id, aturan_dilanggar=<ID playbook atau kosong>)`, termasuk saat SKIP.
    Saat SKIP isi juga `alasan_skip` (satu kategori: RR_P19, TP_ATR15, TREN_15M, SENTUHAN, LIQ_ATR5, SUDAH_LARI, FUNDING, BASI, LIMIT_CROSSES, BUDGET, EOD,
    DUPLIKAT, PLAYBOOK, LAIN); SKIP dinilai skrip esok hari dengan order bayangan mekanis.
-9. Balasan Telegram ≤ 12 baris: keputusan per kandidat, id order, alasan utama, risiko, satu kalimat
-   "ini paper trading; untuk uang sungguhan keputusan ada di Anda".
+9. Balasan Telegram: bila keputusan terkait kandidat pemindai (ada `kandidat_id`), salin **persis** `ringkasan_markdown` dari hasil
+   `tulis_jurnal` (judul, fakta, tabel `Persona | Hasil | Alasan`), lalu baris rencana bersyarat bila order dipasang, lalu
+   "Paper trading; keputusan uang sungguhan ada di Anda." Tanpa kandidat (permintaan manual): ≤ 12 baris berisi keputusan, id order,
+   alasan utama, risiko, dan kalimat penutup yang sama.
 
 ## Jebakan
 - Jangan menaikkan leverage demi muat budget; kalau `tabel_tiket` bilang "tidak bisa", jawabannya SKIP.

@@ -156,12 +156,13 @@
   <!-- CATATAN AI -->
   <section id="catatan" class="bag">
     <div class="head">
-      <h2><span class="tip" tabindex="0" data-tip="Tulisan AI sendiri: alasan tiap keputusan (jurnal), catatan pasar harian, hipotesis yang diuji skrip, pelajaran yang terbukti, usulan pelajaran, playbook Anda, dan indeks buku (isi buku tidak ditampilkan).">Catatan AI</span></h2>
+      <h2><span class="tip" tabindex="0" data-tip="Keputusan analis per kandidat radar (tabel yang sama dengan pesan Telegram, ditambah penilaian: SKIP tepat/terlewat menurut order bayangan mekanis, atau hasil order nyata), lalu tulisan AI lain: catatan pasar harian, hipotesis yang diuji skrip, pelajaran yang terbukti, usulan pelajaran, playbook Anda, dan indeks buku (isi buku tidak ditampilkan).">Catatan AI</span></h2>
       <div class="controls">
-        <select id="j-jenis" aria-label="Jenis catatan"><option value="jurnal">Keputusan hari ini</option><option value="harian">Catatan pasar harian</option><option value="hipotesis">Hipotesis</option><option value="pelajaran">Pelajaran terbukti</option><option value="pelajaran-usulan">Usulan pelajaran</option><option value="playbook">Playbook</option><option value="indeks">Indeks buku</option></select>
+        <select id="j-jenis" aria-label="Jenis catatan"><option value="jurnal">Keputusan analis</option><option value="harian">Catatan pasar harian</option><option value="hipotesis">Hipotesis</option><option value="pelajaran">Pelajaran terbukti</option><option value="pelajaran-usulan">Usulan pelajaran</option><option value="playbook">Playbook</option><option value="indeks">Indeks buku</option></select>
         <input id="j-hari" type="date" aria-label="Hari">
       </div>
     </div>
+    <div id="keputusan" class="keputusan" hidden></div>
     <div id="jurnal-md" class="md"></div>
   </section>
 </main>
