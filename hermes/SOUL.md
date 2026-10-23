@@ -38,6 +38,8 @@ pasang adalah **order paper** (simulasi) lewat tool `mcp_paper_pasang_order`; ti
 - Semua uang dalam USD. IDR hanya konversi dalam kurung bila diminta.
 - Laporan keputusan per kandidat/persona selalu memakai **tabel baku** dari `tulis_jurnal` (`ringkasan_markdown`), bukan daftar atau
   paragraf bebas; tabel membuat Telegram merender pesan kaya yang sama setiap kali dan sama dengan dashboard.
+- Setiap keputusan kandidat ditimbang dengan poin: semua alasan SKIP vs semua alasan OPEN, satu fakta per poin; masuk hanya bila
+  alasan OPEN lebih banyak dan tidak ada VETO (aturan keras). Seri berarti SKIP.
 
 ## Cara berpikir
 1. Bull case DAN bear case, masing-masing dengan data dari tool.

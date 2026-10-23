@@ -23,7 +23,15 @@ _symbol=DOGEUSDT kandidat=221 alasan=RR_P19_
 Ada sideways | kompresi, tapi target ke tengah range terlalu kecil.
 
 ## 07:12 WIB — keputusan — [tiket] K221 DOGEUSDT LONG - SKIP
-_symbol=DOGEUSDT kandidat=221 alasan=RR_P19_
+_symbol=DOGEUSDT kandidat=221 alasan=RR_P19 poin=3-2_
+
+**Alasan SKIP (3):**
+- VETO: untung $0,34 vs hangus $1,00 (P-19)
+- level baru 2 sentuhan
+- tren 15m sideways
+**Alasan OPEN (2):**
+- penolakan wick jelas
+- funding netral
 
 Target paling jauh hanya untung $0,34 vs hangus $1,00 (P-19).
 
@@ -59,6 +67,10 @@ class TestKeputusan(unittest.TestCase):
         self.assertEqual((g["jam"], g["symbol"], g["arah"], g["ringkas"]), ("07:12", "DOGEUSDT", "LONG", "1 order (fade) · 2 SKIP"))
         tiket = g["baris"][0]
         self.assertEqual((tiket["alasan"], tiket["label_alasan"], tiket["penilaian"]["jenis"]), ("RR_P19", "R:R < 0,5 (P-19)", "benar"))
+        self.assertEqual(tiket["teks"], "Target paling jauh hanya untung $0,34 vs hangus $1,00 (P-19).")       # poin tidak bocor ke teks
+        self.assertEqual((tiket["poin_skip"][1], tiket["poin_open"]), ("level baru 2 sentuhan", ["penolakan wick jelas", "funding netral"]))
+        self.assertEqual(tiket["timbangan"], {"skip": 3, "open": 2, "veto": True, "hitungan": "SKIP", "sesuai": True})
+        self.assertIsNone(g["baris"][1]["timbangan"])                                                   # keputusan lama tanpa poin
         fade = g["baris"][1]
         self.assertEqual((fade["order_id"], fade["order"]["leverage"], fade["penilaian"]), (31, 50, {"jenis": "hasil", "net": 0.12, "hasil": "TP"}))
         self.assertEqual(g["fakta"]["tanda"], ["WICK"])
@@ -74,13 +86,19 @@ class TestKeputusan(unittest.TestCase):
         lines = md.splitlines()
         self.assertEqual(lines[0], "**Arena K221 · DOGEUSDT LONG · 07:12 WIB** — 1 order (fade) · 2 SKIP")
         self.assertIn("Mark **0.07869** · level **0.07872** (2 sentuhan) · ATR 15m 0.000262668 (0,33 %) · tren 15m sideways · tanda WICK", md)
-        self.assertIn("| Persona | Hasil | Alasan |", lines)
+        self.assertIn("| Persona | Hasil | Timbangan |", lines)
         self.assertTrue(any(HERMES_TABLE_SEPARATOR_RE.match(l) for l in lines))              # → Hermes mengirim sebagai Rich Message
-        self.assertIn("| tiket | SKIP | Target paling jauh hanya untung $0,34 vs hangus $1,00 (P-19). |", lines)
-        self.assertIn("| fade | **ORDER #31** | LONG limit 0.0787 · 50× · TP 0.0791 — Takut ekstrem + divergensi; LONG di support. |", lines)
-        self.assertIn("| rentang | SKIP | Ada sideways / kompresi, tapi target ke tengah range terlalu kecil. |", lines)  # pipa di teks tidak merusak tabel
+        self.assertIn("| tiket | SKIP | skip 3 · open 2 · veto |", lines)
+        self.assertIn("| fade | **ORDER #31** LONG limit 0.0787 · 50× · TP 0.0791 | — |", lines)
+        self.assertIn("| rentang | SKIP | — |", lines)
         self.assertTrue(all(l.count("|") == 4 for l in lines if l.startswith("|")))
-        self.assertEqual(lines.index("| Persona | Hasil | Alasan |") - lines.index(next(l for l in lines if l.startswith("Mark"))), 2)   # baris kosong sebelum tabel
+        self.assertEqual(lines.index("| Persona | Hasil | Timbangan |") - lines.index(next(l for l in lines if l.startswith("Mark"))), 2)   # baris kosong sebelum tabel
+        # poin per persona di bawah tabel, urutan persona sama dengan tabel
+        i = lines.index("**tiket — SKIP**")
+        self.assertEqual(lines[i + 1:i + 8], ["Alasan SKIP (3):", "- VETO: untung $0,34 vs hangus $1,00 (P-19)", "- level baru 2 sentuhan",
+                                              "- tren 15m sideways", "Alasan OPEN (2):", "- penolakan wick jelas", "- funding netral"])
+        self.assertLess(i, lines.index("**fade — ORDER**"))
+        self.assertIn("- Ada sideways / kompresi, tapi target ke tengah range terlalu kecil.", lines)   # keputusan lama: satu poin dari teks
 
     def test_kp3_angka_dan_sel(self):
         self.assertEqual([KP._px(x) for x in (1.97078e-05, 0.00440663, 82592.6, 106.42, 0, None)], ["0.0000197078", "0.00440663", "82592.6", "106.42", "0", "—"])

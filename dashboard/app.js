@@ -134,7 +134,9 @@ function terakhirDari(acc, feed) {
   const k = keputusanTerakhir(acc);
   if (k && (!e || k.b.ts > e.ts)) {
     const apa = k.b.keputusan === "ORDER" ? `order #${k.b.order_id || "?"}` : "SKIP";
-    const why = k.b.keputusan === "SKIP" ? " · " + tip(esc(k.b.label_alasan || "alasan"), k.b.teks || "") : "";
+    const t = k.b.timbangan;
+    const poinTip = [...(k.b.poin_skip || []).map(p => "SKIP: " + p), ...(k.b.poin_open || []).map(p => "OPEN: " + p)].join("\n");
+    const why = t ? " · " + tip(`skip ${t.skip} · open ${t.open}`, poinTip) : k.b.keputusan === "SKIP" ? " · " + tip(esc(k.b.label_alasan || "alasan"), k.b.teks || "") : "";
     return `<p class="terakhir"><time>${rel(k.b.ts)}</time> ${apa} K${k.g.kandidat_id} ${esc(koin(k.g.symbol))}${why}</p>`;
   }
   return e ? `<p class="terakhir"><time>${rel(e.ts)}</time> ${esc(teksKejadian(e, true))}</p>` : "";
@@ -519,9 +521,24 @@ function hasilSel(b) {
   const rinci = [o.price ? `Limit ${px(o.price)}` : null, o.leverage ? `${o.leverage}×` : null, o.tp_price ? `Target ${px(o.tp_price)}` : null, o.status ? (STATUS_ORDER[o.status] || o.status.toLowerCase()) : null].filter(Boolean).join(" · ");
   return dtip(`<b>order #${b.order_id || "?"}</b>${o.side ? " " + arah(o.side) : ""}`, rinci || "Rincian order tidak tersedia", "tip");
 }
+const VETO_RE = /^VETO\s*:\s*/i;
+function timbanganSel(t) {
+  const sisi = `<span class="${t.hitungan === "SKIP" ? "down" : "muted"}">skip ${t.skip}</span> · <span class="${t.hitungan === "ORDER" ? "up" : "muted"}">open ${t.open}</span>`;
+  return sisi + (t.veto ? ` <span class="tag veto" tabindex="0" data-tip="Ada aturan keras (VETO) di alasan SKIP: keputusan SKIP berapa pun hitungannya.">veto</span>` : "") +
+    (t.sesuai ? "" : ` <span class="tag belum" tabindex="0" data-tip="${esc(`Hitungan menunjuk ${t.hitungan}, tetapi analis memutuskan sebaliknya. Tercatat untuk evaluasi.`)}">tidak sesuai</span>`);
+}
 function alasanSel(b) {
+  if (b.timbangan) return timbanganSel(b.timbangan);
   const label = b.keputusan === "ORDER" ? "rencana" : (b.label_alasan || (b.teks ? b.teks.slice(0, 40) + (b.teks.length > 40 ? "…" : "") : "—"));
   return b.teks ? tip(esc(label), b.teks) : `<span class="dim">${esc(label)}</span>`;
+}
+// poin alasan per analis: baris kedua di bawah barisnya, SKIP (koral) dan OPEN (hijau) berdampingan
+function poinBaris(b) {
+  const ps = b.poin_skip || [], po = b.poin_open || [];
+  if (!ps.length && !po.length) return "";
+  const daftar = (judul, xs, cls) => `<div class="poin-sisi ${cls}"><b>${judul} <span class="n">${xs.length}</span></b>${xs.length ? `<ul>${xs.map(p => VETO_RE.test(p)
+    ? `<li class="veto"><span class="cap rej">veto</span>${esc(p.replace(VETO_RE, ""))}</li>` : `<li>${esc(p)}</li>`).join("")}</ul>` : `<p class="dim">tidak ada</p>`}</div>`;
+  return `<tr class="poin"><td colspan="4"><div class="poin-grid">${daftar("Alasan SKIP", ps, "skip")}${daftar("Alasan OPEN", po, "open")}</div>${b.teks ? `<p class="poin-catatan">${esc(b.teks)}</p>` : ""}</td></tr>`;
 }
 function penilaianSel(b) {
   const p = b.penilaian || {};
@@ -540,7 +557,7 @@ function penilaianSel(b) {
 }
 function grupKeputusan(g) {
   return `<li class="kep"><div class="kep-h"><b>K${g.kandidat_id}</b> ${dtip(`<b>${esc(koin(g.symbol))}</b>${g.arah ? " " + arah(g.arah) : ""}`, faktaTeks(g), "tip")} <time>${esc(g.jam || "")}</time> <span class="muted">${esc((g.ringkas || "").replace("persona", "analis"))}</span></div>
-    <div class="tablewrap"><table><thead><tr><th>Analis</th><th>Hasil</th><th>Alasan</th><th>Penilaian</th></tr></thead><tbody>${g.baris.map(b => `<tr><td><b style="color:${WARNA[b.persona] || "inherit"}">${esc(nama(b.persona))}</b></td><td>${hasilSel(b)}</td><td>${alasanSel(b)}</td><td>${penilaianSel(b)}</td></tr>`).join("")}</tbody></table></div></li>`;
+    <div class="tablewrap"><table><thead><tr><th>Analis</th><th>Hasil</th><th>Timbangan</th><th>Penilaian</th></tr></thead><tbody>${g.baris.map(b => `<tr class="${b.timbangan ? "berpoin" : ""}"><td><b style="color:${WARNA[b.persona] || "inherit"}">${esc(nama(b.persona))}</b></td><td>${hasilSel(b)}</td><td>${alasanSel(b)}</td><td>${penilaianSel(b)}</td></tr>${poinBaris(b)}`).join("")}</tbody></table></div></li>`;
 }
 function renderKeputusan(k) {
   const groups = k.kandidat || [];

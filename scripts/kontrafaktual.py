@@ -78,6 +78,33 @@ _HEAD = re.compile(r"^## (\d{2}):(\d{2}) WIB — (\w+) — (.+)$")
 _META = re.compile(r"^_(.+)_$")
 _K = re.compile(r"K(\d+)(?:\s*[-–]\s*K?(\d+))?")
 _PERSONA = re.compile(r"^\[(\w+)\]")
+_POIN_HEAD = re.compile(r"^\*\*Alasan (SKIP|OPEN) \(\d+\):\*\*$")
+_VETO = re.compile(r"^VETO\s*:\s*", re.I)
+POIN_MAKS = 5
+
+
+def poin_bersih(p) -> str:
+    """Satu poin alasan: satu baris, tanpa pipa/penanda daftar, maksimal 140 karakter."""
+    s = re.sub(r"\s+", " ", str(p or "").replace("|", "/")).strip().lstrip("-*• ").strip()
+    return s if len(s) <= 140 else s[:139].rsplit(" ", 1)[0] + "…"
+
+
+def timbang(poin_skip: list, poin_open: list, keputusan: Optional[str]) -> dict:
+    """Hitungan keputusan: OPEN hanya bila poin open > poin skip dan tidak ada poin VETO (aturan keras); seri = SKIP."""
+    s, o = len(poin_skip or []), len(poin_open or [])
+    veto = any(_VETO.match(p) for p in (poin_skip or []))
+    hitungan = "SKIP" if veto or s >= o else "ORDER"
+    return {"skip": s, "open": o, "veto": veto, "hitungan": hitungan, "sesuai": keputusan is None or hitungan == keputusan}
+
+
+def blok_poin(poin_skip: list, poin_open: list) -> str:
+    """Bagian poin di jurnal (dibaca balik oleh parse_keputusan)."""
+    out = []
+    for nama, xs in (("SKIP", poin_skip), ("OPEN", poin_open)):
+        if xs:
+            out.append(f"**Alasan {nama} ({len(xs)}):**")
+            out += [f"- {p}" for p in xs]
+    return "\n".join(out)
 
 
 def klasifikasi_alasan(teks: str, persona: str = "tiket") -> str:
@@ -113,12 +140,22 @@ def parse_keputusan(md: str) -> list[dict]:
         persona = pm.group(1).lower() if pm else "tiket"
         meta: dict = {}
         teks_lines = []
+        poin: dict = {"SKIP": [], "OPEN": []}
+        sisi = None
         for ln in body:
             mm = _META.match(ln.strip())
             if mm and not meta and "=" in mm.group(1):
                 meta = dict(kv.split("=", 1) for kv in mm.group(1).split() if "=" in kv)
                 continue
+            ph = _POIN_HEAD.match(ln.strip())
+            if ph:
+                sisi = ph.group(1)
+                continue
+            if sisi and ln.strip().startswith("- "):
+                poin[sisi].append(ln.strip()[2:].strip())
+                continue
             if ln.strip():
+                sisi = None
                 teks_lines.append(ln.strip())
         ids: set[int] = set()
         for a, b in _K.findall(judul):
@@ -132,7 +169,8 @@ def parse_keputusan(md: str) -> list[dict]:
         if not ids:
             continue
         teks = " ".join(teks_lines)[:400]
-        alasan = meta.get("alasan") if meta.get("alasan") in KATEGORI else (klasifikasi_alasan(judul + " " + teks, persona) if kep == "SKIP" else None)
+        alasan = meta.get("alasan") if meta.get("alasan") in KATEGORI else (
+            klasifikasi_alasan(" ".join([judul, teks] + poin["SKIP"]), persona) if kep == "SKIP" else None)
         om = re.search(r"order #(\d+)", judul, re.I)
         order_id = int(meta["order"]) if meta.get("order", "").isdigit() else (int(om.group(1)) if om else None)
         am = re.search(r"\b(LONG|SHORT)\b", judul)
@@ -140,7 +178,8 @@ def parse_keputusan(md: str) -> list[dict]:
         symbol = meta.get("symbol") or (sm.group(1) if sm else None)
         for kid in sorted(ids):
             out.append({"persona": persona, "kandidat_id": kid, "keputusan": kep, "alasan": alasan, "teks": teks, "jam": jam,
-                        "order_id": order_id if kep == "ORDER" else None, "arah": am.group(1) if am else None, "symbol": symbol})
+                        "order_id": order_id if kep == "ORDER" else None, "arah": am.group(1) if am else None, "symbol": symbol,
+                        "poin_skip": list(poin["SKIP"]), "poin_open": list(poin["OPEN"])})
     return out
 
 
@@ -151,7 +190,7 @@ def keputusan_per_kandidat(rows: Iterable[dict]) -> dict:
         d = out.setdefault(r["kandidat_id"], {})
         cur = d.get(r["persona"])
         if cur is None or (cur["keputusan"] == "SKIP" and r["keputusan"] == "ORDER"):
-            d[r["persona"]] = {k: r.get(k) for k in ("keputusan", "alasan", "teks", "jam", "order_id", "arah", "symbol")}
+            d[r["persona"]] = {k: r.get(k) for k in ("keputusan", "alasan", "teks", "jam", "order_id", "arah", "symbol", "poin_skip", "poin_open")}
     return out
 
 

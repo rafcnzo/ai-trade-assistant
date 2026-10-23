@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-23 08:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-23 09:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -41,6 +41,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Selesai & terpasang** (138 tes; cron pemindai → skill arena, nilai-arena mingguan, 28 tool, dashboard tab Arena) |
+| TP | Keputusan ditimbang dengan poin (v1.13): `tulis_jurnal(poin_skip, poin_open)` wajib untuk keputusan kandidat; OPEN hanya bila poin OPEN > SKIP tanpa `VETO:`, seri = SKIP, menyimpang ditandai `hitungan=tidak_sesuai`; Telegram: tabel `Persona | Hasil | Timbangan` + poin per persona; dashboard: kolom Timbangan + dua daftar poin per analis; skill arena 1.2 / tiket 1.1, SOUL; KP1–KP2, M6 diperluas (168 tes) | **Selesai & terpasang** |
 | KC | Dashboard dirombak: dunia "akuarium laut dalam" (glassmorphism gelap: tangki kaca beku per analis, cahaya cyan, Plus Jakarta Sans), palet baru, Pasar naik ke bagian 2 (grafik 540 px), responsif ponsel 375 px (diuji emulasi perangkat CDP: tanpa luapan samping); cap order batal/kedaluwarsa, tangki pensiun abu-abu; review akhir impeccable + DESIGN.md ditulis ulang | **Selesai & terpasang** |
 | FT | Format laporan baku: `scripts/keputusan.py` merakit tabel keputusan per kandidat; `tulis_jurnal` mengembalikan `ringkasan_markdown` yang disalin skill arena/tiket (selalu tabel → Telegram selalu Rich Message); dashboard `/api/keputusan` + Catatan AI "Keputusan analis" (tabel per kandidat + Penilaian) + keputusan terakhir di kolom analis; static `no-cache`; KP1–KP3, M6+, D11 (168 tes) | **Selesai & terpasang** |
 | SK | Setiap SKIP jadi sampel: `kontrafaktual.py` + tahap `nilai_skip` di `uji_hipotesis.py` (order bayangan mekanis per kandidat, label SKIP per analis/alasan), `pasar/skip-hasil.jsonl`, `pasar/skip.md`, pelajaran otomatis `LS-NN`, `tulis_jurnal(alasan_skip)`, dashboard "SKIP tepat"; K1–K5, M6+, D8+ (164 tes); backfill 11–21 Okt | **Selesai & terpasang** |
@@ -125,6 +126,8 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 ## Keputusan yang berlaku
 
 - Jaringan rumah memblokir DNS Binance → DoH di dalam skrip; DNS Windows tidak diubah.
+- Timbangan poin (23 Okt, permintaan user: "alasan skip 3 poin, alasan open 2 poin, 3 vs 2 jadi skip"): keputusan = hitungan poin; aturan
+  keras tetap menang lewat `VETO:` (keputusan desain: aturan keselamatan tidak boleh kalah suara); seri = SKIP.
 - Format laporan (23 Okt, keluhan user: pesan wake berganti bentuk tabel ↔ daftar): penyebabnya AI menulis format bebas dan adapter Telegram
   Hermes hanya memakai Rich Message bila ada tabel. Keputusan: tabel dirakit mesin dari jurnal, AI hanya menyalin; dashboard memakai perakit sama.
 - Penilaian SKIP (22 Okt, keputusan user): order bayangan = templat mekanis (bukan rencana tulisan AI); pelajaran SKIP ditulis skrip; AI hanya

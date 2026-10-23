@@ -1,7 +1,8 @@
 """keputusan.py — merakit keputusan arena per kandidat dari jurnal agent (fungsi murni, tidak menulis apa pun).
 
 Satu sumber format untuk dua tampilan:
-- Telegram: `mcp_server.tulis_jurnal` mengembalikan `ringkasan_markdown` (judul, fakta, tabel Persona | Hasil | Alasan) yang disalin
+- Telegram: `mcp_server.tulis_jurnal` mengembalikan `ringkasan_markdown` (judul, fakta, tabel Persona | Hasil | Timbangan, lalu poin
+  alasan SKIP/OPEN per persona) yang disalin
   agent apa adanya. Karena memuat tabel, adapter Telegram Hermes selalu mengirimnya sebagai Rich Message (Bot API 10.1).
 - Dashboard: `/api/keputusan` memakai `kelompok()` yang sama, ditambah hasil order nyata dan penilaian SKIP (pasar/skip-hasil.jsonl).
 """
@@ -147,7 +148,9 @@ def kelompok(md_text: str, kandidat: Optional[dict] = None, orders: Optional[dic
             x = d[persona]
             row = {"persona": persona, "keputusan": x["keputusan"], "alasan": x.get("alasan"),
                    "label_alasan": LABEL_ALASAN.get(x.get("alasan")) if x.get("alasan") else None,
-                   "teks": x.get("teks") or "", "jam": x.get("jam"), "ts": _ts(hari, x.get("jam")), "order_id": x.get("order_id")}
+                   "teks": x.get("teks") or "", "jam": x.get("jam"), "ts": _ts(hari, x.get("jam")), "order_id": x.get("order_id"),
+                   "poin_skip": x.get("poin_skip") or [], "poin_open": x.get("poin_open") or []}
+            row["timbangan"] = K.timbang(row["poin_skip"], row["poin_open"], row["keputusan"]) if (row["poin_skip"] or row["poin_open"]) else None
             oid = x.get("order_id")
             if oid and orders and oid in orders:
                 o = orders[oid]
@@ -165,22 +168,44 @@ def kelompok(md_text: str, kandidat: Optional[dict] = None, orders: Optional[dic
     return {"hari": hari, "kandidat": groups, "lain_md": "\n\n".join(lain)}
 
 
+def timbangan_teks(b: dict) -> str:
+    """'skip 3 · open 2' (+ veto / tidak sesuai hitungan); '—' untuk keputusan lama tanpa poin."""
+    t = b.get("timbangan")
+    if not t:
+        return "—"
+    s = f"skip {t['skip']} · open {t['open']}"
+    if t["veto"]:
+        s += " · veto"
+    if not t["sesuai"]:
+        s += " · tidak sesuai hitungan"
+    return s
+
+
 def render_markdown(g: dict) -> str:
-    """Pesan Telegram satu kandidat: judul, fakta, tabel. Tabel memicu Rich Message di adapter Telegram Hermes."""
+    """Pesan Telegram satu kandidat: judul, fakta, tabel timbangan, lalu poin alasan per persona.
+    Tabel memicu Rich Message di adapter Telegram Hermes; poin ditulis di bawahnya karena sel tabel tidak bisa memuat daftar."""
     judul = f"**Arena K{g['kandidat_id']} · {g.get('symbol') or '?'}{(' ' + g['arah']) if g.get('arah') else ''}"
     judul += f" · {g['jam']} WIB**" if g.get("jam") else "**"
     lines = [f"{judul} — {g['ringkas']}", ""]
     if g.get("fakta"):
         lines += [kalimat_fakta(g["fakta"]).replace("mark", "Mark", 1), ""]
-    lines += ["| Persona | Hasil | Alasan |", "|---|---|---|"]
+    lines += ["| Persona | Hasil | Timbangan |", "|---|---|---|"]
     for b in g["baris"]:
         if b["keputusan"] == "ORDER":
             hasil = f"**ORDER #{b['order_id']}**" if b.get("order_id") else "**ORDER**"
             o = b.get("order") or {}
-            rinci = (f"{o.get('side', '')} limit {_px(o.get('price'))} · {o.get('leverage')}× · TP {_px(o.get('tp_price'))} — " if o.get("price") else "")
-            alasan = rinci + sel(b["teks"], 220)
+            if o.get("price"):
+                hasil += f" {o.get('side', '')} limit {_px(o.get('price'))} · {o.get('leverage')}× · TP {_px(o.get('tp_price'))}"
         else:
             hasil = "SKIP"
-            alasan = sel(b["teks"]) or (b.get("label_alasan") or "—")
-        lines.append(f"| {b['persona']} | {hasil} | {alasan} |")
+        lines.append(f"| {b['persona']} | {hasil} | {timbangan_teks(b)} |")
+    for b in g["baris"]:
+        lines += ["", f"**{b['persona']} — {'ORDER' if b['keputusan'] == 'ORDER' else 'SKIP'}**"]
+        if b.get("poin_skip") or b.get("poin_open"):
+            for nama, xs in (("Alasan SKIP", b.get("poin_skip")), ("Alasan OPEN", b.get("poin_open"))):
+                if xs:
+                    lines.append(f"{nama} ({len(xs)}):")
+                    lines += [f"- {sel(p, 140)}" for p in xs]
+        else:
+            lines.append(f"- {sel(b['teks'], 220) or b.get('label_alasan') or '—'}")
     return "\n".join(lines)

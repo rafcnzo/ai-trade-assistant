@@ -206,7 +206,23 @@ tr.acak{color:var(--muted)}
 .kep table{table-layout:fixed;min-width:560px}
 .kep th:nth-child(1){width:110px}.kep th:nth-child(2){width:150px}.kep th:nth-child(4){width:170px}
 .kep td{overflow:hidden;text-overflow:ellipsis}
+.kep td:nth-child(3){white-space:normal}
 .keputusan+.md{margin-top:18px;padding-top:16px;border-top:1px solid var(--line2)}
+/* poin alasan: baris kedua di bawah analisnya, SKIP koral dan OPEN hijau */
+.kep tr.berpoin td{border-bottom:0}
+.kep tr.poin td{white-space:normal;overflow:visible;padding:0 10px 12px}
+.poin-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;padding:9px 12px;border-radius:12px;background:rgba(4,16,22,.35);border:1px solid var(--line)}
+.poin-sisi>b{display:block;font-size:12px;font-weight:700;margin-bottom:3px}
+.poin-sisi>b .n{font-variant-numeric:tabular-nums}
+.poin-sisi.skip>b{color:var(--down)}.poin-sisi.open>b{color:var(--up)}
+.poin-sisi ul{margin:0;padding-left:16px;font-size:13px;line-height:1.45}
+.poin-sisi li{margin:2px 0}
+.poin-sisi.skip li::marker{color:var(--down)}.poin-sisi.open li::marker{color:var(--up)}
+.poin-sisi li.veto{color:var(--ink);font-weight:600}
+.poin-sisi li .cap{transform:none;margin-right:6px}
+.poin-sisi p{margin:0;font-size:13px}
+.poin-catatan{margin:6px 2px 0;font-size:12.5px;color:var(--muted)}
+.tag.veto{color:var(--down);border-color:color-mix(in srgb,var(--down) 45%,transparent);background:color-mix(in srgb,var(--down) 9%,transparent)}
 .keputusan[hidden],.md[hidden]{display:none}
 
 /* ---- PERINGKAT */
@@ -285,6 +301,8 @@ details summary:hover{color:var(--ink)}
   .profil li{grid-template-columns:1fr;gap:2px}
   .kep table{min-width:0}.kep th:nth-child(1){width:84px}.kep th:nth-child(2){width:52px}.kep th:nth-child(4){width:92px}
   .kep td:nth-child(3){white-space:normal}
+  .kep tr.poin td{padding:0 4px 10px}
+  .poin-grid{grid-template-columns:1fr;padding:8px 10px}
   /* kolom Hasil riwayat tetap terlihat saat tabel digulir */
   #tbl-posisi th:last-child,#tbl-posisi td:last-child{position:sticky;right:0;background:var(--glass-solid)}
   #tbl-posisi th:last-child{z-index:2}

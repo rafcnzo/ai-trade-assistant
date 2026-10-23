@@ -551,20 +551,37 @@ class Tools:
 
     def tulis_jurnal(self, jenis: str, judul: str, isi: str, symbol: Optional[str] = None, kandidat_id: Optional[int] = None,
                      order_id: Optional[int] = None, position_id: Optional[int] = None, aturan_dilanggar: Optional[str] = None,
-                     alasan_skip: Optional[str] = None) -> dict:
-        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP. aturan_dilanggar: ID playbook (mis. "P-03,P-07") bila rencana melanggar aturan playbook. alasan_skip (saat SKIP, satu kategori): RR_P19|TP_ATR15|TREN_15M|SENTUHAN|LIQ_ATR5|SUDAH_LARI|FUNDING|BASI|LIMIT_CROSSES|BUDGET|EOD|DUPLIKAT|PANEL_FADE|NO_VOL_TEMBUS|NO_SIDEWAYS|PLAYBOOK|LAIN — setiap SKIP dinilai skrip esok hari dengan order bayangan mekanis. Bila kandidat_id diisi, hasil memuat ringkasan_markdown = tabel baku semua persona untuk kandidat itu (judul, fakta, Persona | Hasil | Alasan) dan n_persona; salin tabel itu persis ke balasan Telegram."""
+                     alasan_skip: Optional[str] = None, poin_skip: Optional[list[str]] = None, poin_open: Optional[list[str]] = None) -> dict:
+        """Catat keputusan/catatan agent ke jurnal/agent/YYYY-MM-DD.md. jenis=keputusan|catatan. Selalu dipanggil setelah menilai kandidat, termasuk saat SKIP. aturan_dilanggar: ID playbook (mis. "P-03,P-07") bila rencana melanggar aturan playbook. poin_skip / poin_open (wajib untuk keputusan dengan kandidat_id, 1-5 poin pendek per sisi, satu fakta per poin): semua alasan untuk TIDAK masuk dan semua alasan untuk masuk; keputusan = hitungan: ORDER hanya bila poin_open > poin_skip, seri = SKIP; aturan keras (P-19, BASI, saldo, EOD, LIMIT_CROSSES, liq < 2xATR 5m) ditulis di poin_skip dengan awalan "VETO: " dan selalu berarti SKIP. Keputusan yang tidak sesuai hitungan tetap dicatat tetapi ditandai. alasan_skip (saat SKIP, satu kategori): RR_P19|TP_ATR15|TREN_15M|SENTUHAN|LIQ_ATR5|SUDAH_LARI|FUNDING|BASI|LIMIT_CROSSES|BUDGET|EOD|DUPLIKAT|PANEL_FADE|NO_VOL_TEMBUS|NO_SIDEWAYS|PLAYBOOK|LAIN — setiap SKIP dinilai skrip esok hari dengan order bayangan mekanis. Bila kandidat_id diisi, hasil memuat ringkasan_markdown = tabel baku semua persona untuk kandidat itu (judul, fakta, Persona | Hasil | Alasan) dan n_persona; salin tabel itu persis ke balasan Telegram."""
         def run():
             if jenis not in ("keputusan", "catatan"):
                 raise ValueError("jenis harus keputusan|catatan")
             alasan = alasan_skip.strip().upper() if alasan_skip else None
             if alasan and alasan not in K.KATEGORI:
                 raise ValueError(f"alasan_skip harus salah satu dari: {', '.join(K.KATEGORI)}")
+            ps = [K.poin_bersih(p) for p in (poin_skip or []) if K.poin_bersih(p)]
+            po = [K.poin_bersih(p) for p in (poin_open or []) if K.poin_bersih(p)]
+            if len(ps) > K.POIN_MAKS or len(po) > K.POIN_MAKS:
+                raise ValueError(f"maksimal {K.POIN_MAKS} poin per sisi; gabungkan poin yang mirip")
+            up = judul.upper()
+            kep = "ORDER" if re.search(r"ORDER #\d+", up) else ("SKIP" if "SKIP" in up else None)
+            if jenis == "keputusan" and kandidat_id and kep and not (ps or po):
+                raise ValueError("isi poin_skip (alasan tidak masuk) dan poin_open (alasan masuk), 1-5 poin pendek per sisi; aturan keras diawali 'VETO: '")
+            tb = K.timbang(ps, po, kep) if (ps or po) else None
             now = self.ctx.clock()
             meta = " ".join(f"{k}={v}" for k, v in (("symbol", symbol), ("kandidat", kandidat_id), ("order", order_id), ("posisi", position_id),
-                                                 ("aturan_dilanggar", aturan_dilanggar), ("alasan", alasan)) if v)
-            block = f"\n## {C.to_wib(now).strftime('%H:%M')} WIB — {jenis} — {judul.strip()}\n" + (f"_{meta}_\n\n" if meta else "\n") + isi.strip() + "\n"
+                                                 ("aturan_dilanggar", aturan_dilanggar), ("alasan", alasan),
+                                                 ("poin", f"{len(ps)}-{len(po)}" if tb else None),
+                                                 ("hitungan", "tidak_sesuai" if tb and not tb["sesuai"] else None)) if v)
+            badan = "\n\n".join(x for x in (K.blok_poin(ps, po), isi.strip()) if x)
+            block = f"\n## {C.to_wib(now).strftime('%H:%M')} WIB — {jenis} — {judul.strip()}\n" + (f"_{meta}_\n\n" if meta else "\n") + badan + "\n"
             p = self._append(f"jurnal/agent/{C.day_wib(now)}.md", block)
             out = {"ok": True, "path": p.relative_to(self.ctx.root).as_posix(), "bytes": len(block.encode('utf-8'))}
+            if tb:
+                out["timbangan"] = tb
+                if not tb["sesuai"]:
+                    out["peringatan"] = (f"keputusan {kep} tidak sesuai hitungan (skip {tb['skip']} · open {tb['open']}"
+                                         f"{' · ada VETO' if tb['veto'] else ''} → {tb['hitungan']}); tercatat sebagai tidak sesuai")
             if jenis == "keputusan" and kandidat_id:
                 try:
                     md, n = self._ringkasan_kandidat(int(kandidat_id), C.day_wib(now))

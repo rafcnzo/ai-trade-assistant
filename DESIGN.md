@@ -498,10 +498,16 @@ tepat" bertooltip). Blok dipisah garis `line2` (bukan kaca). Kepala `.kep-h` 14p
 "**DOGE** beli" (mark, level, sentuhan, ATR 15m, tren, tanda, skor, hasil order bayangan), jam 12,5px `dim`, ringkas
 `muted`. Lalu tablewrap tanpa batas tinggi, `table-layout: fixed`, kolom sejajar di semua blok:
 - **Desktop:** Analis 110 px (nama warna persona) · Hasil 150 px ("SKIP" `muted`, atau "**order #31** beli" bertooltip
-  limit/leverage/target/status) · Alasan sisa (label kategori bertooltip = kalimat utuh; `ellipsis`) · Penilaian 170 px
+  limit/leverage/target/status) · Timbangan sisa ("skip 3 · open 2", sisi pemenang `down`/`up` dan sisi lain `muted`, tag
+  `veto` koral dan tag `belum` "tidak sesuai" bertooltip, boleh membungkus; keputusan lama tanpa poin: label kategori
+  bertooltip) · Penilaian 170 px
   (tag `ok` "tepat", tag `belum` "terlewat +$0,56", "netral"/"belum dinilai"/"tidak tersedia" `dim` bertooltip, hasil order
   nyata `up`/`down` + alasan keluar `muted`, "berjalan" `glow`). Tabel min 560 px, gulir di dalam tablewrap.
-- **≤ 640 px:** min-width dilepas; kolom 84 / 52 / sisa / 92 px, dan sel Alasan boleh membungkus baris.
+- **≤ 640 px:** min-width dilepas; kolom 84 / 52 / sisa / 92 px, dan sel Timbangan boleh membungkus baris.
+- **Poin alasan** (`tr.poin` tepat di bawah baris analisnya; baris analis tanpa garis bawah): satu sel `colspan=4` berisi
+  `.poin-grid` dua kolom (satu kolom ≤ 640 px) di atas air gelap 35 % dengan garis `line` dan radius 12 px. "Alasan SKIP n"
+  12px 700 `down` dan "Alasan OPEN n" `up`, daftar 13px dengan penanda bulat warna sisinya; poin `VETO:` ditulis `ink` 600
+  dengan cap `rej` "veto" tegak di depannya; sisi kosong = "tidak ada" `dim`. Kalimat isi jurnal (bila ada) di bawahnya 12,5px `muted`.
 
 ### Details
 Garis rambut atas, margin atas 12 px; summary 13,5px 550 `muted`, padding 11 px dengan indent 20 px untuk chevron `glow`,

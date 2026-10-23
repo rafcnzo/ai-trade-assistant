@@ -147,25 +147,48 @@ class TestMarketTools(Base):
 
 class TestNotes(Base):
     def test_m6_jurnal_path_from_clock(self):
-        r = self.tools.tulis_jurnal("keputusan", "../../x SKIP BTC", "alasan: jauh dari level", symbol=BTC, kandidat_id=7)
+        r = self.tools.tulis_jurnal("keputusan", "../../x SKIP BTC", "alasan: jauh dari level", symbol=BTC, kandidat_id=7, poin_skip=["jauh dari level"])
         self.assertEqual(r["path"], f"jurnal/agent/{DAY}.md")
         txt = (self.root / "jurnal" / "agent" / f"{DAY}.md").read_text(encoding="utf-8")
         self.assertIn("10:03 WIB — keputusan — ../../x SKIP BTC", txt)
         self.assertIn("kandidat=7", txt)
         self.assertFalse((self.root / "x").exists())
         self.assertEqual(self.tools.tulis_jurnal("salah", "a", "b")["ok"], False)
-        r2 = self.tools.tulis_jurnal("keputusan", "[tiket] K8 BTCUSDT LONG - SKIP", "P-19", symbol=BTC, kandidat_id=8, alasan_skip="rr_p19")
+        r2 = self.tools.tulis_jurnal("keputusan", "[tiket] K8 BTCUSDT LONG - SKIP", "P-19", symbol=BTC, kandidat_id=8, alasan_skip="rr_p19",
+                                     poin_skip=["VETO: R:R 0,34 < 0,5 (P-19)", "level baru 1 sentuhan", "- tren 15m | turun"],
+                                     poin_open=["penolakan wick jelas", "funding netral"])
         self.assertTrue(r2["ok"], r2)
-        self.assertIn("kandidat=8 alasan=RR_P19", (self.root / "jurnal" / "agent" / f"{DAY}.md").read_text(encoding="utf-8"))
-        self.assertIn("| tiket | SKIP | P-19 |", r2["ringkasan_markdown"])                     # tabel baku untuk balasan Telegram
+        txt = (self.root / "jurnal" / "agent" / f"{DAY}.md").read_text(encoding="utf-8")
+        self.assertIn("kandidat=8 alasan=RR_P19 poin=3-2", txt)
+        self.assertIn("**Alasan SKIP (3):**\n- VETO: R:R 0,34 < 0,5 (P-19)\n- level baru 1 sentuhan\n- tren 15m / turun\n**Alasan OPEN (2):**", txt)
+        self.assertEqual(r2["timbangan"], {"skip": 3, "open": 2, "veto": True, "hitungan": "SKIP", "sesuai": True})
+        self.assertNotIn("peringatan", r2)
+        self.assertIn("| tiket | SKIP | skip 3 · open 2 · veto |", r2["ringkasan_markdown"])   # tabel baku untuk balasan Telegram
+        self.assertIn("Alasan OPEN (2):\n- penolakan wick jelas\n- funding netral", r2["ringkasan_markdown"])
         self.assertEqual(r2["n_persona"], 1)
-        r3 = self.tools.tulis_jurnal("keputusan", "[fade] K8 BTCUSDT LONG - SKIP", "tanpa divergensi", symbol=BTC, kandidat_id=8, alasan_skip="PANEL_FADE")
+        r3 = self.tools.tulis_jurnal("keputusan", "[fade] K8 BTCUSDT LONG - SKIP", "tanpa divergensi", symbol=BTC, kandidat_id=8, alasan_skip="PANEL_FADE",
+                                     poin_skip=["hanya 1 indikator ekstrem"])
         self.assertEqual(r3["n_persona"], 2)
         self.assertTrue(r3["ringkasan_markdown"].startswith("**Arena K8 · BTCUSDT LONG · 10:03 WIB** — semua persona SKIP"))
         self.assertNotIn("ringkasan_markdown", self.tools.tulis_jurnal("catatan", "x", "y", kandidat_id=8))
         bad = self.tools.tulis_jurnal("keputusan", "K9 SKIP", "x", alasan_skip="MALAS")
         self.assertFalse(bad["ok"])
         self.assertIn("alasan_skip harus salah satu", bad["error"])
+        # keputusan kandidat tanpa poin ditolak; terlalu banyak poin ditolak
+        tanpa = self.tools.tulis_jurnal("keputusan", "[tiket] K9 BTCUSDT LONG - SKIP", "x", kandidat_id=9)
+        self.assertFalse(tanpa["ok"])
+        self.assertIn("poin_skip", tanpa["error"])
+        self.assertFalse(self.tools.tulis_jurnal("keputusan", "[tiket] K9 BTCUSDT LONG - SKIP", "x", kandidat_id=9, poin_skip=["a"] * 6)["ok"])
+        # seri = SKIP; ORDER yang kalah hitungan tetap dicatat dengan tanda
+        seri = self.tools.tulis_jurnal("keputusan", "[tiket] K9 BTCUSDT LONG - SKIP", "", kandidat_id=9, poin_skip=["a", "b"], poin_open=["c", "d"])
+        self.assertEqual((seri["timbangan"]["hitungan"], seri["timbangan"]["sesuai"]), ("SKIP", True))
+        lawan = self.tools.tulis_jurnal("keputusan", "[breakout] K9 BTCUSDT LONG - order #5", "", kandidat_id=9, order_id=5,
+                                        poin_skip=["a", "b"], poin_open=["c"])
+        self.assertTrue(lawan["ok"])
+        self.assertFalse(lawan["timbangan"]["sesuai"])
+        self.assertIn("tidak sesuai hitungan", lawan["peringatan"])
+        self.assertIn("hitungan=tidak_sesuai", (self.root / "jurnal" / "agent" / f"{DAY}.md").read_text(encoding="utf-8"))
+        self.assertIn("| breakout | **ORDER #5** | skip 2 · open 1 · tidak sesuai hitungan |", lawan["ringkasan_markdown"])
         m = self.tools.baca_memori("jurnal")
         self.assertTrue(m["ada"])
         self.assertIn("SKIP BTC", m["isi"])

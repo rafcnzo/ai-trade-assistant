@@ -3,6 +3,23 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-23 (pagi, 09:30) — laptop Windows — keputusan arena ditimbang dengan poin alasan SKIP vs OPEN
+
+**Apa:** `tulis_jurnal` menerima `poin_skip` dan `poin_open` (wajib untuk keputusan dengan `kandidat_id`, 1–5 poin per sisi). Modul murni
+`kontrafaktual` mendapat `poin_bersih`, `timbang` (OPEN hanya bila poin OPEN > poin SKIP dan tidak ada `VETO:`; seri = SKIP), `blok_poin`;
+`parse_keputusan` membaca bagian `**Alasan SKIP (n):**`/`**Alasan OPEN (n):**` terpisah dari teks (poin SKIP ikut klasifikasi kategori).
+Jurnal menyimpan meta `poin=s-o` dan `hitungan=tidak_sesuai` bila keputusan menyimpang (tetap dicatat karena order mungkin sudah terpasang;
+hasil tool memuat `timbangan` + `peringatan`). `keputusan.render_markdown`: tabel `Persona | Hasil | Timbangan` ("skip 3 · open 2 · veto")
+lalu poin per persona di bawah tabel (sel tabel tidak bisa memuat daftar; tabel tetap ada sehingga Telegram tetap Rich Message).
+Dashboard: kolom Timbangan (sisi pemenang menyala, tag veto / tidak sesuai), dua daftar poin per analis (SKIP koral, OPEN hijau, satu
+kolom di ponsel), baris keputusan terakhir di tangki menampilkan timbangan dengan semua poin di tooltip. Skill arena 1.2.0 (langkah
+"timbang dulu, lalu putuskan"), tiket 1.1.0, SOUL. Tes KP1–KP2 & M6 diperluas (poin, veto, seri, tidak sesuai, penolakan tanpa poin).
+
+**Kenapa:** permintaan user 23 Okt: alasan SKIP dan alasan OPEN per persona dibuat poin, "3 point alasan skip dan 2 point alasan open,
+3 vs 2 jadi keputusan skip". Keputusan desain: aturan keras ditulis sebagai `VETO:` dan selalu SKIP, supaya aturan keselamatan (P-19,
+BASI, saldo) tidak bisa kalah suara. **File:** `scripts/{kontrafaktual,keputusan,mcp_server}.py`, `dashboard/{app.js,style.css}`,
+`hermes/{SOUL.md,skills/arena,skills/tiket}`, `tests/{test_keputusan,test_mcp_server}.py`, docs (rencana v1.13, OPERASI, STATUS).
+
 ## 2026-10-23 (pagi, 08:45) — laptop Windows — dashboard dirombak: glassmorphism gelap "akuarium laut dalam" + responsif ponsel
 
 **Apa:** dunia visual dashboard diganti total (fungsi, data, dan teks tetap). Undian concept-seed → "ruang observasi akuarium laut dalam";

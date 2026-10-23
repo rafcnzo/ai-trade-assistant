@@ -1,7 +1,7 @@
 ---
 name: tiket
 description: Prosedur menilai kandidat tiket $1 (Binance USDT-M Futures, paper) dan memasang order paper lewat tool mcp_paper_*. Dipakai saat pemindai menemukan kandidat, atau saat pemilik minta "cek setup", "cek tiket", "pasang tiket".
-version: 1.0.0
+version: 1.1.0
 metadata:
   hermes:
     tags: [trading, paper, tiket, price-action]
@@ -41,11 +41,13 @@ metadata:
    Jangan mengarang ID; tanpa kandidat pemindai (permintaan pemilik) pakai `plan_id="MANUAL"`.
    Kode tolak: `LIMIT_CROSSES` → harga sudah lewat level, nilai ulang sekali atau SKIP (jangan `market=true`);
    `BUDGET_TIKET`/`TIKET_EOD` → SKIP; lainnya → laporkan apa adanya.
-8. **Selalu** `mcp_paper_tulis_jurnal(jenis="keputusan", judul, isi=<rencana + alasan>, symbol, kandidat_id, order_id, aturan_dilanggar=<ID playbook atau kosong>)`, termasuk saat SKIP.
+8. **Selalu** `mcp_paper_tulis_jurnal(jenis="keputusan", judul, isi=<rencana + alasan>, symbol, kandidat_id, order_id, aturan_dilanggar=<ID playbook atau kosong>, poin_skip, poin_open)`, termasuk saat SKIP.
+   Sebelum memutuskan, timbang: `poin_skip` = semua alasan tidak masuk, `poin_open` = semua alasan masuk (1–5 poin per sisi, satu fakta
+   per poin); aturan keras diawali `VETO: ` dan selalu berarti SKIP; masuk hanya bila poin_open > poin_skip, seri = SKIP. Wajib bila ada `kandidat_id`.
    Saat SKIP isi juga `alasan_skip` (satu kategori: RR_P19, TP_ATR15, TREN_15M, SENTUHAN, LIQ_ATR5, SUDAH_LARI, FUNDING, BASI, LIMIT_CROSSES, BUDGET, EOD,
    DUPLIKAT, PLAYBOOK, LAIN); SKIP dinilai skrip esok hari dengan order bayangan mekanis.
 9. Balasan Telegram: bila keputusan terkait kandidat pemindai (ada `kandidat_id`), salin **persis** `ringkasan_markdown` dari hasil
-   `tulis_jurnal` (judul, fakta, tabel `Persona | Hasil | Alasan`), lalu baris rencana bersyarat bila order dipasang, lalu
+   `tulis_jurnal` (judul, fakta, tabel `Persona | Hasil | Timbangan`, poin alasan SKIP/OPEN), lalu baris rencana bersyarat bila order dipasang, lalu
    "Paper trading; keputusan uang sungguhan ada di Anda." Tanpa kandidat (permintaan manual): ≤ 12 baris berisi keputusan, id order,
    alasan utama, risiko, dan kalimat penutup yang sama.
 

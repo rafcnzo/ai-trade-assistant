@@ -118,11 +118,21 @@ Adapter Telegram Hermes (v0.21.6, `plugins/platforms/telegram/adapter.py`) mengi
 bila isinya memuat tabel pipa / daftar tugas / `<details>` / `$$`, dan `rich_messages: true` di config (sudah). Tanpa tabel, pesan dikirim
 MarkdownV2 biasa (judul "Cronjob Response" tampil dengan garis `-------------`, tabel apa pun diubah menjadi daftar). Karena itu laporan wake
 arena **selalu** memakai tabel baku yang dirakit mesin: `tulis_jurnal(..., kandidat_id)` mengembalikan `ringkasan_markdown` (judul `Arena K<id>
-· SIMBOL ARAH · HH:MM WIB`, baris fakta dari kandidat pemindai, tabel `Persona | Hasil | Alasan`) dan `n_persona`; skill arena/tiket menyalin
-tabel dengan `n_persona` terbesar per kandidat, lalu satu baris penutup. Perakitnya `scripts/keputusan.py` (fungsi murni), dipakai juga oleh
+· SIMBOL ARAH · HH:MM WIB`, baris fakta dari kandidat pemindai, tabel `Persona | Hasil | Timbangan`, lalu poin "Alasan SKIP (n)" /
+"Alasan OPEN (n)" per persona) dan `n_persona`; skill arena/tiket menyalin tabel dengan `n_persona` terbesar per kandidat, lalu satu
+baris penutup.
+
+**Timbangan poin (v1.13).** `tulis_jurnal(..., poin_skip=[...], poin_open=[...])` wajib untuk keputusan dengan `kandidat_id` (tool menolak
+tanpa poin; maksimal 5 poin per sisi, tiap poin satu baris ≤ 140 karakter). Jurnal menyimpan meta `poin=<skip>-<open>` dan bagian
+`**Alasan SKIP (n):**` / `**Alasan OPEN (n):**`. Aturan: OPEN hanya bila poin OPEN > poin SKIP dan tidak ada poin berawalan `VETO:` (aturan
+keras: P-19, BASI, saldo, EOD, LIMIT_CROSSES, liq < 2×ATR 5m, playbook aktif); seri = SKIP. Keputusan yang menyimpang tetap dicatat
+(order mungkin sudah terpasang) dengan meta `hitungan=tidak_sesuai`, `peringatan` di hasil tool, dan tag "tidak sesuai" di dashboard.
+Keputusan lama tanpa poin tetap tampil dengan satu poin dari teksnya. Perakitnya `scripts/keputusan.py` (fungsi murni), dipakai juga oleh
 dashboard `/api/keputusan?hari=` (Catatan AI → "Keputusan analis": tabel per kandidat + kolom Penilaian = SKIP tepat/terlewat dari
 `pasar/skip-hasil.jsonl` atau hasil order nyata) dan baris "keputusan terakhir" di kolom tiap analis. Berkas statis dashboard dikirim dengan
-`Cache-Control: no-cache` supaya browser tidak memakai `app.js` lama setelah pembaruan.
+`Cache-Control: no-cache` supaya browser tidak memakai `app.js` lama setelah pembaruan. Di dashboard, kolom Timbangan menampilkan
+"skip 3 · open 2" (sisi pemenang menyala, tag veto/tidak sesuai) dan di bawah tiap analis ada dua daftar poin berdampingan (SKIP koral,
+OPEN hijau; satu kolom di ponsel); baris "keputusan terakhir" di tangki menampilkan timbangan dengan semua poin di tooltip.
 
 ## Penilaian SKIP (kontrafaktual)
 

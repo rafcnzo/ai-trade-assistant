@@ -3,6 +3,11 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.13 (23 Okt 2026, keputusan ditimbang dengan poin)
+- §5 keputusan kandidat: tiap persona menulis semua alasan SKIP dan semua alasan OPEN sebagai poin (1–5 per sisi, satu fakta per poin).
+  Keputusan = hitungan: OPEN hanya bila poin OPEN > poin SKIP dan tidak ada `VETO:` (aturan keras); seri = SKIP. Keputusan yang
+  menyimpang dari hitungan tetap dicatat dan ditandai `hitungan=tidak_sesuai`. Rincian: OPERASI "Format laporan keputusan".
+
 ### Perubahan v1.12 (22 Okt 2026, penilaian SKIP)
 - §16.6 belajar: selain hipotesis, setiap kandidat pemindai dinilai dengan order bayangan mekanis; keputusan SKIP tiap analis diberi label
   benar/salah/netral dan alasan yang terbukti menjadi pelajaran otomatis `LS-NN` (skrip, bukan AI). Rincian: OPERASI "Penilaian SKIP".
