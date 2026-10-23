@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-23 08:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-10-23 08:45 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -41,13 +41,14 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Selesai & terpasang** (138 tes; cron pemindai → skill arena, nilai-arena mingguan, 28 tool, dashboard tab Arena) |
+| KC | Dashboard dirombak: dunia "akuarium laut dalam" (glassmorphism gelap: tangki kaca beku per analis, cahaya cyan, Plus Jakarta Sans), palet baru, Pasar naik ke bagian 2 (grafik 540 px), responsif ponsel 375 px (diuji emulasi perangkat CDP: tanpa luapan samping); cap order batal/kedaluwarsa, tangki pensiun abu-abu; review akhir impeccable + DESIGN.md ditulis ulang | **Selesai & terpasang** |
 | FT | Format laporan baku: `scripts/keputusan.py` merakit tabel keputusan per kandidat; `tulis_jurnal` mengembalikan `ringkasan_markdown` yang disalin skill arena/tiket (selalu tabel → Telegram selalu Rich Message); dashboard `/api/keputusan` + Catatan AI "Keputusan analis" (tabel per kandidat + Penilaian) + keputusan terakhir di kolom analis; static `no-cache`; KP1–KP3, M6+, D11 (168 tes) | **Selesai & terpasang** |
 | SK | Setiap SKIP jadi sampel: `kontrafaktual.py` + tahap `nilai_skip` di `uji_hipotesis.py` (order bayangan mekanis per kandidat, label SKIP per analis/alasan), `pasar/skip-hasil.jsonl`, `pasar/skip.md`, pelajaran otomatis `LS-NN`, `tulis_jurnal(alasan_skip)`, dashboard "SKIP tepat"; K1–K5, M6+, D8+ (164 tes); backfill 11–21 Okt | **Selesai & terpasang** |
 | SW | Swing bertahap (P-20, uji): skema paper v4 (`swing_plan`, `plan_group`), tangga/piramida, TP 50/25/runner trailing, breakeven, 31 tool, skill `swing`, menu `/swing`; T29–T37, M18, N5, D9 (157 tes) | **Kode selesai**; deploy: restart collector + setup_hermes + gateway |
 | RD2 | `/radar <N>`: tool `tambah_jatah_radar` (29 tool) → `data/radar_jatah.json`, pemindai menambah cap hari itu; skill `radar`, menu menggantikan `/usage`; M17, S13 (145 tes) | **Selesai & terpasang** |
 | RD | Radar: cap 3 wake/jam (G5) + `score_min` 3 → 4, karena 12 wake harian habis pukul 09:31 dan skor 3 hampir selalu di-SKIP (S12, 143 tes) | **Selesai & terpasang** |
 | P19 | Gate R:R minimum tiket di mesin (`tiket_min_rr` 0,5, `RR_TOO_LOW`, playbook P-19 dari U-001); susulan menjalankan uji hipotesis terlewat; evaluasi-harian 21:30 & uji-hipotesis 21:15 (laptop mati malam) | **Selesai & terpasang** (142 tes; T28) |
-| D2 | Dashboard "Meja analis" (13 Okt): satu halaman gulir, meja 4 analis + aliran kejadian (`/api/kejadian`), tooltip untuk semua keterangan, Ringkasan (top koin + kecenderungan analis, `/api/ringkas`), palet arang/gading/kuningan; `PRODUCT.md`, `DESIGN.md`, brief `.impeccable/surfaces/`; tes D7 (140) | **Selesai & terpasang** |
+| D2 | Dashboard "Meja analis" (13 Okt): satu halaman gulir, meja 4 analis + aliran kejadian (`/api/kejadian`), tooltip untuk semua keterangan, Ringkasan (top koin + kecenderungan analis, `/api/ringkas`), palet arang/gading/kuningan (diganti 23 Okt, lihat KC); `PRODUCT.md`, `DESIGN.md`, brief `.impeccable/surfaces/`; tes D7 (140) | **Selesai & terpasang** |
 | D | Dashboard lokal: chart trading (Lightweight Charts) + marker mesin paper, posisi/order live, riwayat + **trailing drawdown per akun**, rapor, radar, suasana pasar, catatan AI; bahasa awam; autostart | **Selesai & jalan** (128 tes; D1–D5) |
 | 3c | Referensi buku & playbook (§15): `konversi_buku.py`, `referensi.py`, tool `cari_referensi`/`baca_referensi`, `/referensi`, `referensi/indeks.md`, `referensi/playbook.md` v1, aturan SOUL "Referensi", playbook di skill tiket | **Selesai & terpasang** (122 tes; 3 buku terkonversi; MCP 26 tool; `/referensi` di menu) |
 

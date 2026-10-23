@@ -586,17 +586,17 @@ Buku saat ini: `mastering-trading-psychology` (14 bab heuristik; bab 1–4 adala
 
 Buka **http://127.0.0.1:8586** (hanya lokal; autostart lewat `crypto-analyst_dashboard.vbs`; manual: `run_dashboard.cmd` atau
 `.venv/Scripts/python.exe scripts/dashboard.py`). Baca saja — tidak menulis DB mana pun; polling ringkasan + kejadian 5 s, chart 15 s,
-papan/ekuitas/radar 60 s, psikologi 5 mnt. Satu halaman gulir dengan lompat-bagian (Sekarang → Pasar → Peringkat → Riwayat → Konteks →
-Catatan AI). Label pendek bergaris putus = tooltip (hover atau fokus keyboard, Esc menutup); keterangan tidak ditaruh di layar.
+papan/ekuitas/radar 60 s, psikologi 5 mnt. Satu halaman gulir dengan lompat-bagian (Sekarang → Pasar → Ringkasan → Peringkat → Riwayat → Konteks →
+Catatan AI); responsif sampai lebar ponsel 375 px (satu kolom, tabel bergulir di dalam panelnya). Label pendek bergaris putus = tooltip (hover atau fokus keyboard, Esc menutup); keterangan tidak ditaruh di layar.
 Desain: `PRODUCT.md` (kebenaran produk) + `DESIGN.md` (sistem visual) + `.impeccable/surfaces/` (brief); jangan ubah dunia visual tanpa memperbarui keduanya.
 
 - **Sekarang**: meja empat analis (persona arena): status boleh buka/berhenti/pensiun, batang saldo bergulir, posisi terbuka sebagai kalimat
   (masuk, target + jarak, stop, jarak ke hangus, P/L hidup), order menunggu, keputusan terakhir dari tabel `events`; baris pembanding acak dan
-  swing; kolom kanan = aliran kejadian mesin (`/api/kejadian`). Angka yang berubah mendapat denyut kuningan sesaat. Koin di grafik mengikuti
+  swing; kolom kanan = aliran kejadian mesin (`/api/kejadian`). Angka yang berubah menyala cyan sesaat. Koin di grafik mengikuti
   posisi terbaru sampai dipilih manual.
 
 - **Pasar (chart)**: candlestick + volume dari `kline_1m` (1m/5m/15m) atau `kline_1h` (1h/4h/1d), sumbu waktu WIB; marker dari mesin paper:
-  ▲/▼ entry, ● TP (hijau), ■ likuidasi (merah), ● STOP/EOD/manual (abu), ● kecil kuning = order kedaluwarsa/batal; garis harga = entry,
+  ▲/▼ entry, ● TP (hijau), ■ likuidasi (merah), ● STOP/EOD/manual (abu), ● kecil kuning = order kedaluwarsa/batal (di aliran kejadian dan jejak: cap KEDALUWARSA/BATAL); garis harga = entry,
   TP, SL, liq posisi terbuka dan harga order limit hidup. Akun `acak` disembunyikan kecuali dicentang. Dropdown simbol: aktif →
   pernah ditradingkan → top 30 volume.
 - **Titik kesehatan (header)**: harga (collector OK/BASI), radar (run terakhir, wake hari ini), biaya (hari/bulan vs cap), AI dimatikan (kill switch);

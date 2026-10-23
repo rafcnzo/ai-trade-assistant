@@ -17,25 +17,36 @@ warna sederhana, elegan, kontras tinggi; Bahasa Indonesia; "tidak tersedia" buka
 
 ## Direction contract
 
-THESIS: Meja analis: satu baris meja per analis dengan apa yang sedang ia pegang sekarang, ditulis sebagai kalimat
-(bukan tabel KPI), dan kejadian mesin mengalir di sampingnya. Menolak susunan default "kartu angka besar + tab".
+Redesign 23 Okt 2026 (permintaan pemilik: lebih modern, gaya morphism, palet baru, responsif ponsel). Dipin: glassmorphism, gelap,
+tetap bisa dilirik dalam 3 detik, grafik candlestick tetap besar dan utama. Undian concept-seed 6d51b20c → indeks 4; pemilik memilih
+kartu undian di halaman keputusan (key 9ed99581). Dunia lama (arang hangat, kuningan, tanpa kartu) adalah anti-referensi.
 
-OWN-WORLD: arang hangat gelap sebagai meja, tinta gading, satu aksen kuningan untuk fokus/pilihan, mint = untung,
-koral = rugi, hanya garis rambut 1px sebagai pemisah; satu keluarga huruf (Inter) dengan angka tabular; tanpa kartu di dalam kartu;
-label kecil bergaris putus yang membuka tooltip.
+WORLD: Ruang observasi akuarium laut dalam pada malam hari. Kaca di sini harfiah: tiap analis diamati lewat satu tangki kaca beku;
+uang paper adalah cahaya biolumines di dalamnya.
 
-STORY: "Siapa pegang apa, berapa jauh dari target/hangus, apa yang baru terjadi" → "siapa yang unggul vs acaknya" → "pasar
-sedang bagaimana, mesin sehat, biaya".
+THESIS: Empat tangki kaca sejajar memuat seluruh status analis (saldo, posisi, P/L hidup, order, keputusan terakhir) dalam sel
+bergaris padat; aliran kejadian adalah panel kaca di sisi; grafik harga adalah jendela besar tepat di bawahnya.
 
-FIRST VIEWPORT (1440): header tipis (nama, jam WIB, titik kesehatan ber-tooltip). Meja empat kolom analis, tiap kolom:
-nama + gaya, pil status, batang saldo bergulir, posisi terbuka sebagai kalimat kaya + P/L hidup, order menunggu, keputusan
-terakhir. Baris tipis pembanding acak & swing. Kolom kanan 360px: aliran kejadian terbaru (relatif waktu). Tidak ada aksi primer.
+OWN-WORLD: air laut dalam bergradasi (#0a2230 → #06141b → #040d12) dengan cahaya permukaan dari atas dan beberapa titik biolumines
+buram yang diam; panel kaca beku (blur 18 px, saturate, tepi atas memantul cahaya 1 px, bayangan lembut ke bawah); tinta busa
+#e6f4f1; satu cahaya fokus cyan #63e6ff (pilihan, fokus, crosshair); untung hijau fosfor #6be89a, rugi koral #ff7a6b, peringatan
+kuning umpan anglerfish #f3c969; warna persona sebagai cahaya di puncak tangki masing-masing. Satu keluarga huruf: Plus Jakarta Sans
+(desainer Jakarta), angka tabular. Raises: sel bergaris padat (japanese-high-density-web), order batal/kedaluwarsa dicap dan tetap
+terlihat (jet-age ticket wallet), tangki analis pensiun pudar abu-abu (character goods catalog).
 
-FORM: single-page scroll dengan lompat-bagian; posisi daftar: dipin oleh brief user (tanpa undian; seed key: none/pinned).
-Interaksi tanda tangan: denyut kuningan (garis bawah 600 ms ease-out) pada angka yang berubah saat polling 5 detik, dan
-entri kejadian baru masuk dengan geser 200 ms. Tidak ada motion lain.
+STORY: "Siapa pegang apa, berapa jauh dari target/hangus, apa yang baru terjadi" → "harga koin yang dipegang (grafik besar)" →
+"pasar sekilas & kebiasaan analis" → "siapa unggul vs acaknya" → riwayat → konteks → catatan AI.
+
+FIRST VIEWPORT (1440): header tipis di atas air (nama, jam WIB, titik kesehatan); bar lompat-bagian kaca berbentuk pil yang menempel.
+Empat tangki analis + panel kejadian 360 px. Grafik candlestick dimulai tepat di bawah lipatan, tinggi 540 px.
+
+FORM: single-page scroll; urutan bagian diubah (Pasar naik ke posisi 2, keputusan pemilik: urutan tidak dipin). Aturan wadah: bagian =
+judul di atas air + kolom-kolom sebagai panel kaca; tidak ada kaca di dalam kaca. Interaksi tanda tangan: angka yang berubah saat polling
+5 detik menyala biolumines (cahaya cyan memudar 700 ms ease-out); entri kejadian baru masuk dengan geser 200 ms. Latar tidak bergerak
+(hemat GPU, laptop menyala seharian). Ponsel: satu kolom, tangki bertumpuk, grafik 380 px, tabel bergulir di dalam panelnya,
+target sentuh ≥ 36 px.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 
 ## Unresolved
-Mode terang (belum diminta); ekspor riwayat (belum diminta).
+Mode terang (belum diminta; dunia ini gelap); ekspor riwayat (belum diminta).

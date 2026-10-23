@@ -36,8 +36,14 @@ const GAYA_TIP = {
   acak: "Untuk setiap order analis, mesin membuat satu order kembar dengan arah hasil lempar koin. Pembanding, bukan peserta.",
   swing: "Akun posisi lebih lama (bukan tiket harian); margin tetap per trade, maksimal beberapa posisi.",
 };
-const WARNA = { tiket: "#d9b35c", fade: "#8ab4f8", breakout: "#5bd4a3", rentang: "#e39bd0", acak: "#7d838b", swing: "#f0a35b" };
+// palet hanya di style.css (:root); JS membacanya supaya grafik, tangki, dan teks memakai cahaya yang sama
+const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const K = { up: cssv("--up"), down: cssv("--down"), warn: cssv("--warn"), glow: cssv("--glow"), ink: cssv("--ink"), muted: cssv("--muted"), dim: cssv("--dim") };
+const alpha = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const WARNA = Object.fromEntries(["tiket", "fade", "breakout", "rentang", "acak", "swing"].map(a => [a, cssv("--p-" + a)]));
 const ALASAN = { TP: ["target tercapai", "up"], HANGUS: ["modal hangus", "down"], FUNDING_LIQ: ["hangus karena biaya funding", "down"], STOP: ["kena stop", "down"], TRAIL: ["trailing stop (runner)", "up"], EOD: ["ditutup jam 23:50", ""], MANUAL: ["ditutup manual", ""], DELISTED: ["koin dihapus", ""] };
+const CAP = { EXPIRED: ["kedaluwarsa", "exp"], CANCELED: ["batal", "can"], REJECTED: ["ditolak", "rej"] };
+const capEv = (st) => CAP[st] ? `<span class="cap ${CAP[st][1]}">${CAP[st][0]}</span>` : "";
 const STATUS_ORDER = { EXPIRED: "harga tidak pernah tersentuh", CANCELED: "dibatalkan", REJECTED: "ditolak mesin", NEW: "menunggu aktif", ACTIVE: "menunggu harga" };
 const KODE = { BUDGET_TIKET: "saldo hari ini tidak cukup / di bawah $0,50", TIKET_EOD: "sudah lewat jam tutup", LIMIT_CROSSES: "harga sudah lewat level", LEVERAGE_CAP: "leverage melebihi batas", QTY_STEP: "jumlah tidak sesuai kelipatan", MIN_NOTIONAL: "nilai order terlalu kecil", RR_TOO_LOW: "untung:rugi di bawah 2,5", BAD_TP: "target di arah yang salah", BUDGET_ACAK: "jatah kembaran acak habis", ACAK_EOD: "kembaran: lewat jam tutup", ACCOUNT_PENSIUN: "akun sedang pensiun" };
 const ARTI = {
@@ -77,7 +83,12 @@ window.addEventListener("scroll", () => hideTip(), { passive: true });
 
 // ---------------------------------------------------------------- lompat-bagian: tandai bagian yang terlihat
 const jumps = $$(".jump a");
-const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) jumps.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id)); }), { rootMargin: "-40% 0px -55% 0px" });
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  jumps.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id));
+  const on = $(".jump a.on"), nav = $(".jump"); // di ponsel bar bergulir menyamping: pil aktif selalu terlihat
+  if (on && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2, behavior: "smooth" });
+}), { rootMargin: "-40% 0px -55% 0px" });
 $$("section.bag").forEach(s => io.observe(s));
 
 // ---------------------------------------------------------------- denyut: angka yang berubah mendapat garis bawah kuningan sesaat
@@ -106,7 +117,7 @@ function posisiLi(p) {
     `Harga sekarang ${px(p.mark)}`].filter(Boolean).join("\n");
   const tpDone = (p.tp_list || []).filter(t => t.status === "FILLED").length;
   const l2 = [`${px(p.entry_price)} <span class="ke">→</span> ${p.tp_price ? px(p.tp_price) : (p.trail_on ? "trailing" : "—")}`, jauh !== undefined ? `<span class="${jauh < 1 ? "down" : ""}">hangus ${nf(1).format(Math.abs(jauh))} %</span>` : null,
-    p.plan_group ? `<span class="brass">sisa ${nf(0).format(p.persen_sisa ?? 100)} %${tpDone ? " · TP" + tpDone + " ✓" : ""}${p.legs_n > 1 ? " · " + p.legs_n + " leg" : ""}</span>` : null].filter(Boolean).join("");
+    p.plan_group ? `<span class="glow">sisa ${nf(0).format(p.persen_sisa ?? 100)} %${tpDone ? " · TP" + tpDone + " kena" : ""}${p.legs_n > 1 ? " · " + p.legs_n + " leg" : ""}</span>` : null].filter(Boolean).join("");
   return `<li class="posisi"><div class="l1"><span class="tip" tabindex="0" data-tip="${esc(rinci)}"><b>${koin(p.symbol)}</b> ${arah(p.side)} ${p.leverage}×</span><b class="pl ${un === null ? "dim" : un >= 0 ? "up" : "down"}" data-k="pl-${p.id}">${un === null ? "harga?" : usd(un, true)}</b></div><div class="l2">${l2}</div></li>`;
 }
 function orderLi(o) {
@@ -138,7 +149,7 @@ function renderMeja(r, feed) {
       na ? ["", "tidak tersedia", "Mesin paper belum pernah berjalan"] : b.boleh_buka ? ["ok", "boleh buka", "Saldo ≥ $0,50 dan belum lewat 22:30: boleh pasang tiket baru"] : ["hold", "berhenti", "Saldo di bawah $0,50 atau sudah lewat 22:30: tidak ada tiket baru sampai besok"];
     const pakai = na ? 0 : (b.used + b.reserved) / Math.max(b.saldo, 0.01) * 100;
     const items = (pos[a.name] || []).map(posisiLi).concat((ord[a.name] || []).map(orderLi)).join("");
-    return `<article class="analis" style="--w:${WARNA[a.name] || "#888"}">
+    return `<article class="analis kaca${a.status !== "aktif" ? " pensiun" : ""}" style="--w:${WARNA[a.name] || K.glow}">
       <header><h3>${nama(a.name)}</h3>${tip(GAYA[a.name] || "", GAYA_TIP[a.name] || "", "gaya")}<span class="pil-wrap">${tip(`<span class="pil ${pil[0]}">${pil[1]}</span>`, pil[2])}</span></header>
       <div class="saldo">${tip("Bisa dipakai", na ? "Mesin paper belum berjalan." : `Saldo bergulir hari ini ${usd(b.saldo)} (mulai $1; target tercapai menambah, hangus mengurangi).\nHasil hari ini ${usd(b.realisasi, true)}.\nTerkunci di posisi/order ${usd(b.used + b.reserved)}.\nSatu tiket maksimal $1; di bawah $0,50 berhenti sampai besok.`)}<b data-k="sisa-${a.name}">${na ? "—" : usd(b.remaining)}</b>
         <span class="hasil ${b.realisasi > 0 ? "up" : b.realisasi < 0 ? "down" : "dim"}" data-k="real-${a.name}">${na ? "" : b.realisasi ? usd(b.realisasi, true) : ""}</span>
@@ -150,8 +161,8 @@ function renderMeja(r, feed) {
   const acakPos = (pos.acak || []), swingPos = (pos.swing || []);
   const sum = (arr) => arr.reduce((x, p) => x + (p.unrealized || 0), 0);
   setHTML("#banding",
-    `<div class="baris">${tip("<b>Kembaran acak</b>", GAYA_TIP.acak + (a.remaining !== undefined ? `\n\nSisa jatah hari ini ${usd(a.remaining)}; ${acakPos.length} posisi terbuka, ${(ord.acak || []).length} order menunggu.` : ""))} <span>${acakPos.length ? `${acakPos.length} posisi <b class="${sum(acakPos) >= 0 ? "up" : "down"}" data-k="acak-un">${usd(sum(acakPos), true)}</b>` : a.remaining !== undefined ? "tidak ada posisi" : "tidak tersedia"}</span></div>` +
-    `<div class="baris">${tip("<b>Swing</b>", GAYA_TIP.swing + (s.max_open !== undefined ? `\n\n${s.open} dari maksimal ${s.max_open} posisi, $${s.margin_per_trade} per trade, ${s.pending} order menunggu.` + swingPos.map(p => `\n${koin(p.symbol)} ${arah(p.side)} ${p.leverage}×: masuk ${px(p.entry_price)}, target ${px(p.tp_price)}, hangus ${nf(1).format(Math.abs(p.liq_dist_pct || 0))} % lagi`).join("") : ""))} <span>${swingPos.length ? `${swingPos.map(p => `${koin(p.symbol)} ${arah(p.side)}`).join(", ")} <b class="${sum(swingPos) >= 0 ? "up" : "down"}" data-k="swing-un">${usd(sum(swingPos), true)}</b>` : s.max_open !== undefined ? "tidak ada posisi" : "tidak tersedia"}</span></div>`);
+    `<div class="baris kaca">${tip("<b>Kembaran acak</b>", GAYA_TIP.acak + (a.remaining !== undefined ? `\n\nSisa jatah hari ini ${usd(a.remaining)}; ${acakPos.length} posisi terbuka, ${(ord.acak || []).length} order menunggu.` : ""))} <span>${acakPos.length ? `${acakPos.length} posisi <b class="${sum(acakPos) >= 0 ? "up" : "down"}" data-k="acak-un">${usd(sum(acakPos), true)}</b>` : a.remaining !== undefined ? "tidak ada posisi" : "tidak tersedia"}</span></div>` +
+    `<div class="baris kaca">${tip("<b>Swing</b>", GAYA_TIP.swing + (s.max_open !== undefined ? `\n\n${s.open} dari maksimal ${s.max_open} posisi, $${s.margin_per_trade} per trade, ${s.pending} order menunggu.` + swingPos.map(p => `\n${koin(p.symbol)} ${arah(p.side)} ${p.leverage}×: masuk ${px(p.entry_price)}, target ${px(p.tp_price)}, hangus ${nf(1).format(Math.abs(p.liq_dist_pct || 0))} % lagi`).join("") : ""))} <span>${swingPos.length ? `${swingPos.map(p => `${koin(p.symbol)} ${arah(p.side)}`).join(", ")} <b class="${sum(swingPos) >= 0 ? "up" : "down"}" data-k="swing-un">${usd(sum(swingPos), true)}</b>` : s.max_open !== undefined ? "tidak ada posisi" : "tidak tersedia"}</span></div>`);
   pulseChanged($("#sekarang"));
 }
 
@@ -187,8 +198,8 @@ function renderFeed(list) {
   const rows = (list || []).filter(e => state.acak || !(e.type.startsWith("ACAK") || e.account === "acak"));
   const top = state.feedTop;
   let hari = null; const today = hariWib(Date.now()), kemarin = hariWib(Date.now() - 86400e3);
-  const html = rows.length ? rows.slice(0, 40).map(e => { const h = hariWib(e.ts); const sep = h !== hari ? (hari === null && h === today ? "" : `<li class="hari">${h === today ? "hari ini" : h === kemarin ? "kemarin" : h}</li>`) : ""; hari = h;
-    return sep + `<li class="${e.account === "acak" || e.type.startsWith("ACAK") ? "acak" : ""} ${top !== null && e.id > top ? "masuk" : ""}"><time>${rel(e.ts)}</time><span>${e.account ? `<span class="who">${esc(nama(e.account))}</span> ` : ""}${esc(teksKejadian(e))}</span></li>`; }).join("") : '<li><time></time><span class="dim">Belum ada kejadian.</span></li>';
+  const html = rows.length ? rows.slice(0, 40).map((e, i) => { const h = hariWib(e.ts); const lebih = i >= 6 ? " lebih" : ""; const sep = h !== hari ? (hari === null && h === today ? "" : `<li class="hari${lebih}">${h === today ? "hari ini" : h === kemarin ? "kemarin" : h}</li>`) : ""; hari = h;
+    return sep + `<li class="${e.account === "acak" || e.type.startsWith("ACAK") ? "acak" : ""} ${top !== null && e.id > top ? "masuk" : ""}${lebih}"><time>${rel(e.ts)}</time><span>${e.account ? `<span class="who" style="color:${WARNA[e.account] || K.glow}">${esc(nama(e.account))}</span> ` : ""}${capEv(e.type === "ORDER_EXPIRED" ? "EXPIRED" : e.type === "ORDER_CANCEL" ? "CANCELED" : "")}${esc(teksKejadian(e))}</span></li>`; }).join("") : '<li><time></time><span class="dim">Belum ada kejadian.</span></li>';
   if (!setHTML("#feed", html)) return;
   if (rows.length) state.feedTop = rows[0].id;
   $("#feed-info").textContent = rows.length ? `terbaru ${wib(rows[0].ts)}` : "";
@@ -236,12 +247,13 @@ async function loadRingkasan() {
 
 // ---------------------------------------------------------------- PASAR: grafik
 let chart, candles, volume, lines = [];
-const baseOpts = { layout: { background: { color: "#1a1816" }, textColor: "#aab0b7", fontFamily: "Inter, system-ui, sans-serif", fontSize: 12 }, grid: { vertLines: { color: "#242019" }, horzLines: { color: "#242019" } },
-  timeScale: { timeVisible: true, secondsVisible: false, borderColor: "#332e28" }, rightPriceScale: { borderColor: "#332e28" }, crosshair: { mode: 0, vertLine: { color: "#d9b35c", labelBackgroundColor: "#d9b35c" }, horzLine: { color: "#d9b35c", labelBackgroundColor: "#d9b35c" } }, localization: { locale: "id-ID", timeFormatter: wibT } };
+const GARIS = "rgba(150,235,240,.14)";
+const baseOpts = { layout: { background: { type: "solid", color: "transparent" }, textColor: K.muted, fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', fontSize: 12 }, grid: { vertLines: { color: "rgba(150,235,240,.05)" }, horzLines: { color: "rgba(150,235,240,.05)" } },
+  timeScale: { timeVisible: true, secondsVisible: false, borderColor: GARIS }, rightPriceScale: { borderColor: GARIS }, crosshair: { mode: 0, vertLine: { color: alpha(K.glow, .6), labelBackgroundColor: K.glow }, horzLine: { color: alpha(K.glow, .6), labelBackgroundColor: K.glow } }, localization: { locale: "id-ID", timeFormatter: wibT } };
 function initChart() {
   if (!hasLWC) { $("#chart").innerHTML = '<div class="empty">Pustaka grafik tidak termuat (butuh internet sekali). Angka dan tabel tetap berfungsi.</div>'; return; }
   chart = LightweightCharts.createChart($("#chart"), baseOpts);
-  candles = chart.addCandlestickSeries({ upColor: "#5bd4a3", downColor: "#f07b7b", borderVisible: false, wickUpColor: "#5bd4a3", wickDownColor: "#f07b7b" });
+  candles = chart.addCandlestickSeries({ upColor: K.up, downColor: K.down, borderVisible: false, wickUpColor: K.up, wickDownColor: K.down });
   volume = chart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "vol" });
   chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
   new ResizeObserver(() => chart.applyOptions({ width: $("#chart").clientWidth, height: $("#chart").clientHeight })).observe($("#chart"));
@@ -259,11 +271,11 @@ async function loadChart(full = true) {
   if (!state.symbol) return;
   const [data, mk] = await Promise.all([api(`/api/candles?symbol=${encodeURIComponent(state.symbol)}&tf=${state.tf}&n=600`), api(`/api/marker?symbol=${encodeURIComponent(state.symbol)}`)]);
   const evs = (mk.marker || []).filter(m => state.acak || m.account !== "acak").slice().reverse();
-  $("#kejadian").innerHTML = evs.length ? evs.slice(0, 14).map(m => `<div class="ev ${m.account === "acak" ? "acak" : ""}"><time>${jam(m.time * 1000)}</time><span><span class="brass">${esc(nama(m.account))}</span> ${esc(markerText(m))}</span></div>`).join("") : '<div class="empty">Belum ada trade pada koin ini.</div>';
+  $("#kejadian").innerHTML = evs.length ? evs.slice(0, 14).map(m => `<div class="ev ${m.account === "acak" ? "acak" : ""}"><time>${jam(m.time * 1000)}</time><span><b style="color:${WARNA[m.account] || K.glow}">${esc(nama(m.account))}</b> ${capEv(m.jenis)}${esc(markerText(m))}</span></div>`).join("") : '<div class="empty">Belum ada trade pada koin ini.</div>';
   if (!chart) return;
   if (!Array.isArray(data) || !data.length) { $("#chart-info").textContent = `${koin(state.symbol)}: belum ada data harga (collector hanya menyimpan 30 koin teramai + koin yang sedang dipegang).`; candles.setData([]); volume.setData([]); return; }
   const cd = data.map(b => ({ time: b.time + OFF, open: b.open, high: b.high, low: b.low, close: b.close }));
-  const vd = data.map(b => ({ time: b.time + OFF, value: b.volume, color: b.close >= b.open ? "rgba(91,212,163,.28)" : "rgba(240,123,123,.28)" }));
+  const vd = data.map(b => ({ time: b.time + OFF, value: b.volume, color: b.close >= b.open ? alpha(K.up, .26) : alpha(K.down, .26) }));
   if (full || !state.lastBar) { candles.setData(cd); volume.setData(vd); chart.timeScale().fitContent(); }
   else { const last = cd[cd.length - 1]; if (cd.length > 1 && cd[cd.length - 2].time > state.lastBar) { candles.setData(cd); volume.setData(vd); } else if (last.time >= state.lastBar) { candles.update(last); volume.update(vd[vd.length - 1]); } }
   state.lastBar = cd[cd.length - 1].time;
@@ -272,17 +284,17 @@ async function loadChart(full = true) {
   const first = cd[0].time, lastT = cd[cd.length - 1].time;
   const markers = (mk.marker || []).filter(m => (state.acak || m.account !== "acak") && m.time + OFF >= first - TF_SEC[state.tf]).map(m => {
     const t = Math.min(snap(m.time + OFF), lastT); const acak = m.account === "acak"; const base = { time: t, text: `${nama(m.account)}: ${markerText(m)}` };
-    if (m.jenis === "ENTRY") return { ...base, position: m.side === "LONG" ? "belowBar" : "aboveBar", shape: m.side === "LONG" ? "arrowUp" : "arrowDown", color: acak ? "#7d838b" : (m.side === "LONG" ? "#5bd4a3" : "#f07b7b"), size: 1.4 };
-    if (m.jenis === "TP") return { ...base, position: "aboveBar", shape: "circle", color: acak ? "#5f8f7a" : "#5bd4a3", size: 1.2 };
-    if (m.jenis === "LIQUIDATION") return { ...base, position: "belowBar", shape: "square", color: acak ? "#9a5a5a" : "#f07b7b", size: 1.2 };
-    if (m.jenis === "EXPIRED" || m.jenis === "CANCELED") return { ...base, position: "inBar", shape: "circle", color: "#e3b04b", size: 0.6 };
-    return { ...base, position: "aboveBar", shape: "circle", color: "#aab0b7" };
+    if (m.jenis === "ENTRY") return { ...base, position: m.side === "LONG" ? "belowBar" : "aboveBar", shape: m.side === "LONG" ? "arrowUp" : "arrowDown", color: acak ? K.dim : (m.side === "LONG" ? K.up : K.down), size: 1.4 };
+    if (m.jenis === "TP") return { ...base, position: "aboveBar", shape: "circle", color: acak ? alpha(K.up, .5) : K.up, size: 1.2 };
+    if (m.jenis === "LIQUIDATION") return { ...base, position: "belowBar", shape: "square", color: acak ? alpha(K.down, .5) : K.down, size: 1.2 };
+    if (m.jenis === "EXPIRED" || m.jenis === "CANCELED") return { ...base, position: "inBar", shape: "circle", color: K.warn, size: 0.6 };
+    return { ...base, position: "aboveBar", shape: "circle", color: K.muted };
   }).sort((a, b) => a.time - b.time);
   candles.setMarkers(markers);
   lines.forEach(l => candles.removePriceLine(l)); lines = [];
   const LABEL = { entry: "masuk", tp: "target", sl: "stop", liq: "hangus", order: "order" };
   (mk.garis || []).filter(g => state.acak || g.account !== "acak").forEach(g => {
-    const color = { entry: "#d9b35c", tp: "#5bd4a3", sl: "#aab0b7", liq: "#f07b7b", order: "#e3b04b" }[g.jenis] || "#888";
+    const color = { entry: K.glow, tp: K.up, sl: K.muted, liq: K.down, order: K.warn }[g.jenis] || K.dim;
     lines.push(candles.createPriceLine({ price: g.price, color, lineWidth: 1, lineStyle: g.jenis === "order" ? 2 : 0, axisLabelVisible: true, title: `${LABEL[g.jenis]} ${nama(g.account)}` }));
   });
 }
@@ -334,7 +346,7 @@ async function loadRingkas() {
     [tip("24 jam", "Perubahan harga 24 jam"), k => `<b class="${k.pct_24h >= 0 ? "up" : "down"}">${(k.pct_24h >= 0 ? "+" : "") + nf(2).format(k.pct_24h)} %</b>`, "num"],
     [tip("Volume", "Nilai perdagangan 24 jam dalam USDT (M = miliar, jt = juta)"), k => vol(k.quote_volume), "num"]], top, k => gotoChart(k.symbol));
   const rows = (r.analis || []).filter(a => a.kind === "tiket" || (state.acak && a.kind === "acak") || (a.kind === "swing" && a.n_posisi));
-  $("#profil").innerHTML = rows.length ? rows.map(a => `<li><b class="nm" style="color:${WARNA[a.akun] || "inherit"}">${nama(a.akun)}</b><span class="c">${kalimatProfil(a)}${a.n_terbuka ? ` · <span class="brass">${a.n_terbuka} terbuka</span>` : ""}</span></li>`).join("") : '<li class="dim">Belum ada data.</li>';
+  $("#profil").innerHTML = rows.length ? rows.map(a => `<li><b class="nm" style="color:${WARNA[a.akun] || "inherit"}">${nama(a.akun)}</b><span class="c">${kalimatProfil(a)}${a.n_terbuka ? ` · <span class="glow">${a.n_terbuka} terbuka</span>` : ""}</span></li>`).join("") : '<li class="dim">Belum ada data.</li>';
 }
 
 // ---------------------------------------------------------------- PERINGKAT
@@ -347,7 +359,7 @@ async function loadArena() {
   const j = rows.find(r => r.akun === ar.juara);
   const aktif = rows.filter(r => r.status === "aktif").length, total = rows.reduce((x, r) => x + r.n, 0), net = rows.reduce((x, r) => x + (r.total_net || 0), 0);
   const terbaik = rows.filter(r => r.n > 0).sort((a, b) => b.total_net - a.total_net)[0];
-  $("#juara").innerHTML = j ? `${tip("Juara sementara", "Rata-rata hasil per trade tertinggi di antara analis dengan ≥ 30 trade selesai.")} <b class="brass">${nama(j.akun)}</b> · ${usd(j.expectancy, true)}/trade · ${j.n} trade` :
+  $("#juara").innerHTML = j ? `${tip("Juara sementara", "Rata-rata hasil per trade tertinggi di antara analis dengan ≥ 30 trade selesai.")} <b class="glow">${nama(j.akun)}</b> · ${usd(j.expectancy, true)}/trade · ${j.n} trade` :
     `${tip("Belum ada juara", "Juara baru diakui setelah seorang analis menyelesaikan ≥ 30 trade. Sampai saat itu, 'terdepan' hanya urutan hasil total sementara.")} · ${aktif} aktif · ${total} trade · <b class="${net >= 0 ? "up" : "down"}">${usd(net, true)}</b>${terbaik ? ` · terdepan <b>${nama(terbaik.akun)}</b>` : ""}`;
   table($("#tbl-arena"), [["Analis", r => `<b style="color:${WARNA[r.akun] || "inherit"}">${nama(r.akun)}</b>`], ["Status", r => r.status === "aktif" ? '<span class="tag ok">aktif</span>' : '<span class="tag belum">pensiun</span>'],
     [tip("Trade", "Jumlah trade yang sudah selesai"), r => r.n, "num"], [tip("Hari", "Jumlah hari sejak trade pertamanya"), r => r.hari, "num"],
@@ -371,7 +383,7 @@ async function loadArena() {
     new ResizeObserver(() => arenaChart.applyOptions({ width: $("#chart-arena").clientWidth })).observe($("#chart-arena"));
   }
   rows.concat([{ akun: "acak" }]).forEach(r => {
-    if (!arenaSeries[r.akun]) arenaSeries[r.akun] = arenaChart.addLineSeries({ color: WARNA[r.akun] || "#888", lineWidth: r.akun === "acak" ? 1 : 2, lineStyle: r.akun === "acak" ? 2 : 0, title: nama(r.akun), priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
+    if (!arenaSeries[r.akun]) arenaSeries[r.akun] = arenaChart.addLineSeries({ color: WARNA[r.akun] || K.dim, lineWidth: r.akun === "acak" ? 1 : 2, lineStyle: r.akun === "acak" ? 2 : 0, title: nama(r.akun), priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
     arenaSeries[r.akun].setData(dedup((eq[r.akun] || {}).ekuitas));
   });
   arenaChart.timeScale().fitContent();
@@ -387,9 +399,9 @@ async function loadEkuitas() {
   if (!hasLWC) return;
   if (!eqChart) {
     eqChart = LightweightCharts.createChart($("#chart-ekuitas"), { ...baseOpts, rightPriceScale: { ...baseOpts.rightPriceScale, scaleMargins: { top: 0.1, bottom: 0.1 } } });
-    eqSeries = eqChart.addAreaSeries({ lineColor: "#d9b35c", topColor: "rgba(217,179,92,.3)", bottomColor: "rgba(217,179,92,.02)", lineWidth: 2, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
+    eqSeries = eqChart.addAreaSeries({ lineColor: K.glow, topColor: alpha(K.glow, .28), bottomColor: alpha(K.glow, .02), lineWidth: 2, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
     ddChart = LightweightCharts.createChart($("#chart-drawdown"), { ...baseOpts, rightPriceScale: { ...baseOpts.rightPriceScale, scaleMargins: { top: 0.05, bottom: 0.05 } } });
-    ddSeries = ddChart.addAreaSeries({ lineColor: "#f07b7b", topColor: "rgba(240,123,123,.02)", bottomColor: "rgba(240,123,123,.4)", invertFilledArea: true, lineWidth: 1, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
+    ddSeries = ddChart.addAreaSeries({ lineColor: K.down, topColor: alpha(K.down, .02), bottomColor: alpha(K.down, .4), invertFilledArea: true, lineWidth: 1, priceFormat: { type: "price", precision: 4, minMove: 0.0001 } });
     eqChart.timeScale().subscribeVisibleLogicalRangeChange(r => r && ddChart.timeScale().setVisibleLogicalRange(r));
     new ResizeObserver(() => { eqChart.applyOptions({ width: $("#chart-ekuitas").clientWidth }); ddChart.applyOptions({ width: $("#chart-drawdown").clientWidth }); }).observe($("#chart-ekuitas"));
   }
@@ -407,7 +419,7 @@ async function loadRiwayat() {
     ["Keluar", p => alasan(p)], ["Hasil", p => `<b class="${(p.net_result || 0) >= 0 ? "up" : "down"}">${usd(p.net_result, true)}</b>`, "num"]], (r.posisi || []).filter(p => showAcak || p.account !== "acak"), p => gotoChart(p.symbol));
   const rinciO = (o) => [`Harga ${o.price ? px(o.price) : "pasar"}, leverage ${o.leverage}×`, o.plan_id ? `Rencana ${o.plan_id}` : null, `Dibuat oleh ${o.created_by === "hermes" ? "AI" : o.created_by === "engine" ? "mesin" : o.created_by}`].filter(Boolean).join("\n");
   table($("#tbl-order"), [["Dibuat", o => wib(o.created_ts)], ["Analis", o => nama(o.account)], ["Koin", o => `<span class="tip" tabindex="0" data-tip="${esc(rinciO(o))}"><b>${koin(o.symbol)}</b> ${arah(o.side)}</span>`],
-    ["Apa yang terjadi", o => `${STATUS_ORDER[o.status] || o.status}${o.reject_code ? " — " + (KODE[o.reject_code] || o.reject_code) : ""}`]], (r.order || []).filter(o => showAcak || o.account !== "acak"), o => gotoChart(o.symbol));
+    ["Apa yang terjadi", o => `${CAP[o.status] ? `<span class="cap ${CAP[o.status][1]}">${CAP[o.status][0]}</span>` : ""}${STATUS_ORDER[o.status] || o.status}${o.reject_code ? " — " + (KODE[o.reject_code] || o.reject_code) : ""}`]], (r.order || []).filter(o => showAcak || o.account !== "acak"), o => gotoChart(o.symbol));
   table($("#tbl-harian"), [["Hari", h => h.day_wib], ["Analis", h => nama(h.account)], ["Order", h => h.orders_n, "num"], ["Terisi", h => h.filled_n, "num"], ["Tak terisi", h => h.tidak_terisi_n, "num"], ["Target", h => h.tp_n, "num"], ["Hangus", h => h.hangus_n, "num"], ["Ditutup lain", h => h.other_close_n, "num"],
     ["Fee", h => usd(h.fees), "num"], ["Hasil", h => `<b class="${(h.pnl_net || 0) >= 0 ? "up" : "down"}">${usd(h.pnl_net, true)}</b>`, "num"]], (r.harian || []).filter(h => showAcak || h.account !== "acak"));
 }
@@ -521,7 +533,7 @@ function penilaianSel(b) {
     case "ambigu": return dtip("tidak tersedia", "Data harga 1 menit hari itu tidak lengkap; kandidat tidak bisa dinilai.", "dim");
     case "belum": return dtip("belum dinilai", "Dinilai skrip jam 21:15 setelah hari itu tutup (atau di susulan pagi bila laptop mati).", "dim");
     case "hasil": return `<b class="${(p.net || 0) >= 0 ? "up" : "down"}">${usd(p.net, true)}</b> <span class="muted">${esc(ALASAN_PENDEK[p.hasil] || (p.hasil || "").toLowerCase())}</span>`;
-    case "berjalan": return `<span class="brass">berjalan</span>`;
+    case "berjalan": return `<span class="glow">berjalan</span>`;
     case "order": return `<span class="muted">${esc(STATUS_ORDER[p.status] || (p.status || "").toLowerCase())}</span>`;
     default: return `<span class="dim">—</span>`;
   }

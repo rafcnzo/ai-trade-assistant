@@ -1,569 +1,556 @@
 ---
 name: crypto-analyst — Meja analis
-description: Dashboard baca-saja berupa meja arang hangat, tinta gading, satu aksen kuningan; mint untung, koral rugi, hanya garis rambut sebagai pemisah.
+description: Dashboard baca-saja berupa ruang observasi akuarium laut dalam; tiap analis diamati lewat tangki kaca beku, uang paper menyala sebagai cahaya biolumines.
 colors:
-  arang: "#1a1816"
-  arang-2: "#201d1a"
-  arang-3: "#27231f"
-  arang-tooltip: "#120f0d"
-  garis: "#332e28"
-  garis-2: "#433c34"
-  sep: "#4e463b"
-  garis-grafik: "#242019"
-  gading: "#ece9e1"
-  redup: "#aab0b7"
-  pudar: "#7d838b"
-  kuningan: "#d9b35c"
-  kuningan-tinta: "#1a1500"
-  mint: "#5bd4a3"
-  koral: "#f07b7b"
-  amber: "#e3b04b"
-  persona-tiket: "#d9b35c"
-  persona-fade: "#8ab4f8"
-  persona-breakout: "#5bd4a3"
-  persona-rentang: "#e39bd0"
-  persona-acak: "#7d838b"
-  persona-swing: "#f0a35b"
+  abyss: "#040d12"
+  deep: "#06141b"
+  water: "#0a2230"
+  glass: "rgba(10,38,50,.52)"
+  glass-hi: "rgba(120,220,230,.07)"
+  glass-solid: "#0b2531"
+  edge: "rgba(150,235,240,.14)"
+  edge-hi: "rgba(200,255,250,.16)"
+  line: "rgba(150,235,240,.10)"
+  line2: "rgba(150,235,240,.20)"
+  th-bg: "rgba(9,32,42,.94)"
+  tooltip-bg: "rgba(4,18,25,.9)"
+  ink: "#e6f4f1"
+  muted: "#9dbcc2"
+  dim: "#7896a0"
+  glow: "#63e6ff"
+  glow-ink: "#03141a"
+  up: "#6be89a"
+  down: "#ff7a6b"
+  warn: "#f3c969"
+  persona-tiket: "#ffd27a"
+  persona-fade: "#8ab4ff"
+  persona-breakout: "#c79bff"
+  persona-rentang: "#ff9ad5"
+  persona-acak: "#7896a0"
+  persona-swing: "#ffb07a"
 typography:
-  title:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
-    fontSize: "23px"
-    fontWeight: 600
-    letterSpacing: "-0.01em"
   headline:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
-    fontSize: "21px"
-    fontWeight: 600
-    letterSpacing: "-0.01em"
-  nama-analis:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
-    fontSize: "17px"
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "24px"
     fontWeight: 700
-    letterSpacing: "-0.01em"
-  subtitle:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    letterSpacing: "-0.025em"
+  page-title:
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "22px"
+    fontWeight: 700
+    letterSpacing: "-0.03em"
+  value-lg:
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "20px"
+    fontWeight: 750
+    letterSpacing: "-0.02em"
+  nama-analis:
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "18px"
+    fontWeight: 750
+    letterSpacing: "-0.025em"
+  title:
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "15px"
-    fontWeight: 600
-    letterSpacing: "-0.01em"
+    fontWeight: 700
+    letterSpacing: "-0.015em"
   body:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "14.5px"
     fontWeight: 400
     lineHeight: 1.5
+    fontFeature: "tnum"
   body-md:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "14px"
     fontWeight: 400
-    lineHeight: 1.6
+    lineHeight: 1.65
   body-small:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "13.5px"
     fontWeight: 400
     lineHeight: 1.45
   label:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "13px"
-    fontWeight: 400
+    fontWeight: 550
   caption:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "12.5px"
     fontWeight: 400
   micro:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "12px"
-    fontWeight: 400
-  pil:
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, sans-serif"
-    fontSize: "11.5px"
     fontWeight: 600
-    letterSpacing: "0.02em"
+  pil:
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "11px"
+    fontWeight: 700
+    letterSpacing: "0.04em"
+  cap:
+    fontFamily: "Plus Jakarta Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "10.5px"
+    fontWeight: 800
+    lineHeight: 1.5
+    letterSpacing: "0.08em"
   mono:
     fontFamily: "ui-monospace, Consolas, monospace"
     fontSize: "12.5px"
     fontWeight: 400
     lineHeight: 1.5
 rounded:
-  hairline: "2px"
-  focus: "3px"
-  code: "4px"
-  control: "6px"
+  cap: "4px"
+  kontrol: "10px"
+  tooltip: "12px"
+  baris: "14px"
+  kaca: "18px"
   pill: "999px"
 spacing:
   xs: "4px"
   sm: "8px"
   md: "10px"
-  lg: "14px"
-  kepala: "18px"
-  xl: "22px"
-  bagian-bawah: "26px"
-  gap-kolom: "28px"
-  bagian: "30px"
-  gutter: "clamp(16px, 2.4vw, 36px)"
+  grid-meja: "14px"
+  head: "16px"
+  grid: "18px"
+  bagian: "40px"
+  gutter: "clamp(14px, 2.4vw, 36px)"
 components:
-  seg-button:
-    backgroundColor: "{colors.arang-2}"
-    textColor: "{colors.redup}"
+  kaca:
+    backgroundColor: "{colors.glass}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.kaca}"
+    padding: "16px 18px"
+  tangki-analis:
+    backgroundColor: "{colors.glass}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.kaca}"
+    padding: "14px 16px 12px"
+  jump-link:
+    textColor: "{colors.muted}"
     typography: "{typography.label}"
-    padding: "6px 10px"
+    rounded: "{rounded.pill}"
+    padding: "0 14px"
+    height: "34px"
+  jump-link-on:
+    backgroundColor: "{colors.glow}"
+    textColor: "{colors.glow-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    padding: "0 14px"
+    height: "34px"
+  seg-button:
+    textColor: "{colors.muted}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    padding: "0 12px"
     height: "30px"
   seg-button-on:
-    backgroundColor: "{colors.kuningan}"
-    textColor: "{colors.kuningan-tinta}"
+    backgroundColor: "{colors.glow}"
+    textColor: "{colors.glow-ink}"
     typography: "{typography.label}"
-    padding: "6px 10px"
+    rounded: "{rounded.pill}"
+    padding: "0 12px"
     height: "30px"
-  jump-link:
-    textColor: "{colors.redup}"
+  kontrol:
+    textColor: "{colors.ink}"
     typography: "{typography.label}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.kontrol}"
     padding: "6px 11px"
-  jump-link-hover:
-    backgroundColor: "{colors.arang-3}"
-    textColor: "{colors.gading}"
-    rounded: "{rounded.pill}"
-    padding: "6px 11px"
-  jump-link-on:
-    backgroundColor: "{colors.kuningan}"
-    textColor: "{colors.kuningan-tinta}"
-    rounded: "{rounded.pill}"
-    padding: "6px 11px"
-  select-input:
-    backgroundColor: "{colors.arang-2}"
-    textColor: "{colors.gading}"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "6px 10px"
-    height: "32px"
-  judul-bagian:
-    textColor: "{colors.gading}"
-    typography: "{typography.title}"
-    padding: "0 0 8px"
-  judul-bagian-bar:
-    backgroundColor: "{colors.kuningan}"
-    width: "28px"
-    height: "2px"
+    height: "36px"
   pil:
-    textColor: "{colors.redup}"
+    textColor: "{colors.muted}"
     typography: "{typography.pil}"
     rounded: "{rounded.pill}"
-    padding: "1px 7px"
+    padding: "2px 9px"
   pil-ok:
-    textColor: "{colors.mint}"
+    textColor: "{colors.up}"
     typography: "{typography.pil}"
     rounded: "{rounded.pill}"
-    padding: "1px 7px"
+    padding: "2px 9px"
   pil-off:
-    textColor: "{colors.koral}"
+    textColor: "{colors.down}"
     typography: "{typography.pil}"
     rounded: "{rounded.pill}"
-    padding: "1px 7px"
+    padding: "2px 9px"
   pil-hold:
-    textColor: "{colors.amber}"
+    textColor: "{colors.warn}"
     typography: "{typography.pil}"
     rounded: "{rounded.pill}"
-    padding: "1px 7px"
+    padding: "2px 9px"
   tag:
-    textColor: "{colors.redup}"
+    textColor: "{colors.muted}"
     typography: "{typography.micro}"
     rounded: "{rounded.pill}"
-    padding: "0 7px"
+    padding: "0 8px"
   tag-ok:
-    textColor: "{colors.mint}"
+    textColor: "{colors.up}"
     typography: "{typography.micro}"
     rounded: "{rounded.pill}"
-    padding: "0 7px"
+    padding: "0 8px"
   tag-belum:
-    textColor: "{colors.amber}"
+    textColor: "{colors.warn}"
     typography: "{typography.micro}"
     rounded: "{rounded.pill}"
-    padding: "0 7px"
+    padding: "0 8px"
+  cap-exp:
+    textColor: "{colors.warn}"
+    typography: "{typography.cap}"
+    rounded: "{rounded.cap}"
+    padding: "0 6px"
+  cap-can:
+    textColor: "{colors.muted}"
+    typography: "{typography.cap}"
+    rounded: "{rounded.cap}"
+    padding: "0 6px"
+  cap-rej:
+    textColor: "{colors.down}"
+    typography: "{typography.cap}"
+    rounded: "{rounded.cap}"
+    padding: "0 6px"
   tooltip:
-    backgroundColor: "{colors.arang-tooltip}"
-    textColor: "{colors.gading}"
+    backgroundColor: "{colors.tooltip-bg}"
+    textColor: "{colors.ink}"
     typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "9px 12px"
+    rounded: "{rounded.tooltip}"
+    padding: "10px 13px"
     width: "320px"
+  th:
+    backgroundColor: "{colors.th-bg}"
+    textColor: "{colors.muted}"
+    typography: "{typography.micro}"
+    padding: "8px 10px"
   md-block:
-    backgroundColor: "{colors.arang-2}"
-    textColor: "{colors.gading}"
+    textColor: "{colors.ink}"
     typography: "{typography.body-md}"
-    rounded: "{rounded.control}"
-    padding: "16px 20px"
     width: "80ch"
   md-code:
-    backgroundColor: "{colors.arang-3}"
-    textColor: "{colors.gading}"
+    backgroundColor: "{colors.line}"
+    textColor: "{colors.ink}"
     typography: "{typography.mono}"
-    rounded: "{rounded.code}"
-    padding: "1px 5px"
+    padding: "1px 6px"
 ---
 
 # Design System: crypto-analyst — Meja analis
 
 ## Overview
 
-**Creative North Star: "Meja Analis"**
+**Creative North Star: "Ruang Observasi Laut Dalam"**
 
-Dashboard ini adalah satu meja kerja gelap yang dilirik sepanjang hari, bukan layar yang dibaca. Permukaannya arang
-hangat (kecoklatan, bukan kebiruan) tanpa kartu, tanpa panel bertumpuk; di dalam bagian hanya ada garis rambut 1 px,
-antar bagian garis pemisah 2 px yang sedikit lebih terang, dan tiap judul bagian membawa satu garis kuningan pendek
-28 × 2 px di bawahnya. Tinta gading menulis kalimat utuh ("BTC LONG 5× · 61.240 → 61.730 · hangus 4,2 %"), bukan
-angka besar dalam kotak KPI. Satu aksen kuningan dipakai hemat untuk hal yang sedang dipilih, difokus, atau baru
-berubah; mint dan koral hanya berbicara soal untung dan rugi; amber memberi tanda tunggu atau batas yang mendekat.
+Dashboard ini adalah ruang observasi akuarium pada malam hari, dilirik sepanjang hari dari laptop pemilik. Halaman adalah
+air laut dalam yang bergradasi dari permukaan yang masih tertembus cahaya ke dasar yang hampir hitam, dengan beberapa titik
+biolumines buram yang diam dan berkas cahaya miring dari atas. Kaca di sini harfiah: setiap analis diamati lewat satu
+tangki kaca beku (blur 18 px, tepi atas memantulkan cahaya 1 px, bayangan lembut ke bawah) yang puncaknya diterangi warna
+persona analis itu; uang paper adalah cahaya: batang saldo menyala cyan, angka yang berubah berpendar lalu memudar.
 
-Kepadatannya tinggi tetapi tenang: ukuran teks 12–15 px, baris 1,45–1,6, angka tabular supaya kolom tidak bergoyang
-saat polling 5 detik. Di layar hanya tinggal yang dilirik: nilai, arah, jarak; saldo rinci, harga masuk/target/stop,
-status order, syarat juara, dan bacaan per indikator dipindahkan ke tooltip pada label bergaris putus atau ke blok
-`details`. Bagian yang sedang dibaca (tooltip terbuka atau fokus di dalamnya) tidak dirender ulang. Gerak hanya tiga dan
-semuanya pendek: denyut garis bawah kuningan pada angka yang berubah, entri kejadian baru yang masuk dengan geser, dan
-chevron `details` yang berputar.
+Kepadatannya tinggi tetapi tenang: teks 12–15 px, sel bergaris padat di dalam kaca, angka tabular supaya kolom tidak
+bergoyang saat polling 5 detik. Keadaan ditulis sebagai kalimat ("BTC LONG 5× · 61.240 → 61.730 · hangus 4,2 %"), bukan
+kotak KPI. Label penjelas tidak tinggal di layar: definisi dan rincian ada di tooltip pada label bergaris putus atau di
+blok `details`. Latar tidak bergerak; gerak hanya pada data (denyut biolumines, entri kejadian yang geser masuk, chevron).
 
-Dunia ini menolak susunan default "kartu angka besar + tab", menolak kartu di dalam kartu, dan menolak estimasi: data
-yang tidak ada ditulis "tidak tersedia" beserta alasannya, dalam warna pudar, bukan diganti angka tebakan.
+Anti-referensi yang dikonfirmasi: dunia lama arang hangat + kuningan + tanpa kartu (13 Okt 2026) sudah diganti seluruhnya,
+dan tetap ditolak: estimasi untuk data yang tidak ada ("tidak tersedia" beserta alasannya), serta aksi apa pun di dashboard
+baca-saja.
 
 **Key Characteristics:**
-- Satu permukaan arang hangat; hirarki lewat garis rambut, pemisah bagian 2 px, dan nada teks (gading → redup → pudar),
-  bukan lewat kotak.
-- Satu keluarga huruf (Inter) dengan angka tabular; tebal 600 untuk nilai dan status terpilih, 700 hanya untuk nama analis.
-- Satu aksen kuningan untuk pilihan/fokus/perubahan/tautan dan garis pendek di bawah judul bagian; mint = untung,
-  koral = rugi, amber = tunggu/batas.
-- Layar tipis: satu baris per keadaan, rincian di tooltip atau `details`; catatan AI dirender sebagai markdown.
-- Baca-saja: tidak ada aksi primer, tidak ada tombol beli/jual; kontrol hanya memilih tampilan.
+- Air bergradasi tetap (`water` → `deep` → `abyss`) dengan titik biolumines buram yang diam; tidak ada animasi latar.
+- Satu wadah: panel kaca beku `.kaca`; bagian = judul di atas air + kolom-kolom kaca; tidak ada kaca di dalam kaca.
+- Satu cahaya fokus cyan (`glow`) untuk pilihan, fokus, crosshair, dan cahaya uang; hijau fosfor/koral hanya arah uang;
+  kuning umpan anglerfish untuk tunggu dan batas.
+- Warna persona adalah cahaya: puncak tangki, nama analis, garis grafik arena; tidak pernah menjadi latar padat.
+- Satu keluarga huruf, Plus Jakarta Sans, angka tabular di seluruh dokumen.
+- Baca-saja: kontrol hanya memilih tampilan.
 
 ## Colors
 
-Palet arang hangat bernada coklat dengan tiga nada tinta dan satu aksen logam; warna semantik hanya untuk arah uang dan
-kesehatan.
+Palet air laut dalam biru-hijau yang sangat gelap, tinta busa sejuk, satu cahaya cyan, tiga warna semantik bercahaya, dan
+enam cahaya persona.
 
 ### Primary
-- **Kuningan** (`kuningan`): satu-satunya aksen. Dipakai pada garis pendek 28 × 2 px di bawah tiap judul bagian, pilihan
-  aktif (pil navigasi, segmen aktif), cincin fokus 2 px, garis bawah tooltip saat hover, nama analis di aliran kejadian,
-  hitungan "N terbuka" di kecenderungan analis, batang saldo yang sehat, garis & area ekuitas, garis silang grafik lilin, seleksi teks, `accent-color` kotak centang,
-  tautan di blok markdown, dan denyut angka berubah. Teks di atas kuningan selalu **Kuningan-tinta** (`kuningan-tinta`),
-  hampir hitam hangat.
+- **Cahaya Fokus** (`glow`): pil navigasi aktif dan segmen aktif (diisi penuh, teks `glow-ink`), cincin fokus 2 px,
+  garis bawah tooltip saat hover, `::selection`, `caret-color`, `accent-color` kotak centang, crosshair grafik (garis 60 %,
+  label penuh), batang saldo yang sehat (gradien 55 % → penuh dengan pendar), batang biaya, area ekuitas, garis harga
+  "masuk", chevron `details`, marker daftar dan tautan markdown, nomor kandidat di blok keputusan, pembatas hari di feed,
+  "N terbuka"/"berjalan"/sisa swing, dan pendar angka yang berubah. Juga warna puncak tangki bawaan bila persona tidak dikenal.
+- **Tinta di atas cahaya** (`glow-ink`): satu-satunya warna teks di atas `glow`.
 
 ### Secondary
-- **Mint** (`mint`): untung, posisi LONG masuk, TP, status "boleh buka"/"aktif"/"lolos", titik kesehatan OK, lilin naik,
-  zona "sangat serakah".
-- **Koral** (`koral`): rugi, SHORT masuk, likuidasi, status "berhenti"/mati, batang saldo saat tidak boleh buka tiket,
-  lilin turun, area drawdown, pesan galat, zona "sangat takut", jarak hangus < 1 %, drawdown sekarang di bawah puncak.
-- **Amber** (`amber`): peringatan dan tunggu: pil "berhenti" (hold), tag "belum", titik kesehatan waspada, batang biaya
-  > 70 % batas, penanda order kedaluwarsa/batal, "Yang tidak nyambung".
+- **Hijau fosfor** (`up`): untung, LONG masuk, TP, "boleh buka"/"aktif"/"jalan", titik kesehatan OK (dengan pendar 8 px),
+  lilin naik, volume naik 26 %, garis harga target, tag `ok`.
+- **Koral** (`down`): rugi, SHORT masuk, likuidasi, "pensiun"/mati/basi, batang saldo saat tidak boleh buka tiket, lilin
+  turun, area drawdown, garis harga "hangus", cap `rej`, pesan galat, jarak hangus < 1 %.
+- **Kuning umpan** (`warn`): tunggu dan batas: pil "berhenti", tag `belum` ("terlewat", "pensiun" di tabel arena), titik
+  kesehatan waspada, batang biaya > 70 % batas, cap `exp`, garis harga order menunggu (putus-putus), penanda order
+  kedaluwarsa/batal di grafik.
 
 ### Tertiary
-- **Warna persona** (`persona-tiket` = kuningan, `persona-fade` biru lembut, `persona-breakout` = mint, `persona-rentang`
-  merah muda, `persona-acak` = pudar, `persona-swing` jingga): identitas tiap akun pada nama di tabel Peringkat, nama di daftar
-  kecenderungan analis (`b.nm`), dan garis pada grafik arena (acak: garis putus-putus 1 px, persona: 2 px). Didefinisikan di `app.js` (`WARNA`), bukan di CSS;
-  tidak dipakai sebagai warna permukaan.
+- **Cahaya persona** (`persona-tiket` emas, `persona-fade` biru, `persona-breakout` ungu, `persona-rentang` merah muda,
+  `persona-swing` jingga, `persona-acak` = `dim`): didefinisikan sebagai `--p-*` di `:root` dan dibaca `app.js` lewat
+  `cssv()` ke `WARNA`. Dipakai sebagai `--w` tangki (pendar radial 16 % di puncak dan garis tepi atas 55 %), nama analis
+  di tangki/feed/tabel/kecenderungan/keputusan, dan garis grafik arena (persona 2 px, acak 1 px putus-putus).
 
 ### Neutral
-- **Arang** (`arang`): latar halaman, latar grafik, latar sticky `th`, dan cincin dalam titik kesehatan.
-- **Arang-2** (`arang-2`): latar kontrol (select, input, tombol segmen), baris tabel yang dapat diklik saat hover, dan
-  blok markdown `.md`.
-- **Arang-3** (`arang-3`): trek batang saldo/biaya, hover pil navigasi, latar `code`/`pre` di dalam markdown.
-- **Arang-tooltip** (`arang-tooltip`): latar tooltip, satu-satunya permukaan lebih gelap dari halaman.
-- **Garis** (`garis`): pemisah rambut 1 px antar baris, item daftar, header, `hr` markdown, tepi skala grafik.
-- **Garis-2** (`garis-2`): tepi kontrol, pil/tag, tooltip, cincin luar titik kesehatan, thumb scrollbar, pembatas hari
-  di feed, garis kiri `blockquote`.
-- **Sep** (`sep`): pemisah 2 px antar bagian (`section.bag`), satu tingkat lebih terang dari garis-2; hanya di sini.
-- **Garis-grafik** (`garis-grafik`): grid Lightweight Charts (lebih redup dari garis halaman).
-- **Gading** (`gading`): teks utama, nilai tebal (termasuk `b` di kalimat ringkas Peringkat/Riwayat), jam.
-- **Redup** (`redup`): teks sekunder: subjudul, lead, kalimat ringkas Peringkat dan Riwayat, label kontrol, header
-  tabel, baris akun acak, teks grafik, `h4` dan `i` di markdown.
-- **Pudar** (`pudar`): teks tersier: waktu di feed, pembatas hari, panah `→` di baris posisi, catatan, keadaan kosong
-  ("Menunggu radar."), "tidak tersedia", hasil hari ini saat nol, titik kesehatan tanpa status, chevron `details`,
-  marker daftar markdown.
+- **Permukaan air** (`water`), **Air dalam** (`deep`), **Dasar** (`abyss`): gradien latar `body` 180° (0 % / 42 % / 100 %)
+  di bawah empat cahaya radial (cyan kiri atas, biru kanan atas, koral samar kiri bawah, hijau-laut di dasar), `fixed`.
+  `abyss` juga latar `html`.
+- **Kaca** (`glass`) + **kilau kaca** (`glass-hi`, gradien 120 px dari atas) + butiran `--grain` (SVG fractal noise 7,5 %):
+  isi setiap panel kaca. **Kaca padat** (`glass-solid`): fallback tanpa `backdrop-filter`, latar `option`, dan sel Hasil
+  sticky di tabel Riwayat ponsel.
+- **Tepi kaca** (`edge`): tepi 1 px panel kaca dan bar navigasi; garis skala grafik (`GARIS` di `app.js`, nilai sama).
+  **Kilau tepi** (`edge-hi`): pantulan 1 px di tepi atas dalam (`--shadow`).
+- **Garis** (`line`): pemisah rambut antar baris, sel, item daftar, kepala panel; tepi titik kesehatan.
+  **Garis-2** (`line2`): tepi kontrol, segmen, pil, tag, tooltip; tepi bawah `th`; pembatas hari dan antar blok keputusan;
+  thumb scrollbar.
+- **Kepala tabel** (`th-bg`): latar `th` sticky. **Tooltip** (`tooltip-bg`): latar `#tt` di atas blur 14 px.
+- **Tinta busa** (`ink`): teks utama dan nilai tebal. **Redup** (`muted`): teks sekunder, lead, `th`, kontrol tak aktif,
+  teks grafik, baris acak, "SKIP". **Pudar** (`dim`): waktu, panah `→`, keadaan kosong, "tidak tersedia", `small` di
+  judul, footer, garis bawah putus label tooltip.
 
 ### Named Rules
-**The Satu Kuningan Rule.** Kuningan menandai pilihan, fokus, perubahan, tautan, dan garis pendek di bawah judul bagian;
-tidak pernah menjadi latar area atau warna teks tubuh. Teks di atas kuningan selalu kuningan-tinta.
+**The Satu Cahaya Rule.** `glow` adalah satu-satunya aksen non-semantik; ia menyala pada pilihan, fokus, dan uang yang
+bergerak, tidak pernah menjadi latar area atau teks tubuh. Isian penuh `glow` hanya untuk pilihan aktif (pil navigasi,
+segmen), dan teks di atasnya selalu `glow-ink`.
 
-**The Mint-Koral Rule.** Mint dan koral hanya mengatakan arah uang atau hidup/mati sistem (untung/rugi, LONG/SHORT, OK/mati).
-Tidak dipakai untuk dekorasi atau untuk menandai persona.
+**The Arah Uang Rule.** `up` dan `down` hanya mengatakan arah uang atau hidup/mati sistem; `warn` hanya tunggu atau batas.
+Ketiganya tidak pernah menandai persona atau dekorasi.
 
-**The Garis Rambut Rule.** Di dalam bagian, pemisah hanya garis 1 px `garis`; antar bagian garis 2 px `sep`. Tidak ada
-kartu, kotak latar, atau bayangan untuk memecah halaman. Tepi `garis-2` hanya pada kontrol, pil/tag, tooltip, pembatas
-hari, dan kutipan.
+**The Cahaya Persona Rule.** Warna persona hanya hadir sebagai cahaya (pendar puncak tangki, tepi atas, nama, garis
+grafik). Tidak pernah sebagai latar padat atau warna semantik.
 
-**The Tidak Tersedia Rule.** Data yang tidak ada ditulis "tidak tersedia" (atau "—" untuk satu nilai) dalam `pudar`,
-dengan alasan bila ada. Nilai nol ditulis "$0,00", bukan dikosongkan. Tidak pernah diisi estimasi, dan tidak pernah
-diberi warna semantik.
+**The Tidak Tersedia Rule.** Data yang tidak ada ditulis "tidak tersedia" (atau "—") dalam `dim`, beserta alasan bila
+ada; nol ditulis "$0,00". Tidak pernah estimasi, tidak pernah warna semantik.
 
 ## Typography
 
-**Display Font:** Inter (dengan system-ui, -apple-system, Segoe UI, sans-serif)
-**Body Font:** Inter (sama)
-**Label/Mono Font:** ui-monospace, Consolas, monospace; hanya untuk `code` dan `pre` di dalam blok markdown. Angka memakai
-Inter dengan `font-variant-numeric: tabular-nums` di seluruh dokumen.
+**Display Font:** Plus Jakarta Sans (dengan system-ui, -apple-system, Segoe UI, sans-serif)
+**Body Font:** Plus Jakarta Sans (sama)
+**Label/Mono Font:** ui-monospace, Consolas, monospace; hanya `code` dan `pre` di blok markdown.
 
-**Character:** Satu keluarga, satu suara. Judul bagian (23 px, dengan garis kuningan 28 × 2 px di bawahnya) sedikit lebih
-besar dari nama halaman (21 px) karena bagianlah yang dilirik; nama analis 17 px tebal 700 adalah satu-satunya bobot 700.
-Hirarki selebihnya dari nada warna (gading/redup/pudar) dan tebal 600 pada nilai, bukan dari ukuran. Inter dimuat dari
-Google Fonts pada bobot 400/500/600/700.
+**Character:** Satu keluarga dari desainer Jakarta, geometris dan hangat, dengan `tabular-nums` di `body` sehingga semua
+angka sejajar. Hirarki datang dari bobot (700–800 untuk nama dan nilai) dan nada tinta, bukan dari ukuran besar. Dimuat
+dari Google Fonts sebagai font variabel (sumbu bobot 400–800), jadi bobot antara 550/650/750 dirender apa adanya.
 
 ### Hierarchy
-- **Title** (600, 23px, tracking -0,01 em, padding bawah 8 px + garis kuningan): judul bagian (Sekarang, Ringkasan,
-  Peringkat, Pasar, Riwayat, Konteks, Catatan AI).
-- **Headline** (600, 21px): nama halaman "Meja analis" di header.
-- **Nama analis** (700, 17px): `h3` di header kolom analis; satu-satunya bobot 700.
-- **Subtitle** (600, 15px; 14px untuk judul aside feed; 17/15.5/14 px untuk `h2/h3/h4` di markdown): judul kolom dan aside.
-- **Body** (400, 14.5px, 1.5): teks dasar halaman; nilai P/L dan nama koin tebal 600 pada ukuran yang sama; nilai saldo
-  tebal 600 15px; kalimat ringkas Peringkat (`.juara`) 14.5px redup dengan `b` gading. Lead bagian maks 72ch.
-- **Body-md** (400, 14px, 1.6): isi blok markdown, maks 80ch.
-- **Body-small** (400, 13.5px, 1.45–1.55): item daftar, baris posisi/order, tabel, summary `details`, kalimat ringkas
-  Riwayat (`.ringkas`, redup dengan `b` gading).
-- **Label** (400–500, 13px): kontrol, tooltip, feed, subjudul header, titik kesehatan, tabel di markdown; `th` 500 12.5px.
-- **Caption** (400, 12.5px): baris kedua posisi (entry → target · hangus), hasil hari ini di blok saldo, gaya analis,
-  keterangan, footer.
-- **Micro** (400, 12px): waktu di feed/kejadian, `small` di judul, isi tag.
-- **Pil** (600, 11.5px, tracking 0,02 em, huruf kapital): pil status analis. Pembatas hari di feed memakai ukuran yang
-  sama dengan tracking 0,04 em, warna pudar, bobot 400.
-- **Mono** (400, 12.5px, 1.5): `code` inline dan blok `pre` di markdown.
+- **Headline** (700, 24px, -0,025 em; 21px ≤ 640 px): judul bagian `h2` di atas air; judulnya sendiri label tooltip.
+- **Page title** (700, 22px, -0,03 em; 20px ≤ 640 px): "Meja analis" di header.
+- **Nama analis** (750, 18px, -0,025 em): `h3` tangki dalam warna persona.
+- **Value-lg** (750, 20px, -0,02 em): nilai "Bisa dipakai" di tangki.
+- **Title** (700, 15px): judul panel kaca `h3` dengan `small` 12px 500 `dim` di kanan; `h2/h3/h4` markdown 17/15,5/14px.
+- **Body** (400, 14.5px, 1.5; 14px ≤ 640 px): teks dasar; P/L posisi 750 15px; `.juara` 14,5px `muted` dengan `b` `ink`.
+- **Body-md** (400, 14px, 1.65): blok markdown, maks 80ch.
+- **Body-small** (400, 13.5px, 1.45): baris tangki, tabel, daftar, summary, `.ringkas`, lead bagian (maks 72ch).
+- **Label** (550, 13px): pil navigasi, segmen, kontrol (600 untuk `.btn`), feed (400), tooltip (400, 1.45).
+- **Caption** (400, 12.5px): baris kedua posisi, gaya analis, `.terakhir`, titik kesehatan, info grafik, footer.
+- **Micro** (600, 12px): `th`; juga waktu feed (400) dan isi tag (400).
+- **Pil** (700, 11px, 0,04 em, kapital): pil status tangki. Pembatas hari di feed: 11px 700, 0,06 em, kapital, `glow`.
+- **Cap** (800, 10.5px, 0,08 em, kapital): cap order batal/kedaluwarsa/ditolak.
+- **Mono** (400, 12.5px, 1.5): `code` dan `pre` markdown.
 
 ### Named Rules
-**The Angka Tabular Rule.** Semua angka tabular-nums (diset di `html, body`), rata kanan di kolom `.num`, dan diformat
-`id-ID`; mata uang USD, IDR hanya dalam kurung.
+**The Angka Tabular Rule.** Semua angka tabular (diset di `body`), rata kanan di kolom `.num`, diformat `id-ID`; USD
+utama, IDR hanya dalam kurung.
 
-**The Kalimat Bukan Kotak Rule.** Keadaan dinyatakan sebagai kalimat kaya (nama koin tebal, arah, leverage, jarak ke
-target/hangus) dengan nilai inline tebal; bukan sebagai angka besar terpisah.
+**The Kalimat Bukan Kotak Rule.** Keadaan dinyatakan sebagai kalimat dengan nilai inline tebal (koin tebal, arah,
+leverage, jarak ke target/hangus), bukan angka besar terpisah. Satu-satunya nilai besar adalah saldo "Bisa dipakai".
 
-**The Layar Tipis Rule.** Satu baris per keadaan di layar, di semua bagian: rinciannya (harga masuk/target/stop,
-status order, saldo bergulir, syarat juara, puncak modal, bacaan per indikator, kolom tabel Riwayat yang dipangkas,
-status mesin dan rincian biaya di Konteks) hidup di tooltip pada label bergaris putus atau di blok `details`, bukan
-sebagai baris atau kolom tambahan.
+**The Layar Tipis Rule.** Satu baris per keadaan; rincian (harga masuk/target/stop, status order, saldo bergulir, syarat
+juara, puncak modal, bacaan per indikator, kolom Riwayat yang dipangkas, rincian mesin/biaya) tinggal di tooltip atau
+`details`.
 
-**The Waktu Relatif Rule.** Di feed, waktu ditulis relatif ("baru saja", "12 mnt", jam untuk hari ini, "kemarin 21:40",
-lalu "13 Okt 21:40"), dan hari dipisah oleh pembatas "hari ini / kemarin / tanggal". Di tempat lain waktu tetap jam WIB.
+**The Waktu Relatif Rule.** Di feed dan baris `.terakhir`, waktu relatif ("baru saja", "12 mnt", jam untuk hari ini,
+"kemarin 21.40", lalu tanggal + jam); feed dipisah pembatas hari ("hari ini" disembunyikan bila kelompok teratas).
+Di tempat lain jam WIB.
 
 ## Layout
 
-Single-page scroll dengan tujuh bagian (`section.bag`) berurutan Sekarang, Ringkasan, Peringkat, Pasar, Riwayat,
-Konteks, Catatan AI; tiap bagian berpadding 30 px atas / 26 px bawah dan dipisah garis 2 px `sep` (bagian terakhir tanpa); kepala bagian
-(`.head`) berjarak 18 px ke isi dan `h2`-nya membawa garis kuningan 28 × 2 px di bawah (padding bawah 8 px). `main`
-ber-gutter horizontal `clamp(16px, 2.4vw, 36px)` dan padding bawah 40 px. Header tipis (`.top`, padding 14 px / 10 px)
-lalu navigasi lompat-bagian sticky (`.jump`, latar arang 88 % + blur 8 px, z-index 20) yang menyembunyikan scrollbar-nya
-dan memudar 28 px di tepi kanan lewat `mask-image`; `scroll-margin-top` 52 px.
+Single-page scroll, tujuh `section.bag` berurutan **Sekarang, Pasar, Ringkasan, Peringkat, Riwayat, Konteks, Catatan AI**
+(Pasar naik ke posisi 2 agar grafik besar tepat di bawah tangki). Header tipis `.top` di atas air (brand + subjudul
+bertooltip, jam WIB 15px 650, titik kesehatan rata kanan), lalu bar lompat-bagian kaca berbentuk pil yang menempel
+(`sticky`, top 10 px, z 20); pil aktif mengikuti bagian terlihat (`IntersectionObserver`, rootMargin -40 %/-55 %) dan di
+layar sempit bar menggulir menyamping agar pil aktif di tengah. `main` ber-gutter `spacing.gutter`, bagian berpadding atas
+40 px, `scroll-margin-top` 64 px; `.head` (judul + kontrol) berjarak 16 px ke isi.
 
-Bagian berdata memakai grid dua kolom: isi utama `minmax(0,1fr)` + kolom kanan tetap (360 px untuk feed di Sekarang;
-340 px di Peringkat dan Riwayat; 300 px untuk kejadian di Pasar), jarak 28 px, `align-items: start`. Meja analis adalah
-grid `repeat(auto-fit, minmax(215px, 1fr))` dengan jarak kolom 22 px dan tanpa jarak baris (tiap kolom membawa garis
-bawahnya sendiri). Pembanding acak/swing `minmax(260px, 1fr)`; Konteks `minmax(300px, 1fr)` dengan jarak 28 px. Ringkasan adalah
-grid dua kolom tak-simetris `minmax(0,1fr) minmax(0,1.3fr)` (tabel koin teramai di kiri, kecenderungan analis yang
-lebih lebar di kanan), jarak 28 px, `align-items: start`.
+Grid per bagian, semuanya `align-items: start`, jarak 18 px, anak `min-width: 0`:
+- **Sekarang**: `minmax(0,1fr) 360px`: meja `repeat(auto-fit, minmax(230px,1fr))` jarak 14 px (empat tangki pada 1440) +
+  baris pembanding acak/swing `minmax(260px,1fr)`; panel Kejadian 360 px.
+- **Pasar**: `minmax(0,1fr) 300px`: jendela grafik 540 px + panel "Jejak pada koin ini" (maks 520 px gulir).
+- **Ringkasan**: `minmax(0,1fr) minmax(0,1.3fr)`.
+- **Peringkat**, **Riwayat**: `minmax(0,1fr) 340px`.
+- **Konteks**: `repeat(auto-fit, minmax(300px,1fr))`.
+- **Catatan AI**: satu panel kaca maks 1100 px.
 
-Ritme vertikal: 7–8 px padding item daftar/feed/sel tabel, 10 px baris pembanding/summary, 14 px padding atas kolom
-analis, 4 px jarak baris saldo. Semua anak grid `min-width: 0` supaya tabel dan grafik tidak meledakkan kolom.
+Tinggi tetap: lilin 540 px, arena 240 px, ekuitas 220 px, drawdown 120 px. Feed maks 470 px, tabel maks 440 px dengan
+gulir di dalam panel; markdown maks 60vh (catatan pasar di Konteks 320 px).
 
-Tinggi tetap: grafik lilin 460 px, arena 240 px, ekuitas 220 px, drawdown 120 px; feed maksimal 560 px dan tabel 440 px
-dengan scroll internal, blok markdown maksimal 60vh (320 px untuk catatan pasar di Konteks).
+**Tablet (≤ 1100 px):** semua grid dua kolom jadi satu kolom; feed 340 px, kejadian 300 px, lilin 460 px.
 
-**Responsif.** ≤ 1100 px: semua grid dua kolom (termasuk Ringkasan) menjadi satu kolom; feed maksimal 320 px. ≤ 640 px: teks dasar 14 px,
-header menjadi kolom (jarak 6 px), kesehatan rata kiri, meja satu kolom, grafik lilin 320 px, sel tabel 7 px / 8 px.
-`prefers-reduced-motion`: denyut dan geser masuk dimatikan.
+**Ponsel (≤ 640 px):** `--r` 14 px, kaca padding 13/14 px, `h2` 21px, bagian berpadding 30 px. Kesehatan rata kiri selebar
+penuh; bar lompat selebar gutter. Tangki bertumpuk satu kolom (jarak 10 px). **Tanpa gulir bersarang:** feed tidak
+dibatasi tinggi dan hanya enam kejadian terbaru yang tampil (`li.lebih` disembunyikan, termasuk pemisah harinya; jam di atas kalimat, grid satu kolom); "Jejak pada koin ini" hanya
+delapan baris. Grafik lilin **380 px** dengan padding 8/6 px. Kontrol kepala selebar penuh; filter Riwayat dua per baris.
+Kecenderungan analis satu kolom. Tabel tetap bergulir di dalam panel, sel 7/8 px; di `#tbl-posisi` kolom **Hasil**
+menempel di kanan (`sticky`, latar `glass-solid`) supaya hasil terlihat saat tabel digulir. Target sentuh **≥ 36 px**:
+pil navigasi, tombol segmen, kontrol, kotak centang (label 36 px); summary `details` 40 px.
 
-**Polling dan render.** Ringkasan tiap 5 detik, grafik 15 detik, arena/ekuitas/kandidat 60 detik, psikologi 5 menit;
-perubahan nilai ditandai `data-k` dan didenyutkan. Render `#meja`, `#banding`, `#feed`, dan `#health` dilewati selama
-tooltip terbuka atau fokus keyboard berada di dalamnya (`setHTML`/`sibuk`), supaya yang sedang dibaca tidak hilang.
+**Polling dan render.** Ringkasan 5 detik, grafik 15 detik, keputusan 30 detik, daftar koin/arena/ekuitas/kandidat 60 detik,
+psikologi 5 menit. Nilai yang berubah ditandai `data-k` dan didenyutkan. `setHTML` melewati render wadah yang sedang
+dibaca (tooltip terbuka atau fokus keyboard di dalamnya, `sibuk`).
 
 ## Elevation & Depth
 
-Sistem ini datar: kedalaman diberikan oleh nada permukaan (arang → arang-2 → arang-3) dan garis (rambut 1 px di dalam
-bagian, 2 px antar bagian), bukan bayangan. Hanya dua pengecualian, keduanya lapisan yang memang melayang di atas
-halaman: tooltip memakai bayangan lembut, dan navigasi lompat-bagian memakai latar tembus pandang + blur dengan tepi
-kanan yang memudar. Titik kesehatan memakai dua cincin `box-shadow` (2 px arang, 1 px garis-2) sebagai tepi, bukan
-sebagai elevasi.
+Kedalaman adalah air dan kaca. Latar adalah lapisan cahaya tetap (gradien + titik biolumines blur 60 px + berkas cahaya
+miring yang memudar ke bawah); panel kaca melayang di atasnya dengan `backdrop-filter: blur(18px) saturate(140%)`, butiran,
+kilau atas, dan bayangan lembut ke bawah. Hanya satu tingkat kaca: tidak ada kaca di dalam kaca. Bila browser tidak
+mendukung `backdrop-filter`, `.kaca` dan `.jump` memakai `glass-solid`.
 
 ### Shadow Vocabulary
-- **Tooltip** (`box-shadow: 0 8px 24px -8px rgba(0,0,0,.7)`): hanya pada `#tt` saat tampil.
-- **Cincin titik kesehatan** (`box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--line2)`): tepi titik 9 px.
-- **Denyut** (`box-shadow: inset 0 -2px 0 var(--brass)` → transparan, 600 ms ease-out): garis bawah pada angka berubah.
+- **Kaca** (`--shadow`: `0 1px 0 var(--edge-hi) inset, 0 22px 44px -26px rgba(0,0,0,.75), 0 2px 6px -2px rgba(0,0,0,.35)`):
+  setiap panel kaca dan bar lompat-bagian.
+- **Tangki** (sama, tetapi pantulan atas `color-mix(--w 55%)`): tepi atas tangki menyala warna persona.
+- **Tooltip** (`0 14px 32px -12px rgba(0,0,0,.8)`): `#tt`, di atas blur 14 px.
+- **Pendar** (`0 0 8–18px color-mix(<warna> 60–80%)`): titik kesehatan, batang saldo/biaya, pil navigasi aktif. Cahaya,
+  bukan elevasi.
 
 ### Named Rules
-**The Datar Kecuali Melayang Rule.** Permukaan di dalam halaman tidak pernah berbayang. Bayangan hanya pada lapisan yang
-benar-benar mengambang di atas konten (tooltip); navigasi sticky memakai blur dan mask, bukan bayangan.
+**The Satu Lapis Kaca Rule.** Bagian = judul di atas air + kolom-kolom kaca. Isi panel dipisah garis rambut, tidak pernah
+dengan panel kaca kedua; tooltip dan bar navigasi adalah lapisan yang mengambang, bukan kaca bersarang.
+
+**The Air Diam Rule.** Latar tidak bergerak (hemat GPU, laptop menyala seharian); gerak hanya pada data.
 
 ## Shapes
 
-Sudut nyaris tegak: kontrol, tooltip, blok markdown, dan `pre` berradius 6 px (`control`); `code` inline 4 px; batang
-saldo/biaya 4 px tinggi dengan radius 2 px; cincin fokus radius 3 px; pil navigasi, pil status, dan tag berbentuk kapsul
-penuh (999 px). Garis: `garis` 1 px untuk pemisah dalam bagian, `sep` 2 px antar bagian, `garis-2` 1 px untuk kontrol dan
-kapsul, dan satu garis kuningan 28 × 2 px persegi (tanpa radius) di bawah tiap judul bagian. Kapsul status mewarnai
-tepinya dengan warna semantik 45 % (`color-mix(in srgb, <warna> 45%, transparent)`), tidak pernah diisi penuh. Titik
-kesehatan bulat 9 px. Ikon satu-satunya adalah chevron SVG 12 px (stroke 1,5, ujung bulat) sebagai mask berwarna pudar
-pada `details`, berputar 90° saat terbuka. Scrollbar tipis, thumb `garis-2` radius 5 px dengan tepi 2 px arang;
-scrollbar navigasi disembunyikan.
+Sudut lembut seperti kaca cetak: panel kaca 18 px (14 px di ponsel), baris pembanding 14 px, tooltip 12 px, kontrol 10 px;
+pil navigasi, segmen, pil status, tag, titik kesehatan, batang 5 px, dan thumb scrollbar berbentuk kapsul penuh. Tepi 1 px
+semi-transparan, tidak pernah tepi padat; pil dan tag berwarna mewarnai tepi 45 % dan isi 9–10 % warna semantiknya.
+**Cap** adalah satu-satunya bentuk bersudut: kotak 4 px, tepi `1.5px double currentColor`, diputar -3°, opasitas 0,9,
+seperti stempel pada tiket. Ikon satu-satunya: chevron SVG 12 px (stroke 1,6, ujung bulat) sebagai `mask` berwarna `glow`
+di `details`, berputar 90° saat terbuka.
 
 ## Components
 
 ### Buttons (segmen dan kontrol tampilan)
-Tidak ada tombol aksi primer; semua tombol hanya memilih tampilan.
-- **Seg control** (`.seg`): bingkai 1 px `garis-2` radius 6 px berisi tombol tanpa tepi, latar arang-2, teks redup 13 px,
-  padding 6 px / 10 px, tinggi min 30 px; hover teks gading; aktif latar kuningan + teks kuningan-tinta tebal 600; fokus
-  outline kuningan offset -2 px. Dipakai untuk rentang lilin, akun ekuitas, BTC/ETH.
-- **Pil navigasi** (`.jump a`): kapsul 999 px, padding 6 px / 11 px, teks redup; hover gading di atas arang-3; aktif
-  kuningan + kuningan-tinta tebal 600.
-- **.btn / select / input**: latar arang-2, tepi garis-2, radius 6 px, padding 6 px / 10 px, 13 px, tinggi min 32 px;
-  hover tepi menjadi redup. Kotak centang (`.toggle`) memakai `accent-color` kuningan, 15 px, label redup 13 px.
-- **Fokus global**: `outline: 2px solid` kuningan, offset 2 px, radius 3 px.
-
-### Judul bagian
-`section.bag > .head h2`: 23 px 600, `position: relative`, padding bawah 8 px, dengan `::after` 28 × 2 px kuningan rata
-kiri di dasar; judulnya sendiri adalah label bergaris putus yang membuka tooltip penjelas bagian. `.head` flex
-kiri-kanan (judul + kontrol), margin bawah 18 px.
+Tidak ada tombol aksi primer; semua kontrol hanya memilih tampilan.
+- **Segmen** (`.seg`): kapsul berbingkai `line2` di atas air 55 %, padding 3 px, tombol tanpa tepi `muted` 13px 550 tinggi
+  30 px (36 px ponsel); hover `ink` di atas cyan 8 %; aktif isi `glow` + `glow-ink` 700. Rentang lilin, akun ekuitas, BTC/ETH.
+- **Kontrol** (`select`, `input`, `.btn`): latar air 70 %, tepi `line2`, radius 10 px, 13px, tinggi min 36 px; hover tepi
+  cyan 55 %; `.btn` 600 dengan hover isi cyan 12 %. Kotak centang `accent-color` `glow` 16 px.
+- **Fokus global**: `outline: 2px solid glow`, offset 2 px, radius 6 px; di segmen aktif outline `glow-ink` offset -4 px.
 
 ### Chips
-- **Pil status** (`.pil`): kapsul 11.5 px kapital 600, padding 1 px / 7 px, tepi garis-2 teks redup; varian `ok` mint,
-  `off` koral, `hold` amber dengan tepi warna 45 %. Hanya di header kolom analis.
-- **Tag** (`.tag`): kapsul 12 px, padding 0 / 7 px, line-height 1.6, tepi garis-2 teks redup; `ok` mint, `belum` amber
-  (keduanya mewarnai tepi); `takut` koral dan `serakah` mint hanya mewarnai teks. Dipakai di tabel dan daftar syarat.
+- **Pil status** (`.pil`): kapsul 11px 700 kapital, `ok` (boleh buka), `off` (pensiun), `hold` (berhenti), atau netral
+  ("tidak tersedia"); hanya di kepala tangki, dibungkus label tooltip.
+- **Tag** (`.tag`): kapsul 12px; `ok` "tepat"/"aktif", `belum` "terlewat"/"pensiun"; `takut`/`serakah` hanya mewarnai teks.
+- **Cap** (`.cap`): stempel di depan kalimat order yang tidak jadi, agar tetap terlihat: `exp` "kedaluwarsa" (`warn`),
+  `can` "batal" (`muted`), `rej` "ditolak" (`down`). Muncul di feed, "Jejak pada koin ini", dan tabel order Riwayat.
 
 ### Cards / Containers
-Tidak ada kartu. Kolom analis (`.analis`) adalah kolom meja: padding 14 px atas / 12 px bawah, garis rambut atas (dari
-`.meja`) dan bawah, tanpa latar, tanpa radius. Header kolom grid dua kolom (nama 17 px 700 + gaya 12.5 px redup di
-kiri, pil di kanan), jarak 8 px. Satu-satunya "kotak" adalah blok markdown `.md` (lihat di bawah).
+- **Panel kaca** (`.kaca`): radius 18 px, isi kaca + butiran + kilau, tepi `edge`, bayangan kaca, padding 16/18 px. Judul
+  panel `h3` dengan garis rambut bawah. Wadah satu-satunya.
+- **Tangki analis** (`article.analis.kaca`): kaca dengan pendar radial persona di puncak, padding 14/16/12 px. Kepala grid:
+  nama 18px 750 warna persona + pil di kanan, gaya analis 12,5px `muted` bertooltip di bawah. Blok saldo grid `auto 1fr
+  auto`: label "Bisa dipakai" bertooltip (saldo bergulir, hasil hari ini, terkunci, aturan tiket), nilai 20px 750, `.hasil`
+  hari ini di kanan (hanya bila bukan nol), batang 5 px menyala `glow` (`down` bila tidak boleh buka). Lalu baris posisi
+  dan order bergaris rambut; kosong: "Menunggu radar." `dim`.
+- **Tangki pensiun** (`.analis.pensiun`): `filter: grayscale(1)` dan opasitas 0,55; tangki tetap di tempatnya, pilnya
+  `off` "pensiun".
+- **Baris pembanding** (`.banding .baris.kaca`): kaca radius 14 px, padding 11/16 px, label tebal bertooltip ("Kembaran
+  acak", "Swing") kiri, jumlah posisi atau P/L di kanan.
 
 ### Inputs / Fields
-Hanya `select` (koin, akun, jenis catatan, hari) dan kotak centang; lihat Buttons. Tidak ada input teks bebas yang
-menulis data.
+Hanya `select`, `input[type=date]`, input koin di filter Riwayat (tidak menulis data), dan kotak centang. Lihat Buttons.
+Ikon kalender di-tint ke cyan; placeholder `dim`.
 
 ### Navigation
-Lompat-bagian sticky di bawah header, scroll horizontal tanpa scrollbar dengan pudar 28 px di tepi kanan, jarak 2 px
-antar pil; `.on` mengikuti bagian yang terlihat. Header `.top`: brand (h1 + subjudul redup 13 px bergaris putus), jam
-WIB (tebal 500 gading), titik kesehatan rata kanan.
+Bar lompat-bagian: kapsul kaca (air 62 % + blur 18 px + tepi `edge` + bayangan kaca), padding 5 px, jarak 2 px, scrollbar
+tersembunyi. Pil 13px 550 `muted`, tinggi 34 px (36 px ponsel); hover `ink` di atas cyan 8 %; aktif isi `glow` + `glow-ink`
+700 dengan pendar 18 px. Klik baris tabel (`tr.klik`) memilih koin dan menggulir ke Pasar.
 
-### Tip tooltip (tanda tangan)
-Label pendek bergaris putus 1 px `pudar` (offset 3 px, `cursor: help`); hover/fokus mengubah garis menjadi kuningan dan
-membuka `#tt`: fixed, maks 320 px, padding 9 px / 12 px, latar arang-tooltip, tepi garis-2, radius 6 px, 13 px / 1.45,
-`white-space: pre-line` (isi multi-baris dipisah `\n`), masuk 150 ms ease-out (opacity + geser 2 px). Semua keterangan
-yang bukan nilai tinggal di sini, termasuk rincian dinamis (saldo bergulir, harga masuk/target/stop, status order,
-syarat juara, puncak modal). Selama tooltip terbuka, wadah yang memuatnya tidak dirender ulang.
+### Tooltip (tanda tangan: label hanya di tooltip)
+Label pendek bergaris bawah titik-titik 1 px `dim` (offset 3 px, `cursor: help`, `tabindex="0"`); hover/fokus mengubah
+garis ke `glow` dan membuka `#tt`: fixed, maks 320 px, padding 10/13 px, `tooltip-bg` + blur 14 px, tepi `line2`, radius
+12 px, 13px/1.45, `white-space: pre-line`, masuk 150 ms ease-out (opacity + geser 3 px). Ditutup saat menggulir. Semua
+keterangan yang bukan nilai tinggal di sini, termasuk judul bagian dan judul panel.
 
-### Saldo bar
-Grid `auto 1fr auto` 13 px redup: label "Bisa dipakai" bergaris putus (tooltip-nya memuat saldo bergulir, hasil hari
-ini, terkunci, dan aturan tiket), nilai tebal 600 15 px gading, lalu `.hasil` 12.5 px di kanan yang hanya terisi bila
-hasil hari ini bukan nol (mint/koral; pudar saat kosong), lalu batang 4 px trek arang-3 radius 2 px berisi `i` kuningan
-(koral saat tidak boleh buka tiket). Tidak ada baris teks di bawah batang. Pola batang yang sama (`.biaya .bar`) dipakai
-untuk biaya AI; `warn` amber di atas 70 % batas.
+### Baris posisi, order, dan `.terakhir` di tangki
+- **Posisi**: baris 1 = koin tebal + arah + leverage sebagai label tooltip (masuk, target dan % lagi, stop, hangus % lagi,
+  rencana, harga sekarang) dan P/L 750 15px `up`/`down` (`data-k`); baris 2 caption `muted` = "masuk → target" (panah
+  `dim`), "hangus N,N %" (`down` bila < 1 %), dan untuk swing "sisa N % · TPn kena · n leg" dalam `glow`.
+- **Order**: koin `muted` + arah + leverage bertooltip (status, target, waktu gugur, rencana), harga limit atau "pasar";
+  baris 2 "menunggu harga · gugur HH.MM".
+- **Terakhir** (`.terakhir`): baris penutup tangki, garis rambut atas, 12,5px `dim` dengan waktu `muted`; menampilkan yang
+  lebih baru antara kejadian mesin dan keputusan jurnal: "49 mnt SKIP K222 1000PEPE · **R:R < 0,5 (P-19)**" dengan label
+  alasan bertooltip (kalimat alasan utuh), atau "order #31 K…".
 
-### Baris posisi, order, dan keadaan kosong
-- **Posisi** (`li.posisi`): baris 1 = nama koin tebal + arah + leverage sebagai label bergaris putus (`tabindex="0"`,
-  tooltip berisi waktu/harga masuk, target dengan % lagi, stop, hangus % lagi, rencana, harga sekarang) dan P/L hidup
-  tebal 600 mint/koral (`data-k`); baris 2 (`.l2`, 12.5 px redup, flex gap 10 px) = "harga masuk → target" dengan panah
-  `.ke` pudar, lalu "hangus N,N %" (koral bila < 1 %).
-- **Order** (`li.order`): baris 1 = koin + arah + leverage bergaris putus (tooltip: status, target, waktu gugur, rencana)
-  dan harga limit atau "pasar" redup; baris 2 = "menunggu harga · gugur HH.MM" dengan titik `.ke` pudar. Nama koin
-  order redup, bukan gading.
-- **Kosong** (`li.nihil`): "Menunggu radar." pudar 13 px, padding 6 px.
-
-### Baris pembanding (`.banding .baris`)
-Flex kiri-kanan 13.5 px redup, padding 10 px, garis rambut bawah: label tebal bergaris putus ("Kembaran acak", "Swing";
-tooltip berisi gaya, sisa jatah, jumlah posisi/order, dan rincian tiap posisi swing) dan di kanan hanya jumlah posisi
-atau daftar "KOIN ARAH" + P/L tebal mint/koral; bila tidak ada: "tidak ada posisi" atau "tidak tersedia".
-
-### Kalimat ringkas
-- **Peringkat** (`.juara`, 14.5 px redup, `b` gading): "Juara sementara **X**: rata-rata … per trade dari N trade." atau
-  "Belum ada juara · N aktif · N trade · **total** · terdepan **X**", dengan "Belum ada juara" bergaris putus (tooltip:
-  syarat ≥ 30 trade).
-- **Riwayat** (`.ringkas`, 13.5 px redup, `b` gading): "N trade · **total** · dari puncak X · terdalam Y" dengan "dari
-  puncak" dan "terdalam" bergaris putus (tooltip: puncak modal, posisi sekarang, tanggal terdalam); X koral bila di bawah
-  puncak.
-
-### Ringkasan (koin teramai + kecenderungan analis)
-- **Koin teramai 24 jam**: `tablewrap` lima baris, kolom `#` (rata kanan), koin tebal, harga, perubahan 24 jam tebal
-  600 mint/koral dengan tanda, dan volume yang dipendekkan ("13,6 M" untuk miliar, "250 jt" untuk juta); judul `h3`
-  bergaris rambut dengan `small` jam data; baris dapat diklik ke grafik.
-- **Kecenderungan analis** (`ul.list.profil`): tiap `li` grid `96px 1fr`, jarak 12 px, rata baseline: nama analis
-  tebal 600 14.5 px dalam warna personanya, lalu satu kalimat redup 13.5 px yang menyebut kecenderungan dengan nilai
-  tebal 500 gading, dipisah " · " ("cenderung **jual** (5/6) · suka **BNB, SOL** · **10–100×** · menang **50 %** dari 4
-  · pegang **2,0 jam** · keluar: **target 2×, hangus 1×** · pola **…** · sering jam **08**"); persentase menang mint/koral;
-  "N terbuka" kuningan di ujung bila ada posisi; "belum pernah membuka posisi" pudar bila kosong.
-
-### Feed (aliran kejadian)
-`ol` tanpa bullet, maks 560 px scroll; tiap `li` grid `82px 1fr` (kolom waktu cukup untuk "kemarin 21:40"), padding
-7 px, garis rambut atas, 13 px / 1.4; waktu relatif pudar 12 px `nowrap`, nama akun kuningan 600; baris acak diredupkan
-(teks redup, nama pudar). Pembatas hari (`li.hari`): blok 11.5 px kapital tracking 0,04 em pudar, padding 8 px / 2 px,
-garis atas `garis-2`; tidak muncul untuk kelompok "hari ini" paling atas. Entri baru (`.masuk`) geser masuk 200 ms
-ease-out dari -6 px. Pola `.ev` di Pasar memakai grid `44px 1fr` dengan jam WIB, tanpa animasi; teksnya dari
-`markerText()` dalam bahasa Indonesia ("LONG di 61.240", "target tercapai di …", "modal hangus di …", "order … tidak
-pernah tersentuh", "ditutup di … (stop / jam 23:50)").
-
-### List
-`.list li`: padding 8 px, garis rambut bawah (kecuali terakhir), 13.5 px / 1.5; baris `.k` kiri-kanan, sub `.s` redup
-12.5 px, `.utama` 14.5 px. Mesin dan Biaya AI memakai satu baris per item tanpa sub-baris: label bergaris putus
-(tooltip memuat waktu tick, hasil pemindaian, pesan cron, jumlah panggilan dan empat panggilan terakhir) dan nilai
-ringkas di kanan ("jalan"/"basi"/"mati" mint/koral, "09.12 · 3×", "14.30 · kirim" pudar, nilai USD tebal); biaya
-membawa batang 4 px di bawahnya. `.syarat li` memakai pola kiri-kanan yang sama dengan padding 9 px. Bacaan pasar menampilkan
-hanya ringkasan tebal (`.utama`) dan "Yang tidak nyambung" (amber, bergaris putus); kalimat per indikator berada di
-`details` "Bacaan per indikator (N)" di dalam item terakhir.
+### Feed (Kejadian) dan Jejak
+Panel kaca 360 px; `ol` grid `76px 1fr` per `li`, padding 8 px, garis rambut atas, 13px/1.42; waktu relatif 12px `dim`,
+nama akun 700 dalam warna persona, cap bila order gugur/batal; baris acak diredupkan. Pembatas hari `li.hari` (hanya di
+feed) 11px 700 kapital `glow` dengan garis `line2` di atas. Entri baru (`.masuk`) geser masuk 200 ms ease-out dari -6 px.
+"Jejak pada koin ini" memakai grid `44px 1fr` dengan jam WIB, maks 14 entri, teks dari `markerText()`.
 
 ### Tablewrap
-Pembungkus scroll dengan garis rambut atas-bawah, maks 440 px; tabel 13.5 px, sel padding 8 px / 10 px, garis rambut
-bawah tiap baris (terakhir tanpa), `nowrap`; `th` sticky latar arang teks redup 500 12.5 px; `.num` rata kanan; baris
-`.klik` hover arang-2; baris akun acak diredupkan. Di dalam `.md`, tablewrap tanpa batas tinggi dan tabel 13 px.
-Tabel Riwayat dipangkas ke kolom inti (posisi: Ditutup, Analis, Koin, Keluar, Hasil; order: Dibuat, Analis, Koin,
-Apa yang terjadi); sel Koin adalah label bergaris putus (`tabindex="0"`) yang tooltip-nya memuat harga masuk/keluar,
-leverage, fee, rencana, dan pembuat order.
+Gulir di dalam panel, maks 440 px; tabel 13,5px, sel 8/10 px, garis rambut bawah, `nowrap`; `th` sticky `th-bg` 12px 600
+`muted` dengan tepi `line2`; `.num` rata kanan; `tr.klik` hover cyan 7 %; baris acak `muted`. Riwayat dipangkas ke kolom
+inti (posisi: Ditutup, Analis, Koin, Keluar, Hasil; order: Dibuat, Analis, Koin, Apa yang terjadi); sel Koin label tooltip.
 
 ### Keputusan analis (Catatan AI)
-Format yang sama dengan pesan Telegram, satu blok per kandidat radar (terbaru dulu, 6 pertama terbuka, sisanya di `details` "N kandidat lebih
-awal"). Di atasnya kalimat ringkas `.ringkas`: "N kandidat · N order · N SKIP · SKIP tepat **a/b**" ("SKIP tepat" bergaris putus).
-Blok `.kep` dipisah garis rambut (bukan kartu): baris kepala `.kep-h` 14 px = **K221** tebal, label bergaris putus "**DOGE** beli" (tooltip:
-mark, level, sentuhan, ATR 15m, tren 15m, tanda, skor radar, hasil order bayangan), jam pudar 12.5 px, ringkas redup ("semua analis SKIP" /
-"1 order (fade) · 2 SKIP"); lalu `tablewrap` tanpa batas tinggi dengan `table-layout:fixed` dan kolom tetap agar semua tabel sejajar:
-Analis 110 px (nama dalam warna persona, 600) · Hasil 150 px ("SKIP" redup, atau "**order #31** beli" bergaris putus dengan tooltip limit/leverage/
-target/status) · Alasan (label kategori bergaris putus, tooltip = kalimat alasan utuh; sel `ellipsis`) · Penilaian 170 px (tag `ok` "tepat",
-tag `belum` "terlewat +$0,56" dua desimal dengan angka empat desimal di tooltip, "netral"/"belum dinilai"/"tidak tersedia" pudar ber-tooltip,
-atau hasil order nyata: angka mint/koral 600 + alasan keluar redup, "berjalan" kuningan). Tabel min 560 px (scroll di dalam tablewrap); ≤ 640 px
-min-width dilepas dan kolom 78 / 60 / sisa / 124 px sehingga Analis, Hasil, dan Penilaian langsung terlihat.
-Di kolom analis (Sekarang), baris `.terakhir` menampilkan yang lebih baru antara kejadian mesin dan keputusan jurnal: "12 mnt SKIP K222 1000PEPE ·
-**R:R < 0,5 (P-19)**" dengan label alasan bergaris putus (tooltip = kalimat alasan).
+Format sama dengan pesan Telegram, satu blok `.kep` per kandidat radar, terbaru dulu; enam pertama terbuka, sisanya di
+`details` "N kandidat lebih awal". Di atasnya `.ringkas`: "N kandidat · N order · N SKIP · SKIP tepat **a/b**" ("SKIP
+tepat" bertooltip). Blok dipisah garis `line2` (bukan kaca). Kepala `.kep-h` 14px: **K221** `glow`, label tooltip
+"**DOGE** beli" (mark, level, sentuhan, ATR 15m, tren, tanda, skor, hasil order bayangan), jam 12,5px `dim`, ringkas
+`muted`. Lalu tablewrap tanpa batas tinggi, `table-layout: fixed`, kolom sejajar di semua blok:
+- **Desktop:** Analis 110 px (nama warna persona) · Hasil 150 px ("SKIP" `muted`, atau "**order #31** beli" bertooltip
+  limit/leverage/target/status) · Alasan sisa (label kategori bertooltip = kalimat utuh; `ellipsis`) · Penilaian 170 px
+  (tag `ok` "tepat", tag `belum` "terlewat +$0,56", "netral"/"belum dinilai"/"tidak tersedia" `dim` bertooltip, hasil order
+  nyata `up`/`down` + alasan keluar `muted`, "berjalan" `glow`). Tabel min 560 px, gulir di dalam tablewrap.
+- **≤ 640 px:** min-width dilepas; kolom 84 / 52 / sisa / 92 px, dan sel Alasan boleh membungkus baris.
 
 ### Details
-Pembuka bagian sekunder: garis rambut atas, margin atas 14 px, summary redup 13.5 px padding 10 px dengan indent kiri
-18 px untuk chevron SVG pudar 12 px (mask) yang berputar 90° dalam 150 ms saat terbuka; marker bawaan disembunyikan;
-hover summary menjadi gading.
+Garis rambut atas, margin atas 12 px; summary 13,5px 550 `muted`, padding 11 px dengan indent 20 px untuk chevron `glow`,
+tinggi min 40 px; marker bawaan disembunyikan; hover `ink`; chevron berputar 90° dalam 150 ms.
 
 ### Blok markdown (`.md`)
-Catatan AI (jurnal, catatan pasar harian, evaluasi 23:55) dirender oleh `md()` ke HTML terbatas: `h2`–`h4` (600;
-17 / 15.5 / 14 px, `h4` redup; margin 18 px / 6 px), `p` (margin 6 px), `ul`/`ol` (indent 22 px, marker pudar),
-`blockquote` (redup, garis kiri 1 px garis-2, indent 12 px), `code` (mono 12.5 px di atas arang-3, radius 4 px),
-`pre` (mono, arang-3, radius 6 px, padding 10 px / 12 px, `pre-wrap`), `hr` (garis rambut), tabel (tablewrap), dan `a`
-(kuningan). Wadah: latar arang-2, tepi garis, radius 6 px, padding 16 px / 20 px, 14 px / 1.6, maks 80ch, maks 60vh
-scroll. Baris "Kunci: nilai" dirender dengan kunci tebal.
+Catatan AI dirender `md()` ke HTML terbatas, langsung di dalam panel (tanpa kotak sendiri): 14px/1.65, maks 80ch, maks 60vh
+gulir; `h2`–`h4` 700 17/15,5/14px (`h4` `muted`); marker daftar dan tautan `glow`; `blockquote` `muted` bergaris kiri
+`line2`; `code` mono di atas cyan 8 % radius 5 px; `pre` di atas air gelap bertepi `line`, radius 10 px; `hr` garis rambut;
+tabel lewat tablewrap tanpa batas tinggi, 13px. Paragraf satu baris "Kunci: nilai" dirender dengan kunci tebal.
 
 ### Grafik (Lightweight Charts)
-Latar arang, teks redup Inter 12 px, grid garis-grafik, tepi skala `garis`; lilin dan sumbu mint/koral tanpa tepi;
-volume mint/koral 28 %; garis silang kuningan; ekuitas area kuningan (30 % → 2 %); drawdown area koral terbalik
-(2 % → 40 %); garis arena per warna persona. Penanda: masuk panah mint/koral (acak pudar), TP lingkaran mint,
-likuidasi kotak koral, kedaluwarsa/batal lingkaran amber kecil; keterangan penanda "Nama: <markerText>" dalam bahasa
-Indonesia.
+`baseOpts`: latar transparan (kaca terlihat), teks `muted` Plus Jakarta Sans 12px, grid cyan 5 %, tepi skala `edge`,
+crosshair `glow` 60 % dengan label `glow`, lokal `id-ID` dan jam WIB. Lilin `up`/`down` tanpa tepi; volume 26 % di 15 %
+bawah. Penanda: masuk panah `up`/`down` (acak `dim`), TP lingkaran `up`, likuidasi kotak `down` (acak 50 %), kedaluwarsa/
+batal lingkaran kecil `warn`. Garis harga 1 px berlabel: masuk `glow`, target `up`, stop `muted`, hangus `down`, order
+`warn` putus-putus. Ekuitas area `glow` 28 % → 2 %; drawdown area `down` terbalik 2 % → 40 %; arena garis per persona.
+
+### Titik kesehatan
+Kapsul 12,5px `muted` bertepi `line` di atas air 40 %, titik 8 px: `ok` `up`, `warn` `warn`, `bad` `down` (teks dan tepi
+ikut koral), masing-masing berpendar 8 px; tanpa status `dim`. Semua rincian di tooltip.
+
+### Denyut polling (tanda tangan)
+Angka yang berubah (`data-k`) berpendar biolumines: `text-shadow` `glow` 14 px + teks putih yang memudar 700 ms
+`cubic-bezier(.16,1,.3,1)`. Dimatikan oleh `prefers-reduced-motion` bersama geser masuk feed dan transisi tooltip.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** pisahkan baris dan item dengan garis rambut 1 px `garis`, dan bagian dengan garis 2 px `sep`; biarkan latar
-  tetap arang.
-- **Do** beri tiap judul bagian garis kuningan 28 × 2 px di bawahnya; selain itu pakai kuningan hanya untuk pilihan
-  aktif, fokus, tautan, nama akun di feed, dan denyut perubahan; teks di atasnya kuningan-tinta.
-- **Do** warnai angka uang dengan mint/koral berdasarkan tanda, tebal 600, tabular, rata kanan di tabel; nol ditulis "$0,00".
-- **Do** tulis satu baris per keadaan (juga di tabel Riwayat dan daftar Mesin/Biaya); taruh rincian dan definisi di tooltip lewat label bergaris putus yang juga bisa
-  difokus keyboard (`tabindex="0"`) atau di blok `details`, dan jangan render ulang wadah yang sedang dibaca.
-- **Do** tulis "tidak tersedia" (atau "—") dalam pudar beserta alasan ketika data tidak ada.
-- **Do** tandai nilai yang berubah dengan `data-k` supaya denyut 600 ms berjalan; entri baru masuk dengan geser 200 ms;
-  hormati `prefers-reduced-motion`.
-- **Do** tulis waktu di feed secara relatif dengan pembatas hari; di tempat lain pakai jam WIB.
-- **Do** runtuhkan grid dua kolom menjadi satu pada ≤ 1100 px dan meja analis menjadi satu kolom pada ≤ 640 px.
+- **Do** letakkan setiap kelompok isi di satu panel kaca `.kaca` (blur 18 px, radius 18 px, tepi `edge`, `--shadow`) di
+  bawah judul bagian yang berdiri di atas air; pisahkan isi panel dengan garis rambut `line`.
+- **Do** pakai `glow` hanya untuk pilihan, fokus, crosshair, dan cahaya uang; teks di atas isian `glow` selalu `glow-ink`.
+- **Do** warnai uang dengan `up`/`down` menurut tanda, tebal, tabular, rata kanan di tabel; nol ditulis "$0,00".
+- **Do** baca warna di `app.js` dari variabel CSS (`cssv()`, `K`, `WARNA`); token baru ditambahkan di `:root`, bukan di JS.
+- **Do** tampilkan warna persona sebagai cahaya: pendar puncak tangki, tepi atas, nama, garis grafik.
+- **Do** biarkan order batal/kedaluwarsa/ditolak tetap terlihat dengan cap bersudut 4 px berputar -3°.
+- **Do** pudarkan tangki analis pensiun (grayscale, opasitas 0,55) di tempatnya, bukan menyembunyikannya.
+- **Do** taruh rincian dan definisi di tooltip pada label bergaris putus yang bisa difokus, atau di `details`; jangan render
+  ulang wadah yang sedang dibaca.
+- **Do** tandai nilai berubah dengan `data-k` untuk denyut 700 ms; hormati `prefers-reduced-motion`.
+- **Do** di ≤ 640 px: satu kolom, tanpa gulir bersarang di feed (enam baris), grafik 380 px, kolom Hasil `#tbl-posisi`
+  menempel, target sentuh ≥ 36 px.
 
 ### Don't:
-- **Don't** tambahkan kartu, panel berlatar, atau kotak di dalam kotak; `.md` adalah satu-satunya blok berlatar.
-- **Don't** pakai bayangan pada permukaan di dalam halaman; bayangan hanya untuk tooltip yang melayang.
-- **Don't** pakai mint/koral untuk hal selain arah uang atau hidup/mati sistem, dan jangan pakai warna persona sebagai
-  latar.
-- **Don't** tambahkan aksi primer, tombol beli/jual, atau input yang menulis data; dashboard hanya membaca.
-- **Don't** tambahkan baris keterangan di bawah nilai; kalau perlu dijelaskan, pindahkan ke tooltip atau `details`.
-- **Don't** tambahkan motion selain denyut garis bawah, geser masuk entri, dan putaran chevron; durasi tetap 150–600 ms
-  ease-out.
-- **Don't** pakai bobot 700 di luar nama analis, dan jangan pakai huruf mono di luar `code`/`pre` markdown.
-- **Don't** tampilkan jargon mesin (kode event, nama tabel, JSON) di layar; terjemahkan ke kalimat Indonesia.
+- **Don't** menaruh kaca di dalam kaca, atau kembali ke dunia arang hangat + kuningan tanpa kartu.
+- **Don't** menganimasikan latar air, titik biolumines, atau berkas cahaya.
+- **Don't** memakai `up`/`down`/`warn` untuk persona atau dekorasi, atau warna persona sebagai latar padat.
+- **Don't** menambah aksi primer, tombol beli/jual, atau input yang menulis data; dashboard hanya membaca.
+- **Don't** menambah baris keterangan di bawah nilai; pindahkan ke tooltip atau `details`.
+- **Don't** memakai huruf selain Plus Jakarta Sans, kecuali mono untuk `code`/`pre` markdown.
+- **Don't** menampilkan jargon mesin (kode event, nama tabel, JSON); terjemahkan ke kalimat Indonesia.
 - **Don't** mengestimasi angka yang tidak tersedia atau memberinya warna semantik.

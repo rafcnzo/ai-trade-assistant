@@ -3,6 +3,24 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-10-23 (pagi, 08:45) — laptop Windows — dashboard dirombak: glassmorphism gelap "akuarium laut dalam" + responsif ponsel
+
+**Apa:** dunia visual dashboard diganti total (fungsi, data, dan teks tetap). Undian concept-seed → "ruang observasi akuarium laut dalam";
+dipilih pemilik di halaman keputusan impeccable. Latar air bergradasi #0a2230 → #06141b → #040d12 dengan titik biolumines buram yang diam;
+semua kolom = panel kaca beku `.kaca` (backdrop-filter blur 18 px, butiran es SVG, tepi atas memantul cahaya), tidak ada kaca di dalam kaca;
+tiap analis = tangki kaca dengan cahaya persona di puncaknya (`--p-*`), analis pensiun abu-abu; satu cahaya fokus cyan #63e6ff; untung
+#6be89a, rugi #ff7a6b, peringatan #f3c969; huruf Plus Jakarta Sans. Urutan bagian: Pasar naik ke posisi 2, grafik 540 px (ponsel 380 px).
+Order batal/kedaluwarsa/ditolak dicap (`.cap`) di riwayat, aliran kejadian, dan jejak grafik. `app.js` membaca palet dari variabel CSS
+(`cssv`/`K`) sehingga grafik, marker, garis harga, dan teks memakai token yang sama. Ponsel: satu kolom, bar lompat-bagian bergulir dan
+pil aktif ikut digeser, kejadian 6 terbaru tanpa gulir bersarang, kolom Hasil riwayat menempel, target sentuh ≥ 36 px; diverifikasi dengan
+emulasi perangkat CDP (clientWidth = scrollWidth = 375). Review akhir impeccable: "ship after fixes", 8 perbaikan diterapkan. DESIGN.md
+dan `.impeccable/design.json` ditulis ulang dari build; brief `.impeccable/surfaces/dashboard-index-html.md` memuat kontrak arah baru.
+
+**Kenapa:** permintaan pemilik 23 Okt: "ubah design nya lah jadi lebih modern, pake gaya gaya morphism gitu dan ganti pallete warna nya,
+buat responsif di mobile juga ya" (dipin: glassmorphism, gelap, bisa dilirik sekilas, candlestick tetap besar). **File:**
+`dashboard/{index.html,style.css,app.js}`, `DESIGN.md`, `.impeccable/design.json`, `.impeccable/surfaces/dashboard-index-html.md`,
+docs (OPERASI, STATUS).
+
 ## 2026-10-23 (pagi, 08:30) — laptop Windows — laporan wake arena selalu tabel baku (Telegram Rich Message) + dashboard Keputusan analis
 
 **Apa:** modul murni `scripts/keputusan.py` (`kelompok()` keputusan per kandidat dari jurnal + fakta kandidat + order/posisi + penilaian SKIP;
