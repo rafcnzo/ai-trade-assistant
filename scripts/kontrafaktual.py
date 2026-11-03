@@ -31,6 +31,9 @@ LS_MARGIN = 0.15          # selisih akurasi vs baseline untuk promosi
 LS_PENSIUN = 0.05
 LS_JENDELA_HARI = 30
 LS_NILAI_ULANG_HARI = 30
+TEMUAN_MIN_N = 10         # kandidat terisi per kelompok sebelum ditampilkan sebagai temuan sementara
+TEMUAN_MARGIN = 0.10      # selisih tingkat menang vs semua kandidat agar disebut indikasi
+TEMUAN_KUAT_N = 30
 LS_MAX_AKTIF = 15
 
 KATEGORI = ("RR_P19", "TP_ATR15", "TREN_15M", "SENTUHAN", "LIQ_ATR5", "SUDAH_LARI", "FUNDING", "BASI", "LIMIT_CROSSES",
@@ -326,6 +329,80 @@ def label_skip(hasil: dict) -> str:
         return "netral"
     net = hasil.get("net") or 0.0
     return "salah" if net > NET_EPS else ("benar" if net < -NET_EPS else "netral")
+
+
+# --------------------------------------------------------------------------- temuan sementara (termasuk temuan negatif)
+def _uang(x: float) -> str:
+    return ("+" if x > 0 else "−" if x < 0 else "") + "$" + f"{abs(x):.2f}".replace(".", ",")
+
+
+def temuan(records: list[dict], now_ms: int) -> Optional[dict]:
+    """Ringkasan kandidat terisi 30 hari: tingkat menang, rata-rata, tingkat menang impas, dan kelompok ber-n cukup.
+    Ini indikasi, bukan aturan: kandidat saling terkait dan semua dari satu rezim pasar."""
+    since = now_ms - LS_JENDELA_HARI * C.DAY_MS
+    rows = [r for r in records if int(r["run_ts"]) >= since and r["hasil"] not in ("ambigu", "TIDAK_TERISI") and r.get("net") is not None]
+    if not rows:
+        return None
+    nets = [float(r["net"]) for r in rows]
+    menang = [x for x in nets if x > NET_EPS]
+    kalah = [x for x in nets if x < -NET_EPS]
+    win = len(menang) / len(nets)
+    impas = None
+    if menang and kalah:
+        w, l = sum(menang) / len(menang), -sum(kalah) / len(kalah)
+        impas = l / (w + l)
+    groups: dict[str, list[float]] = {}
+    for r in rows:
+        kunci = [f"arah {r.get('arah')}", f"skor {r.get('skor')}"]
+        if r.get("lolos_p19") is not None:
+            kunci.append("lolos P-19" if r["lolos_p19"] else "gagal P-19")
+        try:
+            flags = json.loads(r["flags"]) if isinstance(r.get("flags"), str) else list(r.get("flags") or [])
+        except ValueError:
+            flags = []
+        kunci += [f"tanda {f}" for f in flags if f != "DEKAT_LEVEL"]
+        for k in kunci:
+            groups.setdefault(k, []).append(float(r["net"]))
+    baris = []
+    for k, xs in groups.items():
+        if len(xs) < TEMUAN_MIN_N:
+            continue
+        wk = sum(1 for x in xs if x > NET_EPS) / len(xs)
+        selisih = wk - win
+        bacaan = "tidak beda" if abs(selisih) < TEMUAN_MARGIN else ("indikasi buruk" if selisih < 0 else "indikasi lebih baik")
+        if bacaan != "tidak beda" and len(xs) < TEMUAN_KUAT_N:
+            bacaan += " (lemah)"
+        baris.append({"kelompok": k, "n": len(xs), "win": wk, "mean": sum(xs) / len(xs), "bacaan": bacaan})
+    baris.sort(key=lambda b: b["win"])
+    base, items = _sampel(records, since)
+    per: dict[str, list[str]] = {}
+    for _, kat, lab in items:
+        per.setdefault(kat, []).append(lab)
+    skip = sorted(((sum(1 for x in labs if x == "benar") / len(labs), kat, len(labs)) for kat, labs in per.items() if len(labs) >= LS_MIN_SAMPEL), reverse=True)
+    return {"n": len(nets), "win": win, "mean": sum(nets) / len(nets), "impas": impas, "baris": baris, "skip_base": base, "skip": skip}
+
+
+def render_temuan(t: Optional[dict], baris_hipotesis: Optional[str] = None) -> str:
+    """Bagian "Temuan sementara" di pasar/pelajaran.md; dibaca agent sebelum menimbang kandidat."""
+    if not t and not baris_hipotesis:
+        return ""
+    lines = ["## Temuan sementara", "",
+             "_Dihitung ulang skrip tiap run dari order bayangan mekanis 30 hari (templat tanpa SL, bukan rencana persona). Ini indikasi, bukan aturan: "
+             "kandidat saling terkait dan berasal dari satu rezim pasar. Jangan dijadikan VETO; status aturan playbook diputuskan pemilik._", ""]
+    if t:
+        impas = f"; impas butuh menang {t['impas']:.0%}" if t.get("impas") is not None else ""
+        lines.append(f"- **Semua kandidat radar:** {t['n']} terisi, menang {t['win']:.0%}, rata-rata {_uang(t['mean'])} per order{impas}. "
+                     + ("Belum ada keunggulan." if t["mean"] <= 0 else "Rata-rata positif, belum tentu bertahan."))
+    if baris_hipotesis:
+        lines.append(f"- **Hipotesis AI:** {baris_hipotesis}")
+    if t and t.get("skip_base") is not None:
+        ket = "; ".join(f"{kat} {acc:.0%} (n={n})" for acc, kat, n in t["skip"][:4])
+        lines.append(f"- **Alasan SKIP:** SKIP acak tepat {t['skip_base']:.0%}" + (f"; {ket}" if ket else "; belum ada alasan dengan sampel cukup") + ".")
+    if t and t["baris"]:
+        lines += ["", "| Kelompok | n | Menang | Rata-rata | Bacaan |", "|---|---|---|---|---|"]
+        lines += [f"| {b['kelompok']} | {b['n']} | {b['win']:.0%} | {_uang(b['mean'])} | {b['bacaan']} |" for b in t["baris"]]
+    lines.append("")
+    return "\n".join(lines)
 
 
 # --------------------------------------------------------------------------- rekap & pelajaran

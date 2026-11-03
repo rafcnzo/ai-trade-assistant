@@ -134,6 +134,16 @@ dashboard `/api/keputusan?hari=` (Catatan AI → "Keputusan analis": tabel per k
 "skip 3 · open 2" (sisi pemenang menyala, tag veto/tidak sesuai) dan di bawah tiap analis ada dua daftar poin berdampingan (SKIP koral,
 OPEN hijau; satu kolom di ponsel); baris "keputusan terakhir" di tangki menampilkan timbangan dengan semua poin di tooltip.
 
+## Temuan sementara dan saringan P-19
+
+`uji_hipotesis.py` menulis bagian "Temuan sementara" di `pasar/pelajaran.md` tiap run: semua kandidat 30 hari (menang, rata-rata, tingkat menang impas),
+hipotesis AI vs acak, alasan SKIP vs SKIP acak, dan tabel per arah/skor/tanda/P-19 (n ≥ 10; "indikasi" bila menang berbeda ≥ 10 poin, "lemah" bila n < 30).
+Sumbernya order bayangan mekanis, jadi ini indikasi, bukan aturan. Agent memakainya sebagai poin saat menimbang; playbook tetap diputuskan pemilik.
+Cron `uji-hipotesis` berjalan menit ke-15 tiap jam 07–22 (idempoten, tanpa LLM, diam bila tidak ada hasil baru) supaya tetap jalan walau laptop tidur malam.
+
+`pemindai.py`: kandidat yang tidak mungkin lolos P-19 (`mungkin_lolos_p19`, rumus sama dengan mesin, TP terjauh 1,5×ATR 15m, semua leverage layak) diberi tanda
+`GAGAL_P19`, disimpan untuk penilaian bayangan, dan tidak membangunkan AI. Uji pada riwayat 3 Nov: 102 dari 183 wake tidak akan terjadi; semua 8 order sejak 15 Okt tetap lolos.
+
 ## Penilaian SKIP (kontrafaktual)
 
 Setiap kandidat pemindai dari hari WIB yang sudah tutup dinilai sekali oleh `uji_hipotesis.py` (cron 21:15 dan gate susulan pagi; modul
@@ -325,7 +335,7 @@ Wizard `hermes setup` sudah memasang `Hermes_Gateway.vbs` di folder Startup (fal
 `hermes gateway start|status|stop|restart`. Cron (baris `hermes cron create` dari `hermes/sync.py --snippet`; `--script` harus relatif terhadap `HERMES_HOME\scripts`): `pemindai-tiket`
 tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `evaluasi-harian` 21:30 WIB (dipindah dari 23:55 pada 14 Okt karena laptop biasanya sudah mati; posisi yang ditutup sesudahnya, termasuk EOD 23:50, masuk evaluasi besok), dan `notif-paper`
 tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM), serta `uji-hipotesis`
-21:15 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 21:30), dan `psikologi` menit ke-7 tiap jam
+menit ke-15 tiap jam 07–22 WIB (`--no-agent`; menilai hipotesis jatuh tempo dan SKIP), dan `psikologi` menit ke-7 tiap jam
 (`--no-agent`, diam; mengisi `data/psikologi.sqlite`).
 `evaluasi-susulan` (menit ke-20 tiap jam, 07:20–22:20) hanya membangunkan agent bila ada hari dalam 7 hari terakhir yang punya aktivitas
 (jurnal agent, atau order/posisi selain akun acak) tetapi belum punya catatan harian; maksimal 3 tanggal per bangun, terlama dulu, dan

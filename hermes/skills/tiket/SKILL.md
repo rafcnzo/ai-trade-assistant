@@ -1,7 +1,7 @@
 ---
 name: tiket
 description: Prosedur menilai kandidat tiket $1 (Binance USDT-M Futures, paper) dan memasang order paper lewat tool mcp_paper_*. Dipakai saat pemindai menemukan kandidat, atau saat pemilik minta "cek setup", "cek tiket", "pasang tiket".
-version: 1.1.0
+version: 1.2.0
 metadata:
   hermes:
     tags: [trading, paper, tiket, price-action]
@@ -27,6 +27,7 @@ metadata:
    - `mcp_paper_ohlcv` tf 15m lalu 5m: tren, level terdekat (`level_atas`/`level_bawah`, sentuhan), ATR, jejak
      (WICK, VOL, BREAKOUT_GAGAL, IMPULS, KOMPRESI),
    - `mcp_paper_tabel_tiket` untuk sisi yang dipertimbangkan, `entry` = level yang dituju.
+4a. `mcp_paper_baca_memori("pelajaran")`: bila kandidat cocok dengan "Temuan sementara" atau pelajaran aktif, tulis sebagai satu poin dengan angkanya (bukan VETO).
 4b. `mcp_paper_baca_memori("playbook")`: periksa rencana terhadap aturan berstatus `aktif` (wajib) dan `uji` (pertimbangan).
    Melanggar aturan aktif → SKIP; melanggar aturan uji tapi tetap masuk → sebutkan ID-nya di `aturan_dilanggar` saat menulis jurnal.
 5. Uji aturan (semua harus lolos, kalau tidak → SKIP dengan alasan):

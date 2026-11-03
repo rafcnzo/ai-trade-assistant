@@ -164,6 +164,32 @@ class TestGates(Base):
         self.p.radar_jatah_path = jp
         self.assertIn("cap 12 wake/hari", self.p.run().alasan)                          # jatah hari lain tidak berlaku
 
+    def test_s14_gagal_p19_disimpan_tanpa_wake(self):
+        self.seed()
+        cfg_awal = self.p.engine.cfg.tiket_min_rr
+        self.p.engine.cfg.tiket_min_rr = 100.0
+        res = self.p.run()
+        self.p.engine.cfg.tiket_min_rr = cfg_awal
+        self.assertFalse(res.wake, res.alasan)
+        self.assertEqual(res.kandidat, [])
+        self.assertEqual(len(res.tersaring), 1)
+        self.assertIn("1 gagal P-19", res.alasan)
+        self.assertEqual(tuple(self.kand.execute("SELECT wake, n_kandidat FROM pemindai_run").fetchone()), (0, 0))
+        row = self.kand.execute("SELECT flags FROM kandidat").fetchone()
+        self.assertIn("GAGAL_P19", row[0])                                # tetap jadi sampel penilaian bayangan
+
+    def test_s15_rumus_p19_sama_dengan_mesin(self):
+        from paper_engine import EngineConfig
+        from pemindai import PemindaiConfig, mungkin_lolos_p19
+        e, c = EngineConfig(), PemindaiConfig()
+        e.tiket_min_rr = 0.5
+        lev = [{"leverage": 100, "qty": 0.0012}]                           # notional $100, margin $1
+        self.assertTrue(mungkin_lolos_p19("LONG", 83000.0, 800.0, lev, e, c))   # TP jauh: untung besar
+        self.assertFalse(mungkin_lolos_p19("SHORT", 83000.0, 1.0, lev, e, c))   # TP dekat: untung habis oleh fee
+        self.assertTrue(mungkin_lolos_p19("LONG", 83000.0, None, lev, e, c))    # ATR tidak tersedia: jangan disaring
+        e.tiket_min_rr = 0
+        self.assertTrue(mungkin_lolos_p19("SHORT", 83000.0, 1.0, lev, e, c))    # gate dimatikan
+
     def test_s12_hourly_wake_cap(self):
         self.seed()
         with C.tx(self.kand):

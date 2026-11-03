@@ -9,7 +9,7 @@ hermes cron create "30 21 * * *" "Jalankan skill evaluasi-harian untuk hari ini 
 
 hermes cron create "* * * * *" --name notif-paper --no-agent --script notif_cron.py --deliver telegram --failure-deliver local
 
-hermes cron create "15 21 * * *" --name uji-hipotesis --no-agent --script uji_cron.py --deliver telegram --failure-deliver local
+hermes cron create "15 7-22 * * *" --name uji-hipotesis --no-agent --script uji_cron.py --deliver telegram --failure-deliver local
 
 hermes cron create "7 * * * *" --name psikologi --no-agent --script psikologi_cron.py --deliver telegram --failure-deliver local
 

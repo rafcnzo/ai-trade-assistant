@@ -202,9 +202,11 @@ def render_hipotesis_md(records: list[dict], hasil: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_pelajaran_md(lessons: list[dict]) -> str:
+def render_pelajaran_md(lessons: list[dict], temuan_md: str = "") -> str:
     lines = ["# Pelajaran", "", "_Ditulis skrip `uji_hipotesis.py` dari hipotesis yang dinilai (§16.6): naik bila sampel ≥ 10 dan hit rate ≥ baseline + 15 poin; "
              "dinilai ulang tiap 30 hari dengan data 90 hari; pensiun bila turun ke sekitar baseline. Jangan diedit manual._", ""]
+    if temuan_md:
+        lines += [temuan_md]
     skip = [l for l in lessons if l.get("sumber") == "skip"]
     lessons = [l for l in lessons if l.get("sumber") != "skip"]
     for status, judul in (("aktif", "## Aktif"), ("pensiun", "## Pensiun")):

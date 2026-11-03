@@ -1,7 +1,7 @@
 ---
 name: arena
 description: Menilai kandidat pemindai untuk SEMUA persona arena (tiket = price action, fade = lawan kerumunan, breakout = tembus + uji ulang, rentang = mean reversion) dan memasang order paper di akun masing-masing. Dipakai oleh cron pemindai-tiket. Untuk permintaan pemilik "cek setup" pakai skill tiket/cek.
-version: 1.2.0
+version: 1.3.0
 metadata:
   hermes:
     tags: [trading, paper, arena, persona]
@@ -20,6 +20,8 @@ Semua persona tunduk pada playbook (`mcp_paper_baca_memori("playbook")`) dan mes
    di akun yang sama (`mcp_paper_order_menunggu(akun)`, `mcp_paper_posisi(akun)`).
 3. FAKTA per kandidat (sekali, dipakai semua persona): `mcp_paper_harga`, `mcp_paper_ohlcv` 15m lalu 5m (tren, level, ATR, jejak),
    `mcp_paper_panel_psikologi` untuk simbol itu (BTCUSDT/ETHUSDT) atau pasar luas, `mcp_paper_tabel_tiket` per sisi (entry = level).
+   Sekali per wake juga `mcp_paper_baca_memori("pelajaran")`: bila kandidat cocok dengan kelompok di "Temuan sementara" atau pelajaran aktif,
+   masukkan sebagai satu poin dengan angkanya, mis. poin_skip "tanda MELAWAN_TREN_15M: menang 29 % dari 48 bayangan". Indikasi = poin biasa, bukan VETO.
 4. **Per persona aktif**, uji syarat masuknya; lolos → `mcp_paper_pasang_order(akun=<persona>, ..., plan_id=K<id>, pola=<persona>:<pola>)`,
    tidak lolos → SKIP. Maksimal **1 order per persona per wake**; maksimal 2 order hidup per akun.
 

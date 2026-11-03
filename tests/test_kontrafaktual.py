@@ -97,6 +97,31 @@ class TestParser(unittest.TestCase):
         self.assertEqual(K.klasifikasi_alasan("cuaca buruk"), "LAIN")
 
 
+class TestTemuan(unittest.TestCase):
+    def test_k6_temuan_termasuk_negatif(self):
+        now = 2_000_000_000_000
+        rec = lambda i, net, flags, arah="LONG": {"kandidat_id": i, "run_ts": now - 3600_000, "hasil": "TP" if net > 0 else "HANGUS", "net": net, "arah": arah,
+                                                  "skor": 4, "lolos_p19": True, "flags": json.dumps(flags), "keputusan": {}}
+        rows = [rec(i, 0.5, ["WICK"]) for i in range(12)] + [rec(100 + i, -1.0, ["WICK"]) for i in range(8)]
+        rows += [rec(200 + i, -1.0, ["DEKAT_LEVEL", "MELAWAN_TREN_15M"]) for i in range(11)] + [rec(300, 0.5, ["MELAWAN_TREN_15M"])]
+        rows += [{"kandidat_id": 400, "run_ts": now, "hasil": "TIDAK_TERISI", "net": 0.0, "keputusan": {}},
+                 rec(500, -1.0, ["LAMA"]) | {"run_ts": now - 40 * C.DAY_MS}]
+        t = K.temuan(rows, now)
+        self.assertEqual(t["n"], 32)                                       # tak terisi dan di luar 30 hari tidak dihitung
+        self.assertAlmostEqual(t["impas"], 1.0 / 1.5)
+        b = {x["kelompok"]: x for x in t["baris"]}
+        self.assertEqual(b["tanda MELAWAN_TREN_15M"]["bacaan"], "indikasi buruk (lemah)")
+        self.assertNotIn("tanda DEKAT_LEVEL", b)
+        self.assertNotIn("tanda LAMA", b)
+        md = K.render_temuan(t, "13 dinilai, benar 69% vs acak 71%: belum lebih baik dari acak.")
+        self.assertIn("## Temuan sementara", md)
+        self.assertIn("Belum ada keunggulan.", md)
+        self.assertIn("| tanda MELAWAN_TREN_15M | 12 | 8% | −$0,88 | indikasi buruk (lemah) |", md)
+        self.assertIn("belum lebih baik dari acak", md)
+        self.assertEqual(K.render_temuan(None), "")
+        self.assertIsNone(K.temuan([], now))
+
+
 class TestSimulasi(unittest.TestCase):
     def setUp(self):
         self.m = FixtureMarket()

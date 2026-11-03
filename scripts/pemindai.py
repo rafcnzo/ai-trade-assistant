@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import analisis as A  # noqa: E402
 import common as C  # noqa: E402
 from common import HOUR_MS, MINUTE_MS, Bar, fmt_wib  # noqa: E402
-from paper_engine import LONG, SHORT, TIKET, Bracket, EngineConfig, PaperEngine, SqliteMarket, SymbolFilters, pick_bracket  # noqa: E402
+from paper_engine import LONG, SHORT, TIKET, Bracket, EngineConfig, PaperEngine, SqliteMarket, SymbolFilters, fee_amount, pick_bracket  # noqa: E402
 
 SCHEMA_VERSION = "1"
 KANDIDAT_DB = C.DATA_DIR / "kandidat.sqlite"
@@ -67,6 +67,7 @@ class PemindaiConfig:
     jam_akhir: str = "22:30"
     max_wake_per_day: int = 12
     max_wake_per_hour: int = 3     # 14 Okt: jatah harian jangan habis di satu sesi ramai (12 wake dalam 2,5 jam)
+    tp_atr15_maks: float = 1.5     # TP terjauh yang diizinkan persona mana pun; dipakai saring P-19 sebelum wake
     cooldown_min: int = 30
     max_live_tiket: int = 2        # per akun persona (arena)
     max_hangus_beruntun: int = 2   # playbook P-09: setelah 2 tiket HANGUS beruntun, tidak ada tiket baru hari itu
@@ -91,6 +92,7 @@ class Kandidat:
     funding: Optional[float]
     tren_15m: str
     lev_layak: list = field(default_factory=list)
+    gagal_p19: bool = False
     score: int = 0
     flags: list = field(default_factory=list)
     jejak: list = field(default_factory=list)
@@ -112,6 +114,7 @@ class RunResult:
     ditahan: list = field(default_factory=list)      # [{"symbol", "alasan", "score"}]
     dipindai: list = field(default_factory=list)     # debug per simbol (untuk --once/--json)
     wake: bool = False
+    tersaring: list = field(default_factory=list)   # kandidat yang disimpan untuk penilaian tetapi tidak membangunkan agent
     alasan: str = ""
     budget_sisa: Optional[float] = None
     akun_aktif: list = field(default_factory=list)   # [{akun, sisa}] persona yang boleh buka saat ini
@@ -249,6 +252,21 @@ def leverage_layak(arah: str, entry: float, f: SymbolFilters, brackets: list[Bra
         if x is not None and x >= cfg.x_atr5m_min:
             out.append({"leverage": r["leverage"], "qty": r["qty"], "liq": r["liq"], "jarak_liq_pct": r["jarak_liq_pct"], "x_atr5m": x})
     return out
+
+
+def mungkin_lolos_p19(arah: str, entry: float, atr15: Optional[float], lev_layak: list[dict], eng_cfg: EngineConfig, cfg: PemindaiConfig) -> bool:
+    """Masih mungkin lolos P-19 pada TP terjauh (1,5×ATR 15m) di salah satu leverage layak? Rumus sama dengan mesin; tanpa ATR 15m = jangan disaring."""
+    if not eng_cfg.tiket_min_rr or not atr15 or atr15 <= 0:
+        return True
+    tp = entry + cfg.tp_atr15_maks * atr15 if arah == "LONG" else entry - cfg.tp_atr15_maks * atr15
+    for d in lev_layak:
+        qty, notional = float(d["qty"]), float(d["qty"]) * entry
+        fee_in = fee_amount(notional, True, eng_cfg)
+        reward = abs(tp - entry) * qty - fee_in - fee_amount(abs(tp) * qty, True, eng_cfg)
+        risk = notional / int(d["leverage"]) + fee_in
+        if risk > 0 and reward / risk >= eng_cfg.tiket_min_rr:
+            return True
+    return False
 
 
 def _fmt_pct(x: Optional[float], digits: int = 1) -> str:
@@ -442,6 +460,11 @@ class Pemindai:
         if not lev:
             dbg["keterangan"] = "tidak ada leverage dengan jarak liq ≥ 2×ATR5m untuk budget ini"
             return None, dbg
+        if not mungkin_lolos_p19(arah, k.level, k.atr_15m, lev, self.engine.cfg, self.cfg):
+            k.gagal_p19 = True
+            k.flags = [*k.flags, "GAGAL_P19"]
+            dbg["keterangan"] = "gagal P-19 di semua leverage: disimpan, AI tidak dibangunkan"
+            return k, dbg
         dbg["keterangan"] = "kandidat"
         return k, dbg
 
@@ -478,14 +501,15 @@ class Pemindai:
                         continue
                     cands.append(k)
                 cands.sort(key=lambda x: (-x.score, x.jarak_atr5m))
-                res.kandidat = cands[: self.cfg.top_k]
+                res.kandidat = [k for k in cands if not k.gagal_p19][: self.cfg.top_k]
+                res.tersaring = [k for k in cands if k.gagal_p19][: self.cfg.top_k]
                 if gate:
                     res.alasan = gate
                 elif res.kandidat:
                     res.wake = True
                     res.alasan = f"{len(res.kandidat)} kandidat"
                 else:
-                    res.alasan = f"tidak ada kandidat ({res.n_symbols} simbol dipindai)"
+                    res.alasan = f"tidak ada kandidat ({res.n_symbols} simbol dipindai)" + (f"; {len(res.tersaring)} gagal P-19" if res.tersaring else "")
         except Exception as e:  # noqa: BLE001 - pemindai tidak boleh menjatuhkan cron
             res.ok, res.err, res.wake = 0, f"{type(e).__name__}: {e}", False
             res.alasan = f"gagal: {res.err}"
@@ -508,15 +532,14 @@ class Pemindai:
                 (res.ts, res.day_wib, res.data_tick_ts, res.n_symbols, len(res.kandidat) if res.wake else 0, int(res.wake), res.alasan,
                  res.budget_sisa, res.duration_ms, res.ok, res.err),
             )
-            if res.wake:
-                for k in res.kandidat:
-                    cur = self.kand.execute(
-                        "INSERT INTO kandidat(run_ts,day_wib,symbol,arah_dugaan,mark,level,sentuhan,jarak_atr5m,atr_1m,atr_5m,atr_15m,atr_1h,pct_24h,funding,lev_layak,score,flags,ringkasan) "
-                        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (res.ts, res.day_wib, k.symbol, k.arah_dugaan, k.mark, k.level, k.sentuhan, k.jarak_atr5m, k.atr_1m, k.atr_5m, k.atr_15m, k.atr_1h,
-                         k.pct_24h, k.funding, json.dumps(k.lev_layak), k.score, json.dumps(k.flags), k.ringkasan),
-                    )
-                    k.id = cur.lastrowid
+            for k in (res.kandidat if res.wake else []) + res.tersaring:
+                cur = self.kand.execute(
+                    "INSERT INTO kandidat(run_ts,day_wib,symbol,arah_dugaan,mark,level,sentuhan,jarak_atr5m,atr_1m,atr_5m,atr_15m,atr_1h,pct_24h,funding,lev_layak,score,flags,ringkasan) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (res.ts, res.day_wib, k.symbol, k.arah_dugaan, k.mark, k.level, k.sentuhan, k.jarak_atr5m, k.atr_1m, k.atr_5m, k.atr_15m, k.atr_1h,
+                     k.pct_24h, k.funding, json.dumps(k.lev_layak), k.score, json.dumps(k.flags), k.ringkasan),
+                )
+                k.id = cur.lastrowid
         if res.wake:
             res.wake_hari_ini += 1
 

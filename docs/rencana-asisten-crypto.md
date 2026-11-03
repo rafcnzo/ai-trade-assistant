@@ -3,6 +3,11 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.15 (3 Nov 2026, lingkar belajar)
+- §16.6: `pasar/pelajaran.md` memuat "Temuan sementara" dari skrip (termasuk temuan negatif; indikasi, bukan aturan). Skill arena/tiket
+  membacanya sebelum menimbang dan memakainya sebagai poin biasa, bukan VETO. Syarat pelajaran aktif tidak dilonggarkan.
+- §pemindai: kandidat yang gagal P-19 di semua leverage layak pada TP terjauh 1,5×ATR 15m disimpan sebagai sampel (`GAGAL_P19`) tanpa membangunkan AI.
+
 ### Perubahan v1.14 (3 Nov 2026, pembanding acak)
 - §19.7 baseline acak: bayangan tidak lagi disaring budget $1/hari. Aturan lama menolak 11 dari 18 bayangan (fee taker membuat kebutuhan
   $1,00x; saldo acak dipakai bersama semua persona), sehingga pembanding hilang dan sampelnya bias. Riwayat lama tidak diubah.

@@ -207,7 +207,7 @@ def run(root: Path, market, now_ms: int, cfg: Optional[UjiConfig] = None, log: O
     if records or lessons or skip_records:
         _write_atomic(pt["hipotesis_md"], H.render_hipotesis_md(records, hasil))
         _write_atomic(pt["pelajaran"], "".join(json.dumps(l, ensure_ascii=False) + "\n" for l in lessons))
-        _write_atomic(pt["pelajaran_md"], H.render_pelajaran_md(lessons))
+        _write_atomic(pt["pelajaran_md"], H.render_pelajaran_md(lessons, K.render_temuan(K.temuan(skip_records, now_ms), baris_hipotesis(hasil))))
     if skip_records:
         _write_atomic(pt["skip_md"], K.render_skip_md(skip_records, now_ms))
     summary = {"ts": now_ms, "dinilai": dinilai, "pelajaran_berubah": perubahan + perubahan_s, "usulan_uji": usulan_menunggu(root),
@@ -216,6 +216,17 @@ def run(root: Path, market, now_ms: int, cfg: Optional[UjiConfig] = None, log: O
     summary["pesan"] = format_message(summary)
     log.info("run %s: %d dinilai, %d perubahan pelajaran", C.fmt_wib(now_ms), len(dinilai), len(perubahan))
     return summary
+
+
+def baris_hipotesis(hasil: dict) -> Optional[str]:
+    """Ketepatan hipotesis agent dibanding tebakan acak (baseline), termasuk bila tidak lebih baik."""
+    nilai = [h for h in hasil.values() if h.get("hasil") in ("benar", "salah") and (h.get("baseline") or {}).get("rate") is not None]
+    if not nilai:
+        return None
+    hr = sum(1 for h in nilai if h["hasil"] == "benar") / len(nilai)
+    base = sum(h["baseline"]["rate"] for h in nilai) / len(nilai)
+    bacaan = "belum lebih baik dari acak" if hr < base + H.PROMOSI_MARGIN else "di atas acak"
+    return f"{len(nilai)} dinilai, benar {hr:.0%} vs acak {base:.0%}: {bacaan}."
 
 
 def ringkas_skip(recs: list[dict]) -> dict:

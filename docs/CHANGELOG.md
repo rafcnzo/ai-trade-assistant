@@ -3,6 +3,12 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-11-03 (pagi, 10:30) — laptop Windows — lingkar belajar disambung: temuan sementara, dibaca saat keputusan, saringan P-19 sebelum wake
+
+**Apa:** `kontrafaktual.temuan/render_temuan` + `uji_hipotesis.baris_hipotesis` menulis "Temuan sementara" di `pasar/pelajaran.md`. Skill arena 1.3.0, tiket 1.2.0, SOUL: baca pelajaran sebelum menimbang, temuan masuk sebagai poin biasa. `pemindai.mungkin_lolos_p19`: kandidat gagal disimpan sebagai `GAGAL_P19` tanpa wake. Cron `uji-hipotesis` `15 21` → `15 7-22`. Radar dijeda selama pengerjaan lalu dinyalakan lagi. Syarat pelajaran aktif tidak dilonggarkan. Tes K6, S14, S15.
+
+**Kenapa:** keluhan pemilik: sebulan $87,89, pelajaran kosong. Diagnosis: syarat butuh 10 hipotesis per pola (terbanyak 5), temuan negatif tidak dicatat, dan skill keputusan tidak pernah membaca pelajaran. **Temuan:** 290 kandidat terisi menang 46 %, −$0,31/order, impas 70 %; hipotesis 69 % vs acak 71 %; kandidat lolos P-19 tidak lebih baik dari yang gagal (35 % vs 49 %, templat mekanis), perlu ditinjau pemilik. **File:** `scripts/{kontrafaktual,hipotesis,uji_hipotesis,pemindai}.py`, `hermes/{SOUL.md,cron.cmd,skills/arena,skills/tiket}`, `dashboard/index.html`, `tests/{test_kontrafaktual,test_pemindai}.py`, `pasar/`, docs (rencana v1.15, OPERASI, STATUS).
+
 ## 2026-11-03 (pagi, 09:30) — laptop Windows — pembanding acak tidak lagi ditolak budget; evaluasi susulan mengejar beberapa hari
 
 **Apa:** (1) `paper_engine._validate`: order bayangan akun acak tidak melewati cek budget (`ACAK_EOD` tetap; order persona tidak berubah). Riwayat lama tidak diubah dan tidak diisi ulang. (2) `hermes/scripts/susulan_cron.py`: gate memeriksa 7 hari ke belakang, bukan hanya kemarin; hari tanpa jurnal dan tanpa order/posisi persona dilewati; maksimal 3 tanggal per bangun, terlama dulu; jadwal `20 8-21/3` → `20 7-22`; agent dibangunkan paling sering sekali per 3 jam (`data/susulan_gate.json`). Tooltip kembaran acak di dashboard tidak lagi menyebut jatah. Tes T22, T22b, H6.
