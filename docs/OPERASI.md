@@ -134,6 +134,12 @@ dashboard `/api/keputusan?hari=` (Catatan AI → "Keputusan analis": tabel per k
 "skip 3 · open 2" (sisi pemenang menyala, tag veto/tidak sesuai) dan di bawah tiap analis ada dua daftar poin berdampingan (SKIP koral,
 OPEN hijau; satu kolom di ponsel); baris "keputusan terakhir" di tangki menampilkan timbangan dengan semua poin di tooltip.
 
+## Uji variasi tiket
+
+`.venv/Scripts/python.exe scripts/uji_variasi.py [--json]` (hanya membaca, tanpa LLM) menguji leverage 5/10/25/50, TP 1/1,5/2/3×ATR 15m, SL tanpa/0,5/1/1,5×ATR 15m, dengan dan tanpa
+kandidat melawan tren, pada kandidat radar yang masih punya data 1 menit (21 hari). Dipilih dari paruh awal hari, dinilai di paruh akhir; lolos bila kedua paruh positif dan batas bawah
+selang 90 % (bootstrap per hari) di atas nol. Leverage 5× biasanya gugur karena nilai minimum order.
+
 ## Temuan sementara dan saringan P-19
 
 `uji_hipotesis.py` menulis bagian "Temuan sementara" di `pasar/pelajaran.md` tiap run: semua kandidat 30 hari (menang, rata-rata, tingkat menang impas),

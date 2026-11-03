@@ -3,6 +3,14 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-11-03 (pagi, 11:00) — laptop Windows — uji variasi tiket: tidak ada susunan yang lolos; radar dijeda
+
+**Apa:** `scripts/uji_variasi.py` (baca saja) + SL opsional di `kontrafaktual.simulasi` (`tp_["sl"]`; bar entry pesimis, hasil `STOP`; tanpa SL perilaku tetap). Cron `pemindai-tiket` dijeda atas keputusan pemilik. Tes K7, K8.
+
+**Hasil (313 kandidat, 261 punya data 1 menit, 11 Okt–3 Nov):** 0 dari 96 variasi lolos. 15 positif di paruh awal, 8 di paruh akhir, 1 di keduanya (10× · TP 1,5 · SL 1 · searah tren: +$0,000 / +$0,007, n=95). Rugi per $100 nilai posisi: 10× −$0,245, 25× −$0,105, 50× −$0,142. Stop loss, target, dan saringan tren tidak mengubah kesimpulan. Leverage 5× gugur karena nilai minimum order. **Batas:** data 3 minggu, satu rezim pasar, entry tetap di level kandidat, keluar paling lambat 23:50; swing tidak diuji.
+
+**Kenapa:** pemilik meminta uji sebelum membayar wake lagi. **File:** `scripts/{uji_variasi,kontrafaktual}.py`, `tests/test_kontrafaktual.py`, CLAUDE.md, docs (OPERASI, STATUS). Laporan lokal: `laporan/uji-variasi-2026-11-03.md`.
+
 ## 2026-11-03 (pagi, 10:30) — laptop Windows — lingkar belajar disambung: temuan sementara, dibaca saat keputusan, saringan P-19 sebelum wake
 
 **Apa:** `kontrafaktual.temuan/render_temuan` + `uji_hipotesis.baris_hipotesis` menulis "Temuan sementara" di `pasar/pelajaran.md`. Skill arena 1.3.0, tiket 1.2.0, SOUL: baca pelajaran sebelum menimbang, temuan masuk sebagai poin biasa. `pemindai.mungkin_lolos_p19`: kandidat gagal disimpan sebagai `GAGAL_P19` tanpa wake. Cron `uji-hipotesis` `15 21` → `15 7-22`. Radar dijeda selama pengerjaan lalu dinyalakan lagi. Syarat pelajaran aktif tidak dilonggarkan. Tes K6, S14, S15.

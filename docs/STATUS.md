@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-11-03 10:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-11-03 11:00 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -41,6 +41,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Selesai & terpasang** (138 tes; cron pemindai → skill arena, nilai-arena mingguan, 28 tool, dashboard tab Arena) |
+| UV | `scripts/uji_variasi.py`: 96 variasi leverage/TP/SL diuji, **0 lolos**; satu-satunya yang positif di kedua paruh ≈ $0 (+$0,000 / +$0,007). **Cron `pemindai-tiket` 6841faf27e63 DIJEDA sejak 3 Nov** menunggu keputusan pemilik (`hermes cron resume 6841faf27e63` untuk menyalakan); selama dijeda kandidat baru tidak tercatat | **Selesai; radar dijeda** |
 | LB | Lingkar belajar: "Temuan sementara" di `pasar/pelajaran.md` (termasuk negatif), arena/tiket membacanya sebelum menimbang, saringan `GAGAL_P19` sebelum wake (riwayat: 102 dari 183 wake hilang), `uji-hipotesis` tiap jam; K6, S14, S15 (172 tes). Temuan: kandidat radar belum punya keunggulan (290 terisi, menang 46 %, −$0,31/order, impas 70 %) | **Selesai & terpasang** |
 | AC | Pembanding acak: bayangan tidak disaring budget (11 dari 18 ditolak `BUDGET_ACAK`); evaluasi susulan: gate memeriksa 7 hari, lewati hari kosong, cek tiap jam, bangun maks sekali per 3 jam; T22b, H6 | **Selesai & terpasang** |
 | TP | Keputusan ditimbang dengan poin (v1.13): `tulis_jurnal(poin_skip, poin_open)` wajib untuk keputusan kandidat; OPEN hanya bila poin OPEN > SKIP tanpa `VETO:`, seri = SKIP, menyimpang ditandai `hitungan=tidak_sesuai`; Telegram: tabel `Persona | Hasil | Timbangan` + poin per persona; dashboard: kolom Timbangan + dua daftar poin per analis; skill arena 1.2 / tiket 1.1, SOUL; KP1–KP2, M6 diperluas (168 tes) | **Selesai & terpasang** |

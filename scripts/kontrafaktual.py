@@ -270,28 +270,32 @@ def simulasi(tp_: dict, pairs: list, slip: float, cfg: Optional[EngineConfig] = 
             px = fill[0]
             margin = qty * px / tp_["lev"]
             pos = {"entry": px, "margin": margin, "fee_in": fee_amount(qty * px, True, cfg),
-                   "liq": liq_price(side, qty, px, margin, tp_["mmr"], tp_["cum"]), "sl": None, "terisi_ms": ot,
+                   "liq": liq_price(side, qty, px, margin, tp_["mmr"], tp_["cum"]), "sl": tp_.get("sl"), "be": False, "terisi_ms": ot,
                    "best": mark.high if long else mark.low, "worst": mark.low if long else mark.high}
             if liq_hit(side, pos["liq"], mark):
                 hasil = {"hasil": "HANGUS", "net": -pos["margin"] - pos["fee_in"], "keluar": pos["liq"], "keluar_ms": ot}
+                break
+            sl_awal = stop_trigger(side, pos["sl"], mark, b, slip) if pos["sl"] is not None else None
+            if sl_awal:   # bar entry pesimis: stop lebih dulu dari apa pun
+                hasil = tutup(sl_awal[0], "STOP", False, ot)
                 break
             continue
         if ot >= eod:
             px = b.open * (1 - slip) if long else b.open * (1 + slip)
             hasil = tutup(px, "EOD", False, ot)
             break
-        if pos["sl"] is None:
+        if not pos["be"]:
             jarak = abs(tp - pos["entry"])
             tempuh = (pos["best"] - pos["entry"]) * sign
             if jarak > 0 and tempuh / jarak >= BREAKEVEN_MFE:
-                pos["sl"] = pos["entry"]
+                pos["sl"], pos["be"] = pos["entry"], True
         tp_fill = limit_fill(not long, tp, b)
         sl_fill = stop_trigger(side, pos["sl"], mark, b, slip) if pos["sl"] is not None else None
         if liq_hit(side, pos["liq"], mark):
             hasil = {"hasil": "HANGUS", "net": -pos["margin"] - pos["fee_in"], "keluar": pos["liq"], "keluar_ms": ot}
             break
         if sl_fill:
-            hasil = tutup(sl_fill[0], "STOP_BE", False, ot)
+            hasil = tutup(sl_fill[0], "STOP_BE" if pos["be"] else "STOP", False, ot)
             break
         if tp_fill:
             hasil = tutup(tp_fill[0], "TP", True, ot)

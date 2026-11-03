@@ -16,6 +16,7 @@ import common as C  # noqa: E402
 import hipotesis as H  # noqa: E402
 import kontrafaktual as K  # noqa: E402
 import uji_hipotesis as U  # noqa: E402
+import uji_variasi as V  # noqa: E402
 from common import MINUTE_MS  # noqa: E402
 from fixtures import BRACKETS, DAY, DAY2, FILTERS, PEM, FixtureMarket, t  # noqa: E402
 
@@ -129,6 +130,40 @@ class TestSimulasi(unittest.TestCase):
     def sim(self, tp_=None):
         tp_ = tp_ or tpl()
         return K.simulasi(tp_, self.m.bars(PEM, tp_["aktif_ms"] - MINUTE_MS, tp_["eod_ms"]), SLIP)
+
+    def test_k7_stop_loss_variasi(self):
+        sl = {**tpl(), "sl": 99.0}
+        self.m.add_bar(PEM, t("10:04"), 100.0, 100.2, 99.4, 99.8)
+        self.m.add_bar(PEM, t("10:05"), 99.8, 99.9, 98.5, 98.8)            # stop kena sebelum likuidasi
+        r = self.sim(sl)
+        self.assertEqual(r["hasil"], "STOP")
+        self.assertAlmostEqual(r["net"], (99.0 * (1 - SLIP) - 99.5) * 0.1 - 0.0002 * 9.95 - K.fee_amount(99.0 * (1 - SLIP) * 0.1, False, K.EngineConfig()), places=6)
+        self.m = FixtureMarket()
+        self.m.add_bar(PEM, t("10:04"), 100.0, 100.2, 98.5, 98.8)          # bar entry menyentuh stop: pesimis, keluar di bar itu
+        self.assertEqual(self.sim(sl)["hasil"], "STOP")
+        self.m = FixtureMarket()
+        self.m.add_bar(PEM, t("10:04"), 100.0, 100.2, 99.4, 99.8)
+        self.m.add_bar(PEM, t("10:05"), 99.8, 100.95, 99.7, 100.9)         # 80 % ke TP: SL digeser ke entry
+        self.m.add_bar(PEM, t("10:06"), 100.9, 100.9, 99.2, 99.3)
+        self.assertEqual(self.sim(sl)["hasil"], "STOP_BE")
+
+    def test_k8_uji_variasi(self):
+        k = kandidat()
+        v = V.templat_variasi(k, FILTERS[PEM], BRACKETS[PEM], 10, 1.5, 1.0)
+        self.assertEqual((v["entry"], v["tp"], v["sl"], v["lev"]), (99.5, 101.0, 98.5, 10))
+        self.assertLessEqual(v["margin"] + K.fee_amount(v["qty"] * v["entry"], True, K.EngineConfig()), 1.0 + 1e-9)
+        self.assertIsNone(V.templat_variasi({**k, "atr_15m": None}, FILTERS[PEM], BRACKETS[PEM], 10, 1.5, 1.0))
+        self.assertIsNone(V.templat_variasi(k, FILTERS[PEM], BRACKETS[PEM], 100, 1.5, 5.0))         # SL di luar likuidasi / leverage ditolak
+        hari = [f"2026-10-{d:02d}" for d in range(1, 5)]
+        self.assertEqual(V.bagi_hari(hari + hari), set(hari[:2]))
+        bagus = [(h, 0.2 + i * 0.001) for h in hari for i in range(20)]
+        kebetulan = [(h, 0.5 if h in hari[:2] else -0.5) for h in hari for _ in range(20)]
+        kecil = [(hari[0], 1.0), (hari[3], 1.0)]
+        out = V.nilai_variasi({(5, 1.5, 1.0, "semua"): bagus, (10, 1.0, None, "semua"): kebetulan, (25, 1.0, None, "semua"): kecil}, set(hari[:2]))
+        self.assertEqual([r["lev"] for r in out], [10, 5])                  # urut paruh awal; sampel kecil dibuang
+        self.assertEqual([r["lolos"] for r in out], [False, True])          # bagus di paruh awal saja tidak lolos
+        self.assertIn("Lolos", V.render({"hari": hari, "hari_latih": hari[:2], "n_kandidat": 9, "n_dipakai": 8, "baris": out}))
+
 
     def test_k3_templat(self):
         tp_ = tpl()
