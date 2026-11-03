@@ -178,6 +178,20 @@ class TestGates(Base):
         row = self.kand.execute("SELECT flags FROM kandidat").fetchone()
         self.assertIn("GAGAL_P19", row[0])                                # tetap jadi sampel penilaian bayangan
 
+    def test_s16_mode_tanpa_ai(self):
+        self.seed()
+        penanda = self.root / "RADAR_TANPA_AI"
+        self.p.tanpa_ai_path = penanda
+        self.assertEqual(self.p.tanpa_ai_path.exists(), False)
+        penanda.write_text("", encoding="utf-8")
+        res = self.p.run()
+        self.assertFalse(res.wake)
+        self.assertEqual((res.kandidat, len(res.tersaring)), ([], 1))
+        self.assertIn("mode tanpa AI", res.alasan)
+        self.assertEqual(tuple(self.kand.execute("SELECT wake FROM pemindai_run").fetchone()), (0,))
+        self.assertEqual(self.kand.execute("SELECT COUNT(*) FROM kandidat").fetchone()[0], 1)  # tetap jadi sampel
+        self.assertEqual(self.p.wake_hari_ini(DAY), 0)
+
     def test_s15_rumus_p19_sama_dengan_mesin(self):
         from paper_engine import EngineConfig
         from pemindai import PemindaiConfig, mungkin_lolos_p19

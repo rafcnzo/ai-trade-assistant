@@ -111,7 +111,7 @@ class CollectorConfig:
     ticker_every_min: int = 5        # simpan peringkat volume tiap N menit
     ticker_keep_top: int = 50
     funding_every_min: int = 10
-    retention_days: int = 21
+    retention_days: int = 60         # 3 Nov: dari 21; uji variasi butuh data lebih panjang dari satu rezim pasar
     snapshot_days: int = 3
     ticker_days: int = 7
     log_days: int = 30

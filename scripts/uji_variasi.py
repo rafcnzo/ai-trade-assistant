@@ -3,7 +3,9 @@
 Pertanyaan: adakah kombinasi leverage / target / stop loss yang rata-ratanya positif setelah fee?
 Agar hasil terbaik dari banyak kombinasi tidak sekadar kebetulan: kandidat dibagi dua menurut hari; variasi dipilih dari paruh awal
 dan hanya dinilai di paruh akhir. Selang keyakinan memakai bootstrap per hari karena kandidat satu hari saling terkait.
-Batas: data 1 menit hanya tersimpan 21 hari, satu rezim pasar, order keluar paling lambat 23:50, entry limit di level kandidat.
+Cara masuk (`saring`): semua/searah = limit di level; kebalikan = ikut tembusan (lawan arah kandidat, market setelah bar 1m menutup di balik level);
+konfirmasi = arah kandidat, market setelah candle 5m menyentuh level lalu menutup kembali di sisinya; konfirmasi_wick = idem, hanya kandidat bertanda WICK.
+Kebalikan dan konfirmasi harus terjadi dalam 240 menit sejak kandidat. Batas: satu rezim pasar, order keluar paling lambat 23:50.
 
     .venv/Scripts/python.exe scripts/uji_variasi.py [--json]
 """
@@ -28,18 +30,54 @@ SL_ATR = (None, 0.5, 1.0, 1.5)
 MARGIN = 1.0
 MIN_N = 30
 BOOTSTRAP = 2000
+BATAS_MNT = 240
+CARA_MASUK = ("kebalikan", "konfirmasi", "konfirmasi_wick")
 
 
-def templat_variasi(k: dict, f, brackets: list, lev: int, tp_atr: float, sl_atr: Optional[float], cfg: Optional[EngineConfig] = None) -> Optional[dict]:
+def titik_masuk(cara: str, k: dict, pairs: list) -> Optional[tuple[str, int, float]]:
+    """(sisi, open_time bar entry, harga open) untuk entry market; None bila syaratnya tidak terjadi. Hanya memakai bar yang sudah tutup."""
+    long = k["arah_dugaan"] == LONG
+    level = float(k["level"])
+    batas = int(k["run_ts"]) + BATAS_MNT * C.MINUTE_MS
+    bars = [b for b, _ in pairs if b.open_time >= C.ceil_minute(int(k["run_ts"]) + 1)]
+    if cara == "kebalikan":
+        for i, b in enumerate(bars[:-1]):
+            if b.open_time > batas:
+                return None
+            if (long and b.close < level) or (not long and b.close > level):
+                return ("SHORT" if long else "LONG"), bars[i + 1].open_time, bars[i + 1].open
+        return None
+    if cara == "konfirmasi_wick" and '"WICK"' not in (k.get("flags") or ""):
+        return None
+    tf = 5 * C.MINUTE_MS
+    rendah, tinggi, awal = None, None, None
+    for i, b in enumerate(bars[:-1]):
+        if b.open_time > batas:
+            return None
+        ember = b.open_time // tf
+        if ember != awal:
+            awal, rendah, tinggi = ember, b.low, b.high
+        rendah, tinggi = min(rendah, b.low), max(tinggi, b.high)
+        if (b.open_time + C.MINUTE_MS) % tf == 0:   # candle 5m baru dianggap tutup di menit terakhirnya
+            if (long and rendah < level and b.close > level) or (not long and tinggi > level and b.close < level):
+                return k["arah_dugaan"], bars[i + 1].open_time, bars[i + 1].open
+    return None
+
+
+def templat_variasi(k: dict, f, brackets: list, lev: int, tp_atr: float, sl_atr: Optional[float], cfg: Optional[EngineConfig] = None,
+                    masuk: Optional[tuple[str, int, float]] = None) -> Optional[dict]:
     """Templat simulasi untuk satu susunan; None bila mesin paper akan menolaknya (qty, nilai minimum, leverage, SL di luar likuidasi)."""
     cfg = cfg or EngineConfig()
     atr = k.get("atr_15m")
     if not f or not brackets or not atr or atr <= 0:
         return None
-    long = k["arah_dugaan"] == LONG
+    side = masuk[0] if masuk else k["arah_dugaan"]
+    long = side == LONG
     arah_r = "down" if long else "up"
-    entry = float(C.round_step(C.D(str(k["level"])), f.tick_size, arah_r))
-    biaya_per_notional = 1 / lev + fee_amount(1.0, True, cfg)              # batas satu tiket $1 termasuk fee masuk
+    entry = float(C.round_step(C.D(str(masuk[2] if masuk else k["level"])), f.tick_size, arah_r))
+    if entry <= 0:
+        return None
+    biaya_per_notional = 1 / lev + fee_amount(1.0, not masuk, cfg)         # batas satu tiket $1 termasuk fee masuk
     qty_d = C.round_step(C.D(str(MARGIN / biaya_per_notional / entry)), f.qty_step, "down")
     qty = float(qty_d)
     notional = qty * entry
@@ -49,15 +87,16 @@ def templat_variasi(k: dict, f, brackets: list, lev: int, tp_atr: float, sl_atr:
     if b is None or lev > b.max_leverage:
         return None
     margin = notional / lev
-    liq = liq_price(k["arah_dugaan"], qty, entry, margin, b.mmr, b.cum)
+    liq = liq_price(side, qty, entry, margin, b.mmr, b.cum)
     sgn = 1 if long else -1
     tp = float(C.round_step(C.D(str(entry + sgn * tp_atr * atr)), f.tick_size, arah_r))
     sl = float(C.round_step(C.D(str(entry - sgn * sl_atr * atr)), f.tick_size, "up" if long else "down")) if sl_atr else None
     if sl is not None and ((long and liq >= sl) or (not long and liq <= sl)):
         return None
     run_ts = int(k["run_ts"])
-    return {"side": k["arah_dugaan"], "entry": entry, "tp": tp, "sl": sl, "lev": lev, "qty": qty, "margin": margin, "mmr": b.mmr, "cum": b.cum,
-            "aktif_ms": C.ceil_minute(run_ts + 1), "eod_ms": C.wib_clock_ms(run_ts, K.EOD_WIB)}
+    return {"side": side, "entry": entry, "tp": tp, "sl": sl, "lev": lev, "qty": qty, "margin": margin, "mmr": b.mmr, "cum": b.cum,
+            "aktif_ms": masuk[1] if masuk else C.ceil_minute(run_ts + 1), "eod_ms": C.wib_clock_ms(run_ts, K.EOD_WIB),
+            **({"market_ms": masuk[1]} if masuk else {})}
 
 
 def ringkas(baris: list[tuple[str, float]]) -> Optional[dict]:
@@ -134,6 +173,7 @@ def jalankan(pasar, kand) -> dict:
             flags = []
         melawan = "MELAWAN_TREN_15M" in flags
         ada = False
+        titik = {c: titik_masuk(c, k, pairs) for c in CARA_MASUK}
         for lev in LEVERAGE:
             for tp in TP_ATR:
                 for sl in SL_ATR:
@@ -151,6 +191,15 @@ def jalankan(pasar, kand) -> dict:
                     hasil.setdefault((lev, tp, sl, "semua"), []).append((k["day_wib"], float(s["net"])))
                     if not melawan:
                         hasil.setdefault((lev, tp, sl, "searah"), []).append((k["day_wib"], float(s["net"])))
+                    for cara, m in titik.items():
+                        if m is None:
+                            continue
+                        t2 = templat_variasi(k, f, br, lev, tp, sl, cfg, m)
+                        if t2 is None:
+                            continue
+                        s2 = K.simulasi(t2, pairs, slip, cfg)
+                        if s2["hasil"] not in ("ambigu", "TIDAK_TERISI") and s2.get("net") is not None:
+                            hasil.setdefault((lev, tp, sl, cara), []).append((k["day_wib"], float(s2["net"])))
         dipakai += 1 if ada else 0
     hari = [k["day_wib"] for k in rows]
     latih = bagi_hari(hari)
@@ -163,7 +212,7 @@ def _u(x: float) -> str:
 
 
 def _nama(r: dict) -> str:
-    return f"{r['lev']}× · TP {r['tp']:g} · " + (f"SL {r['sl']:g}" if r["sl"] else "tanpa SL") + (" · searah tren" if r["saring"] == "searah" else "")
+    return f"{r['lev']}× · TP {r['tp']:g} · " + (f"SL {r['sl']:g}" if r["sl"] else "tanpa SL") + {"semua": "", "searah": " · searah tren"}.get(r["saring"], " · " + r["saring"])
 
 
 def render(o: dict) -> str:
@@ -186,6 +235,14 @@ def render(o: dict) -> str:
             if r["saring"] == "semua":
                 g.setdefault(r[kunci], []).append(r["semua"]["mean"])
         lines.append(f"- {judul}: " + " · ".join(f"{('tanpa' if a is None else a)}: {_u(sum(x) / len(x))}" for a, x in sorted(g.items(), key=lambda t: (t[0] is not None, t[0] or 0))))
+    lines += ["", "## Per cara masuk", "", "| Cara masuk | Variasi | Positif paruh awal | Positif paruh akhir | Keduanya | Lolos | Rata-rata per $100 |", "|---|---|---|---|---|---|---|"]
+    for cara in ("semua", "searah") + CARA_MASUK:
+        rs = [r for r in b if r["saring"] == cara]
+        if rs:
+            per100 = sum(r["semua"]["mean"] / (MARGIN * r["lev"]) * 100 for r in rs) / len(rs)
+            lines.append(f"| {cara} | {len(rs)} | {sum(r['latih']['mean'] > 0 for r in rs)} | {sum(r['uji']['mean'] > 0 for r in rs)} | "
+                         f"{sum(r['latih']['mean'] > 0 and r['uji']['mean'] > 0 for r in rs)} | {sum(r['lolos'] for r in rs)} | {_u(per100)} |")
+    lines.append("")
     per_lev: dict = {}
     for r in b:
         if r["saring"] == "semua":

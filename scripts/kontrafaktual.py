@@ -264,12 +264,17 @@ def simulasi(tp_: dict, pairs: list, slip: float, cfg: Optional[EngineConfig] = 
             if ot >= eod:
                 hasil = {"hasil": "TIDAK_TERISI", "net": 0.0, "keluar_ms": ot}
                 break
-            fill = limit_fill(long, entry, b)
-            if not fill:
-                continue
-            px = fill[0]
+            if tp_.get("market_ms") is not None:   # entry market (fee taker, slippage) di open bar yang ditentukan
+                if ot < tp_["market_ms"]:
+                    continue
+                px, maker = (b.open * (1 + slip) if long else b.open * (1 - slip)), False
+            else:
+                fill = limit_fill(long, entry, b)
+                if not fill:
+                    continue
+                px, maker = fill[0], True
             margin = qty * px / tp_["lev"]
-            pos = {"entry": px, "margin": margin, "fee_in": fee_amount(qty * px, True, cfg),
+            pos = {"entry": px, "margin": margin, "fee_in": fee_amount(qty * px, maker, cfg),
                    "liq": liq_price(side, qty, px, margin, tp_["mmr"], tp_["cum"]), "sl": tp_.get("sl"), "be": False, "terisi_ms": ot,
                    "best": mark.high if long else mark.low, "worst": mark.low if long else mark.high}
             if liq_hit(side, pos["liq"], mark):

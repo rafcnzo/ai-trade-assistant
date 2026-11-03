@@ -28,6 +28,7 @@ from paper_engine import LONG, SHORT, TIKET, Bracket, EngineConfig, PaperEngine,
 
 SCHEMA_VERSION = "1"
 KANDIDAT_DB = C.DATA_DIR / "kandidat.sqlite"
+RADAR_TANPA_AI = C.DATA_DIR / "RADAR_TANPA_AI"   # berkas penanda pemilik: kandidat dicatat, agent tidak pernah dibangunkan
 RADAR_JATAH = C.DATA_DIR / "radar_jatah.json"   # ditulis mcp_server (tool tambah_jatah_radar, perintah pemilik /radar); dibaca saja di sini
 
 
@@ -328,6 +329,7 @@ class Pemindai:
         self.market = engine.market
         self.cfg = cfg or PemindaiConfig()
         self.radar_jatah_path = RADAR_JATAH
+        self.tanpa_ai_path: Optional[Path] = None
         self.clock = clock or C.now_ms
         self.log = log or logging.getLogger("pemindai")
         C.init_schema(kandidat, C.SCRIPTS_DIR / "schema_kandidat.sql", SCHEMA_VERSION)
@@ -503,7 +505,11 @@ class Pemindai:
                 cands.sort(key=lambda x: (-x.score, x.jarak_atr5m))
                 res.kandidat = [k for k in cands if not k.gagal_p19][: self.cfg.top_k]
                 res.tersaring = [k for k in cands if k.gagal_p19][: self.cfg.top_k]
-                if gate:
+                if self.tanpa_ai_path is not None and Path(self.tanpa_ai_path).exists():
+                    res.tersaring = cands[: self.cfg.top_k]
+                    res.kandidat = []
+                    res.alasan = f"mode tanpa AI: {len(res.tersaring)} kandidat dicatat"
+                elif gate:
                     res.alasan = gate
                 elif res.kandidat:
                     res.wake = True
@@ -560,7 +566,9 @@ def build(cfg: PemindaiConfig, clock: Optional[Callable[[], int]] = None, log: O
     pasar = C.connect(C.PASAR_DB, readonly=True)
     market = SqliteMarket(pasar)
     engine = PaperEngine(C.connect(C.PAPER_DB), market, clock=clock, log=log)
-    return Pemindai(pasar, C.connect(KANDIDAT_DB), engine, cfg, clock, log)
+    p = Pemindai(pasar, C.connect(KANDIDAT_DB), engine, cfg, clock, log)
+    p.tanpa_ai_path = RADAR_TANPA_AI
+    return p
 
 
 def main(argv: Optional[list[str]] = None) -> int:

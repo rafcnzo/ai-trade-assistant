@@ -134,6 +134,11 @@ dashboard `/api/keputusan?hari=` (Catatan AI → "Keputusan analis": tabel per k
 "skip 3 · open 2" (sisi pemenang menyala, tag veto/tidak sesuai) dan di bawah tiap analis ada dua daftar poin berdampingan (SKIP koral,
 OPEN hijau; satu kolom di ponsel); baris "keputusan terakhir" di tangki menampilkan timbangan dengan semua poin di tooltip.
 
+## Radar tanpa AI
+
+Selama berkas `data/RADAR_TANPA_AI` ada, `pemindai.py` tetap memindai dan mencatat kandidat (sampel penilaian bayangan) tetapi tidak pernah membangunkan agent. Hapus berkas itu untuk
+mengembalikan wake. Retensi `kline_1m` collector kini 60 hari (±600 MB).
+
 ## Uji variasi tiket
 
 `.venv/Scripts/python.exe scripts/uji_variasi.py [--json]` (hanya membaca, tanpa LLM) menguji leverage 5/10/25/50, TP 1/1,5/2/3×ATR 15m, SL tanpa/0,5/1/1,5×ATR 15m, dengan dan tanpa

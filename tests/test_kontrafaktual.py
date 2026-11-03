@@ -147,6 +147,31 @@ class TestSimulasi(unittest.TestCase):
         self.m.add_bar(PEM, t("10:06"), 100.9, 100.9, 99.2, 99.3)
         self.assertEqual(self.sim(sl)["hasil"], "STOP_BE")
 
+    def test_k9_cara_masuk(self):
+        k = kandidat(flags='["WICK"]', run_ts=t("10:03"))                   # LONG, level 99.5
+        self.m.add_bar(PEM, t("10:04"), 100.0, 100.2, 99.8, 100.0)
+        self.m.add_bar(PEM, t("10:05"), 100.0, 100.1, 99.9, 100.0)
+        for j, (o, h, l, c_) in enumerate([(100.0, 100.0, 99.3, 99.8), (99.8, 99.9, 99.6, 99.7), (99.7, 99.8, 99.6, 99.7), (99.7, 99.9, 99.6, 99.8), (99.8, 100.0, 99.7, 99.9)]):
+            self.m.add_bar(PEM, t("10:10") + j * MINUTE_MS, o, h, l, c_)     # candle 10:10-10:14 menyentuh level lalu tutup di atas
+        self.m.add_bar(PEM, t("10:15"), 99.95, 100.1, 99.9, 100.0)
+        pairs = self.m.bars(PEM, t("10:03"), t("23:50"))
+        self.assertEqual(V.titik_masuk("konfirmasi", k, pairs), ("LONG", t("10:15"), 99.95))
+        self.assertEqual(V.titik_masuk("konfirmasi_wick", k, pairs), ("LONG", t("10:15"), 99.95))
+        self.assertIsNone(V.titik_masuk("konfirmasi_wick", {**k, "flags": '["VOL"]'}, pairs))
+        self.assertIsNone(V.titik_masuk("kebalikan", k, pairs))             # tidak ada bar yang menutup di bawah level
+        self.m.add_bar(PEM, t("10:16"), 100.0, 100.0, 99.0, 99.2)
+        self.m.add_bar(PEM, t("10:17"), 99.2, 99.3, 99.0, 99.1)
+        pairs = self.m.bars(PEM, t("10:03"), t("23:50"))
+        masuk = V.titik_masuk("kebalikan", k, pairs)
+        self.assertEqual(masuk, ("SHORT", t("10:17"), 99.2))                # tembus: ikut ke bawah
+        v = V.templat_variasi(k, FILTERS[PEM], BRACKETS[PEM], 10, 1.0, None, masuk=masuk)
+        self.assertEqual((v["side"], v["market_ms"], v["entry"]), ("SHORT", t("10:17"), 99.2))
+        self.assertLess(v["tp"], v["entry"])
+        self.m.add_bar(PEM, t("10:18"), 99.1, 99.2, 98.0, 98.1)
+        r = K.simulasi(v, self.m.bars(PEM, v["aktif_ms"] - MINUTE_MS, v["eod_ms"]), SLIP)
+        self.assertEqual((r["entry_isi"] < 99.2, r["hasil"]), (True, "TP"))  # market: slippage merugikan sisi jual
+        self.assertAlmostEqual(r["net"], (99.2 * (1 - SLIP) - v["tp"]) * v["qty"] - K.fee_amount(99.2 * (1 - SLIP) * v["qty"], False, K.EngineConfig()) - K.fee_amount(v["tp"] * v["qty"], True, K.EngineConfig()), places=6)
+
     def test_k8_uji_variasi(self):
         k = kandidat()
         v = V.templat_variasi(k, FILTERS[PEM], BRACKETS[PEM], 10, 1.5, 1.0)

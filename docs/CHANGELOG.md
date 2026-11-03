@@ -3,6 +3,14 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-11-03 (pagi, 11:30) — laptop Windows — pra-registrasi uji cara masuk + radar tanpa AI + retensi 60 hari
+
+**Apa:** penanda `data/RADAR_TANPA_AI` (kandidat dicatat, agent tidak dibangunkan), `retention_days` collector 21 → 60, entry market di `kontrafaktual.simulasi`, cara masuk di `uji_variasi.py`. Tes K9, S16.
+
+**Pra-registrasi (dikunci sebelum hasil dilihat):** cara masuk `kebalikan` (ikut tembusan), `konfirmasi`, `konfirmasi_wick`, masing-masing leverage 5/10/25/50 × TP 1/1,5/2/3 × SL tanpa/0,5/1/1,5 ATR 15m. Saringan hari ini: rata-rata positif di paruh awal dan akhir, batas bawah selang 90 % paruh akhir > 0, minimal 30 order tiap paruh. Tidak ada yang lolos → trading tiket $1 dihentikan. Ada yang lolos → uji maju pada hari 4–17 Nov saja, tanpa mengubah parameter. Syarat 17 Nov: rata-rata positif, batas bawah selang > 0, minimal 100 order gabungan paruh akhir + uji maju (data lama + baru ≥ 30 hari). Lulus → AI menyala dengan batas sekitar $1/hari dan dibandingkan dengan aturan mekanis.
+
+**Kenapa:** rencana yang disetujui pemilik 3 Nov. **File:** `scripts/{pemindai,collector,kontrafaktual,uji_variasi}.py`, `tests/{test_pemindai,test_kontrafaktual}.py`, docs.
+
 ## 2026-11-03 (pagi, 11:00) — laptop Windows — uji variasi tiket: tidak ada susunan yang lolos; radar dijeda
 
 **Apa:** `scripts/uji_variasi.py` (baca saja) + SL opsional di `kontrafaktual.simulasi` (`tp_["sl"]`; bar entry pesimis, hasil `STOP`; tanpa SL perilaku tetap). Cron `pemindai-tiket` dijeda atas keputusan pemilik. Tes K7, K8.
