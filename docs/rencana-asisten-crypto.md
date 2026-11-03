@@ -3,6 +3,10 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.14 (3 Nov 2026, pembanding acak)
+- §19.7 baseline acak: bayangan tidak lagi disaring budget $1/hari. Aturan lama menolak 11 dari 18 bayangan (fee taker membuat kebutuhan
+  $1,00x; saldo acak dipakai bersama semua persona), sehingga pembanding hilang dan sampelnya bias. Riwayat lama tidak diubah.
+
 ### Perubahan v1.13 (23 Okt 2026, keputusan ditimbang dengan poin)
 - §5 keputusan kandidat: tiap persona menulis semua alasan SKIP dan semua alasan OPEN sebagai poin (1–5 per sisi, satu fakta per poin).
   Keputusan = hitungan: OPEN hanya bila poin OPEN > poin SKIP dan tidak ada `VETO:` (aturan keras); seri = SKIP. Keputusan yang

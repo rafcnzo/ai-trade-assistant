@@ -327,8 +327,10 @@ tiap 5 menit (skrip tanpa LLM; agent hanya dibangunkan bila ada kandidat), `eval
 tiap menit (`--no-agent`: stdout skrip dikirim apa adanya ke Telegram, kosong = diam; nol biaya LLM), serta `uji-hipotesis`
 21:15 WIB (`--no-agent`; menilai hipotesis jatuh tempo sebelum evaluasi harian 21:30), dan `psikologi` menit ke-7 tiap jam
 (`--no-agent`, diam; mengisi `data/psikologi.sqlite`).
-`evaluasi-susulan` (08:20, 11:20, 14:20, 17:20, 20:20) hanya membangunkan agent bila catatan harian kemarin belum ada — pengganti
-evaluasi 21:30 yang terlewat karena laptop mati; gate yang sama juga menjalankan `uji_hipotesis.py --cron` lebih dulu (hipotesis jatuh tempo yang
+`evaluasi-susulan` (menit ke-20 tiap jam, 07:20–22:20) hanya membangunkan agent bila ada hari dalam 7 hari terakhir yang punya aktivitas
+(jurnal agent, atau order/posisi selain akun acak) tetapi belum punya catatan harian; maksimal 3 tanggal per bangun, terlama dulu, dan
+paling sering sekali per 3 jam (`data/susulan_gate.json`). Ini pengganti evaluasi 21:30 yang terlewat karena laptop tidur/mati (Windows
+tidak menjalankan cron saat tidur; proyek ini tidak mengubah pengaturan daya). Gate yang sama juga menjalankan `uji_hipotesis.py --cron` lebih dulu (hipotesis jatuh tempo yang
 terlewat ikut dinilai, hasilnya disertakan ke agent). Cron lain yang terlewat **tidak** dikejar (`catch_up_missed=false`).
 `hermes cron list`, `hermes cron run <nama>` untuk uji manual, `hermes cron pause <nama>`.
 `hermes doctor` menyarankan memindahkan entri `custom_providers` ke `providers.<key>.api`; jalur `model.provider: custom`
@@ -470,9 +472,10 @@ Kejadian yang dibuat agent lewat Telegram (order baru) tetap dinotifikasi — it
 Setiap order **tiket** yang dipasang agent/CLI (bukan mesin) otomatis mendapat bayangan di akun paper `acak`: simbol, leverage,
 qty, dan jarak TP/SL sama, tetapi **sisi acak** dan **entry market** di open bar berikutnya (± slippage). Sisi =
 `random.Random(f"acak-v1:{order_id}").choice(LONG, SHORT)` — deterministik, bisa diverifikasi ulang. Jarak TP/SL disimpan
-relatif (`orders.tp_pct/sl_pct`) dan diresolusi saat terisi, dibulatkan ke tick menjauh dari untung. Akun acak punya budget
-cermin $1/hari sendiri (`BUDGET_ACAK`, `ACAK_EOD`), ditutup paksa 23:50, dan **tidak pernah** menghalangi order asli: bila
-bayangan gagal, hanya event `ACAK_SKIP` yang dicatat. Membatalkan order tiket ikut membatalkan bayangan yang belum terisi.
+relatif (`orders.tp_pct/sl_pct`) dan diresolusi saat terisi, dibulatkan ke tick menjauh dari untung. Sejak 3 Nov 2026 bayangan **tidak
+disaring budget** (qty harus sama dengan order asli, entry market memakai fee taker sehingga bisa sedikit di atas $1, dan satu akun acak
+melayani semua persona); `BUDGET_ACAK` lama hanya ada di riwayat. Bayangan tetap kena `ACAK_EOD`, ditutup paksa 23:50, dan **tidak pernah**
+menghalangi order asli: bila bayangan gagal karena sebab lain, hanya event `ACAK_SKIP` yang dicatat. Membatalkan order tiket ikut membatalkan bayangan yang belum terisi.
 Kejadian akun acak tidak dinotifikasi ke Telegram (hanya satu baris 🎲 saat dibuat).
 
 ```bash

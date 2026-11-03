@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-10-23 09:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-11-03 09:30 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -24,7 +24,7 @@ Folder Startup user (login, tanpa jendela)
       │                            nilai hipotesis jatuh tempo + baseline + pelajaran → Telegram bila ada hasil
       ├─ cron psikologi            7 * * * * --no-agent → psikologi_cron.py → scripts/psikologi.py --cron (diam):
       │                            12 indikator §16.2 BTC/ETH/pasar → data/psikologi.sqlite; agent: panel_psikologi, pemilik: /psikologi
-      ├─ cron evaluasi-susulan     20 8-21/3 * * * → susulan_cron.py (gate: pasar/harian/<kemarin>.md belum ada) → evaluasi kemarin
+      ├─ cron evaluasi-susulan     20 7-22 * * * → susulan_cron.py (gate: hari beraktivitas dalam 7 hari tanpa pasar/harian/<hari>.md; maks sekali per 3 jam) → evaluasi tanggal itu
       └─ cron nilai-arena          30 7 * * 1 --no-agent → arena_cron.py → evaluasi.py --nilai-arena (pensiun persona yang kalah)
 ```
 Arena: akun persona `tiket`, `fade`, `breakout`, `rentang` (tabel `account`, saldo $1/hari masing-masing, bayangan acak per order).
@@ -41,6 +41,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Selesai & terpasang** (138 tes; cron pemindai → skill arena, nilai-arena mingguan, 28 tool, dashboard tab Arena) |
+| AC | Pembanding acak: bayangan tidak disaring budget (11 dari 18 ditolak `BUDGET_ACAK`); evaluasi susulan: gate memeriksa 7 hari, lewati hari kosong, cek tiap jam, bangun maks sekali per 3 jam; T22b, H6 | **Selesai & terpasang** |
 | TP | Keputusan ditimbang dengan poin (v1.13): `tulis_jurnal(poin_skip, poin_open)` wajib untuk keputusan kandidat; OPEN hanya bila poin OPEN > SKIP tanpa `VETO:`, seri = SKIP, menyimpang ditandai `hitungan=tidak_sesuai`; Telegram: tabel `Persona | Hasil | Timbangan` + poin per persona; dashboard: kolom Timbangan + dua daftar poin per analis; skill arena 1.2 / tiket 1.1, SOUL; KP1–KP2, M6 diperluas (168 tes) | **Selesai & terpasang** |
 | KC | Dashboard dirombak: dunia "akuarium laut dalam" (glassmorphism gelap: tangki kaca beku per analis, cahaya cyan, Plus Jakarta Sans), palet baru, Pasar naik ke bagian 2 (grafik 540 px), responsif ponsel 375 px (diuji emulasi perangkat CDP: tanpa luapan samping); cap order batal/kedaluwarsa, tangki pensiun abu-abu; review akhir impeccable + DESIGN.md ditulis ulang | **Selesai & terpasang** |
 | FT | Format laporan baku: `scripts/keputusan.py` merakit tabel keputusan per kandidat; `tulis_jurnal` mengembalikan `ringkasan_markdown` yang disalin skill arena/tiket (selalu tabel → Telegram selalu Rich Message); dashboard `/api/keputusan` + Catatan AI "Keputusan analis" (tabel per kandidat + Penilaian) + keputusan terakhir di kolom analis; static `no-cache`; KP1–KP3, M6+, D11 (168 tes) | **Selesai & terpasang** |

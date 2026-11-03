@@ -101,13 +101,29 @@ class TestSync(unittest.TestCase):
         if now.hour < 7:
             self.assertEqual(lines[-1], '{"wakeAgent": false}')
             return
+        self.assertEqual(lines[-1], '{"wakeAgent": false}')                      # hari tanpa aktivitas tidak dievaluasi
+        hari = lambda n: (now - datetime.timedelta(days=n)).strftime("%Y-%m-%d")
+        gate = root / "data" / "susulan_gate.json"
+        jalan = lambda: subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60).stdout.strip().splitlines()
+        (root / "jurnal" / "agent").mkdir(parents=True)
+        for n in (5, 3, 1):                                                       # laptop mati berhari-hari: bukan hanya kemarin
+            (root / "jurnal" / "agent" / f"{hari(n)}.md").write_text("x", encoding="utf-8")
+        lines = jalan()
         self.assertEqual(lines[-1], '{"wakeAgent": true}')
-        kemarin = (now - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-        self.assertIn(kemarin, lines[0])
+        self.assertIn(f"{hari(5)}, {hari(3)}, {hari(1)}", lines[0])               # terlama dulu
+        self.assertEqual(jalan(), ['{"wakeAgent": false}'])                       # jeda: tidak membangunkan agent tiap jam
+        gate.unlink()
         (root / "pasar" / "harian").mkdir(parents=True)
-        (root / "pasar" / "harian" / f"{kemarin}.md").write_text("ada", encoding="utf-8")
-        r = subprocess.run([sys.executable, str(wrapper)], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
-        self.assertEqual(r.stdout.strip(), '{"wakeAgent": false}')
+        (root / "pasar" / "harian" / f"{hari(5)}.md").write_text("ada", encoding="utf-8")
+        lines = jalan()
+        self.assertIn(f"{hari(3)}, {hari(1)}", lines[0])
+        self.assertNotIn(hari(5), lines[0])
+        gate.unlink()
+        for n in (3, 1):
+            (root / "pasar" / "harian" / f"{hari(n)}.md").write_text("ada", encoding="utf-8")
+        self.assertEqual(jalan(), ['{"wakeAgent": false}'])
+        (root / "jurnal" / "agent" / f"{hari(9)}.md").write_text("x", encoding="utf-8")   # di luar jangkauan
+        self.assertEqual(jalan(), ['{"wakeAgent": false}'])
 
     def test_h7_arena_wrapper(self):
         sync.apply(sync.plan(SRC, self.home))

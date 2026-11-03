@@ -7,6 +7,7 @@ import sys
 from decimal import Decimal
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -546,15 +547,28 @@ class TestAcak(unittest.TestCase):
         self.assertIn("| acak | aktif | 1 | 0 | 0 | 1 | 0 |", rep)
         self.assertIn("Acak (bayangan pembanding", rep)
 
-    def test_t22_shadow_skip_never_breaks_order(self):
-        self.eng.cfg.acak_budget = 0.01
+    def test_t22b_shadow_not_filtered_by_budget(self):
+        self.eng.cfg.acak_budget = 0.01          # saldo acak di bawah minimum dan kebutuhan > $1 tidak boleh menolak bayangan
         r = self.order()
+        self.assertTrue(r.ok, str(r))
+        self.assertIsNotNone(r.shadow_order_id)
+        self.assertEqual(self.row("orders", r.shadow_order_id)["account"], "acak")
+        self.assertNotIn("ACAK_SKIP", self.events())
+
+    def test_t22_shadow_skip_never_breaks_order(self):
+        asli = self.eng.place_order
+
+        def rusak(req):                          # bayangan gagal karena sebab lain (simbol hilang): order asli tetap jalan
+            if req.account == "acak":
+                req.symbol = "HILANGUSDT"
+            return asli(req)
+        with mock.patch.object(self.eng, "place_order", side_effect=rusak):
+            r = self.order()
         self.assertTrue(r.ok, str(r))
         self.assertIsNone(r.shadow_order_id)
         s = self.row("orders", 2)
-        self.assertEqual((s["account"], s["status"], s["reject_code"]), ("acak", "REJECTED", "BUDGET_ACAK"))
+        self.assertEqual((s["account"], s["status"], s["reject_code"]), ("acak", "REJECTED", "SYMBOL_UNAVAILABLE"))
         self.assertIn("ACAK_SKIP", self.events())
-        self.eng.cfg.acak_budget = 1.0
         # swing tidak memicu bayangan
         r2 = self.eng.place_order(OrderRequest("swing", BTC, LONG, 0.001, 10, price=82600.0, tp_price=83400.0, sl_price=82400.0))
         self.assertTrue(r2.ok, str(r2))

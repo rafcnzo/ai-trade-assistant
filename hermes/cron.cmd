@@ -13,6 +13,6 @@ hermes cron create "15 21 * * *" --name uji-hipotesis --no-agent --script uji_cr
 
 hermes cron create "7 * * * *" --name psikologi --no-agent --script psikologi_cron.py --deliver telegram --failure-deliver local
 
-hermes cron create "20 8-21/3 * * *" "Pesan ini dari gate evaluasi susulan: evaluasi harian untuk tanggal yang disebut belum dibuat karena laptop mati pukul 21:30. Jalankan skill evaluasi-harian untuk TANGGAL ITU (bukan hari ini): pakai parameter hari pada laporan_paper, riwayat, biaya_api, baca_memori jurnal, dan tulis_catatan_harian(hari=...). Awali balasan dengan 'Evaluasi susulan <tanggal>'. Ringkas untuk Telegram (maks 20 baris). Paper trading." --name evaluasi-susulan --skill evaluasi-harian --script susulan_cron.py --deliver telegram --model claude-opus-5-5 --reasoning-effort low
+hermes cron create "20 7-22 * * *" "Pesan ini dari gate evaluasi susulan: evaluasi harian untuk tanggal yang disebut belum dibuat karena laptop tidur/mati pukul 21:30. Jalankan skill evaluasi-harian untuk SETIAP TANGGAL ITU (bukan hari ini): pakai parameter hari pada laporan_paper, riwayat, biaya_api, baca_memori jurnal, dan tulis_catatan_harian(hari=...). Awali balasan dengan 'Evaluasi susulan <tanggal>'. Ringkas untuk Telegram (maks 20 baris). Paper trading." --name evaluasi-susulan --skill evaluasi-harian --script susulan_cron.py --deliver telegram --model claude-opus-5-5 --reasoning-effort low
 
 hermes cron create "30 7 * * 1" --name nilai-arena --no-agent --script arena_cron.py --deliver telegram --failure-deliver local

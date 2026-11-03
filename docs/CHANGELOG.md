@@ -3,6 +3,12 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-11-03 (pagi, 09:30) — laptop Windows — pembanding acak tidak lagi ditolak budget; evaluasi susulan mengejar beberapa hari
+
+**Apa:** (1) `paper_engine._validate`: order bayangan akun acak tidak melewati cek budget (`ACAK_EOD` tetap; order persona tidak berubah). Riwayat lama tidak diubah dan tidak diisi ulang. (2) `hermes/scripts/susulan_cron.py`: gate memeriksa 7 hari ke belakang, bukan hanya kemarin; hari tanpa jurnal dan tanpa order/posisi persona dilewati; maksimal 3 tanggal per bangun, terlama dulu; jadwal `20 8-21/3` → `20 7-22`; agent dibangunkan paling sering sekali per 3 jam (`data/susulan_gate.json`). Tooltip kembaran acak di dashboard tidak lagi menyebut jatah. Tes T22, T22b, H6.
+
+**Kenapa:** laporan evaluasi 3 Nov. Data: 11 dari 18 bayangan ditolak (`ACAK_SKIP`): 7 karena entry market berfee taker membuat kebutuhan $1,00x > $1, 4 karena saldo satu akun acak habis dipakai beberapa persona/rugi. Sejak 23 Okt evaluasi 21:30 tidak pernah jalan: Windows mencatat laptop tidur sore (mis. 27 Okt 18:50, 28 Okt 17:10, 29 Okt 17:33, 2 Nov 15:34), dan gate lama hanya melihat kemarin, sehingga 29 Okt lolos setelah laptop mati beberapa hari. Pengaturan daya sengaja tidak diubah (aturan proyek). **File:** `scripts/paper_engine.py`, `hermes/scripts/susulan_cron.py`, `hermes/cron.cmd`, `dashboard/app.js`, `tests/{test_paper_engine,test_hermes_sync}.py`, CLAUDE.md, docs (rencana v1.14, OPERASI, STATUS).
+
 ## 2026-10-23 (pagi, 09:30) — laptop Windows — keputusan arena ditimbang dengan poin alasan SKIP vs OPEN
 
 **Apa:** `tulis_jurnal` menerima `poin_skip` dan `poin_open` (wajib untuk keputusan dengan `kandidat_id`, 1–5 poin per sisi). Modul murni

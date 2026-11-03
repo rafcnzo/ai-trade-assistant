@@ -665,14 +665,17 @@ class PaperEngine:
             tag = "ACAK" if self.kind(req.account) == "acak" else "TIKET"
             if now >= self.eod_ms(now):
                 raise Reject(f"{tag}_EOD", f"sudah lewat jam tutup tiket {self.cfg.tiket_eod_wib} WIB")
-            bs = self.budget_status(req.account, day_wib(now))
-            need = margin + (fee_in if self.cfg.tiket_fee_from_budget else 0.0)
-            if not bs["boleh_buka"]:
-                raise Reject(f"BUDGET_{tag}", f"saldo {req.account} hari ini ${bs['saldo']:.4f} < minimum ${bs['min_saldo']:.2f}; tidak ada tiket baru sampai besok")
-            if need > bs["max_per_order"] + 1e-9:
-                raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} > maksimum per tiket ${bs['max_per_order']:.2f}")
-            if need > bs["remaining"] + 1e-9:
-                raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} (margin {margin:.4f} + fee {fee_in:.4f}), sisa saldo {req.account} hari ini ${bs['remaining']:.4f}")
+            # Bayangan acak tidak disaring budget: qty-nya wajib sama dengan order asli, sedangkan entry market (fee taker) bisa sedikit
+            # di atas $1, dan satu akun acak melayani semua persona. Menolaknya merusak pembanding §19.7.
+            if tag == "TIKET":
+                bs = self.budget_status(req.account, day_wib(now))
+                need = margin + (fee_in if self.cfg.tiket_fee_from_budget else 0.0)
+                if not bs["boleh_buka"]:
+                    raise Reject(f"BUDGET_{tag}", f"saldo {req.account} hari ini ${bs['saldo']:.4f} < minimum ${bs['min_saldo']:.2f}; tidak ada tiket baru sampai besok")
+                if need > bs["max_per_order"] + 1e-9:
+                    raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} > maksimum per tiket ${bs['max_per_order']:.2f}")
+                if need > bs["remaining"] + 1e-9:
+                    raise Reject(f"BUDGET_{tag}", f"butuh ${need:.4f} (margin {margin:.4f} + fee {fee_in:.4f}), sisa saldo {req.account} hari ini ${bs['remaining']:.4f}")
             if tag == "TIKET" and self.cfg.tiket_min_rr and req.tp_price is not None:
                 reward = abs(req.tp_price - ref_price) * float(qty) - fee_in - fee_amount(req.tp_price * float(qty), True, self.cfg)
                 risk = margin + fee_in
