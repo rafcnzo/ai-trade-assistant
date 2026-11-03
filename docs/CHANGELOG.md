@@ -3,6 +3,12 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-11-03 (siang, 12:00) — laptop Windows — hasil uji cara masuk: tidak ada yang lolos; trading tiket $1 dihentikan
+
+**Hasil:** 0 dari 234 variasi lolos saringan yang dikunci di entri 11:30. Positif di kedua paruh hanya 1 (10× · TP 1,5 · SL 1 · searah tren: +$0,000 / +$0,006, n=96), praktis nol. Per $100 nilai posisi: limit di level −$0,165, searah tren −$0,132, kebalikan −$0,173, konfirmasi −$0,244, konfirmasi + WICK −$0,331. Kebalikan tidak positif sekali pun di paruh akhir.
+
+**Keputusan (sesuai aturan yang disetujui pemilik):** trading tiket $1 dihentikan, uji maju 4–17 Nov dibatalkan. Radar tetap mencatat kandidat tanpa AI (biaya $0). **Batas:** kandidat ini saja, ±3 minggu, satu rezim pasar; swing tidak diuji. Laporan lokal: `laporan/uji-cara-masuk-2026-11-03.md`.
+
 ## 2026-11-03 (pagi, 11:30) — laptop Windows — pra-registrasi uji cara masuk + radar tanpa AI + retensi 60 hari
 
 **Apa:** penanda `data/RADAR_TANPA_AI` (kandidat dicatat, agent tidak dibangunkan), `retention_days` collector 21 → 60, entry market di `kontrafaktual.simulasi`, cara masuk di `uji_variasi.py`. Tes K9, S16.
