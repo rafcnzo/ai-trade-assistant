@@ -616,11 +616,19 @@ Buku saat ini: `mastering-trading-psychology` (14 bab heuristik; bab 1–4 adala
 | `cari_referensi` kosong | Kata kunci bahasa Inggris, 1–3 kata; coba `salah_satu=true`; cek `indeks.md` untuk istilah buku |
 | `perlu_ocr` | Jalankan OCR (mis. ocrmypdf) di luar proyek, lalu konversi ulang |
 
+## Konsultasi dan rapor asisten
+
+Di Telegram: `/periksa SOL long tp 190 sl 170` (tambah harga entry untuk limit), atau tanya biasa "mau long SOL di X, gimana?". Target dan stop wajib; tanpa keduanya ide tidak bisa dinilai. Skill `periksa` tidak memasang order (`/cek` tetap memasang order paper) dan memakai biaya AI hanya saat ditanya. Maksimal 10 ide per hari.
+
+Ide masuk `pasar/konsultasi.jsonl`; cron `uji-hipotesis` menilainya setelah batas waktu ke `pasar/konsultasi-hasil.jsonl`, mengirim hasilnya ke Telegram, dan menambah bagian "Dari konsultasi pemilik" di `pasar/pelajaran.md`. Pantau di dashboard bagian **Rapor** (`/api/rapor`) atau tanya "seberapa matang kamu?". Tahap: Mengumpulkan pengalaman → Berpengalaman, belum terbukti → Terbukti di paper. Syarat ada di konstanta `scripts/asisten.py`, dikunci; tahap dihitung ulang tiap kali dan bisa turun. Arah acak memakai masuk market (fee taker), jadi sedikit lebih mahal dari limit.
+
+Sejak 3 Nov 2026 cron `evaluasi-harian` (1118f2c5bd72) dan `evaluasi-susulan` (4186108ae29c) **dijeda** atas keputusan pemilik supaya AI hanya berbiaya saat ditanya; akibatnya catatan pasar harian tidak bertambah. Menyalakan lagi: `hermes cron resume <id>`.
+
 ## Dashboard lokal "Meja analis" (`scripts/dashboard.py`)
 
 Buka **http://127.0.0.1:8586** (hanya lokal; autostart lewat `crypto-analyst_dashboard.vbs`; manual: `run_dashboard.cmd` atau
 `.venv/Scripts/python.exe scripts/dashboard.py`). Baca saja — tidak menulis DB mana pun; polling ringkasan + kejadian 5 s, chart 15 s,
-papan/ekuitas/radar 60 s, psikologi 5 mnt. Satu halaman gulir dengan lompat-bagian (Sekarang → Pasar → Ringkasan → Peringkat → Riwayat → Konteks →
+papan/ekuitas/radar 60 s, psikologi 5 mnt. Satu halaman gulir dengan lompat-bagian (Rapor → Sekarang → Pasar → Ringkasan → Peringkat → Riwayat → Konteks →
 Catatan AI); responsif sampai lebar ponsel 375 px (satu kolom, tabel bergulir di dalam panelnya). Label pendek bergaris putus = tooltip (hover atau fokus keyboard, Esc menutup); keterangan tidak ditaruh di layar.
 Desain: `PRODUCT.md` (kebenaran produk) + `DESIGN.md` (sistem visual) + `.impeccable/surfaces/` (brief); jangan ubah dunia visual tanpa memperbarui keduanya.
 

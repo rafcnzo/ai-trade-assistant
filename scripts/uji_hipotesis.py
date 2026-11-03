@@ -2,7 +2,7 @@
 bar 1m), menghitung baseline, dan mengelola pelajaran (dari hipotesis dan dari SKIP).
 
 Penulis tunggal: pasar/hipotesis-hasil.jsonl (append), pasar/hipotesis.md (view), pasar/skip-hasil.jsonl (append), pasar/skip.md (view),
-pasar/pelajaran.jsonl (state), pasar/pelajaran.md (view). Hanya membaca pasar/hipotesis.jsonl & jurnal/agent/*.md (ditulis mcp_server),
+pasar/konsultasi-hasil.jsonl (append), pasar/pelajaran.jsonl (state), pasar/pelajaran.md (view). Hanya membaca pasar/konsultasi.jsonl, pasar/hipotesis.jsonl & jurnal/agent/*.md (ditulis mcp_server),
 data/kandidat.sqlite (ditulis pemindai), dan pasar/pelajaran-usulan.md (usulan agent; hanya pemilik yang memutuskan).
 Dijalankan cron Hermes `uji-hipotesis` 21:15 WIB dan gate evaluasi-susulan pagi (--no-agent): stdout = pesan Telegram, kosong = diam. Tanpa LLM.
 """
@@ -21,6 +21,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import analisis as A  # noqa: E402
+import asisten as AS  # noqa: E402
 import common as C  # noqa: E402
 import hipotesis as H  # noqa: E402
 import kontrafaktual as K  # noqa: E402
@@ -42,7 +43,7 @@ def paths(root: Path) -> dict:
     p = root / "pasar"
     return {"hipotesis": p / "hipotesis.jsonl", "hasil": p / "hipotesis-hasil.jsonl", "hipotesis_md": p / "hipotesis.md",
             "pelajaran": p / "pelajaran.jsonl", "pelajaran_md": p / "pelajaran.md", "usulan": p / "pelajaran-usulan.md",
-            "skip": p / "skip-hasil.jsonl", "skip_md": p / "skip.md", "kandidat": root / "data" / "kandidat.sqlite", "jurnal": root / "jurnal" / "agent"}
+            "skip": p / "skip-hasil.jsonl", "skip_md": p / "skip.md", "konsultasi": p / "konsultasi.jsonl", "konsultasi_hasil": p / "konsultasi-hasil.jsonl", "kandidat": root / "data" / "kandidat.sqlite", "jurnal": root / "jurnal" / "agent"}
 
 
 def _write_atomic(path: Path, text: str) -> None:
@@ -118,6 +119,25 @@ def nilai_skip(root: Path, market, now_ms: int, log: logging.Logger) -> list[dic
         H.append_jsonl(pt["skip"], rec)
         out.append(rec)
     log.info("nilai_skip %s: %d kandidat dinilai", C.fmt_wib(now_ms), len(out))
+    return out
+
+
+def nilai_konsultasi(root: Path, market, now_ms: int, log: logging.Logger) -> list[dict]:
+    """Nilai ide pemilik yang jatuh tempo, sekali per ide."""
+    pt = paths(root)
+    ide, _ = AS.pisah(H.load_jsonl(pt["konsultasi"]))
+    done = {r["id"] for r in H.load_jsonl(pt["konsultasi_hasil"])}
+    out = []
+    for i in ide.values():
+        if i["id"] in done or int(i["eod_ms"]) + DUE_GRACE_MS > now_ms:
+            continue
+        rec = AS.nilai_ide(i, market, now_ms, _slip(market, i["symbol"]))
+        if rec is None:
+            continue
+        H.append_jsonl(pt["konsultasi_hasil"], rec)
+        out.append(rec)
+    if out:
+        log.info("nilai_konsultasi %s: %d ide dinilai", C.fmt_wib(now_ms), len(out))
     return out
 
 
@@ -201,18 +221,25 @@ def run(root: Path, market, now_ms: int, cfg: Optional[UjiConfig] = None, log: O
     except Exception as e:  # noqa: BLE001 - penilaian SKIP tidak boleh menggagalkan penilaian hipotesis
         log.exception("nilai_skip gagal")
         skip_baru, perubahan = [], perubahan + [f"penilaian SKIP gagal: {type(e).__name__}: {e}"]
+    try:
+        ide_baru = nilai_konsultasi(root, market, now_ms, log)
+    except Exception as e:  # noqa: BLE001 - sama dengan penilaian SKIP
+        log.exception("nilai_konsultasi gagal")
+        ide_baru, perubahan = [], perubahan + [f"penilaian ide gagal: {type(e).__name__}: {e}"]
+    konsultasi = H.load_jsonl(pt["konsultasi"])
+    rapor = AS.rapor(konsultasi, H.load_jsonl(pt["konsultasi_hasil"]), now_ms)
     skip_records = H.load_jsonl(pt["skip"])
     lessons_s, perubahan_s = K.update_skip_lessons(skip_records, [l for l in semua if l.get("sumber") == "skip"], now_ms)
     lessons = lessons_h + lessons_s
-    if records or lessons or skip_records:
+    if records or lessons or skip_records or konsultasi:
         _write_atomic(pt["hipotesis_md"], H.render_hipotesis_md(records, hasil))
         _write_atomic(pt["pelajaran"], "".join(json.dumps(l, ensure_ascii=False) + "\n" for l in lessons))
-        _write_atomic(pt["pelajaran_md"], H.render_pelajaran_md(lessons, K.render_temuan(K.temuan(skip_records, now_ms), baris_hipotesis(hasil))))
+        _write_atomic(pt["pelajaran_md"], H.render_pelajaran_md(lessons, "\n".join(x for x in (K.render_temuan(K.temuan(skip_records, now_ms), baris_hipotesis(hasil)), AS.render_konsultasi(rapor)) if x)))
     if skip_records:
         _write_atomic(pt["skip_md"], K.render_skip_md(skip_records, now_ms))
     summary = {"ts": now_ms, "dinilai": dinilai, "pelajaran_berubah": perubahan + perubahan_s, "usulan_uji": usulan_menunggu(root),
                "n_hipotesis": len(records), "n_dinilai_total": len(hasil), "n_pelajaran_aktif": sum(1 for l in lessons if l["status"] == "aktif"),
-               "skip_dinilai": skip_baru, "skip_ringkas": ringkas_skip(skip_baru)}
+               "skip_dinilai": skip_baru, "skip_ringkas": ringkas_skip(skip_baru), "ide_dinilai": ide_baru, "rapor": rapor}
     summary["pesan"] = format_message(summary)
     log.info("run %s: %d dinilai, %d perubahan pelajaran", C.fmt_wib(now_ms), len(dinilai), len(perubahan))
     return summary
@@ -245,7 +272,7 @@ def ringkas_skip(recs: list[dict]) -> dict:
 
 def format_message(s: dict) -> str:
     sk = s.get("skip_ringkas") or {}
-    if not s["dinilai"] and not s["pelajaran_berubah"] and not sk.get("kandidat"):
+    if not s["dinilai"] and not s["pelajaran_berubah"] and not sk.get("kandidat") and not s.get("ide_dinilai"):
         return ""
     lines = [f"🧪 Uji hipotesis {C.day_wib(s['ts'])} — {len(s['dinilai'])} dinilai"]
     for r in s["dinilai"]:
@@ -263,6 +290,10 @@ def format_message(s: dict) -> str:
         if t:
             siapa = ", ".join(sorted(p for p, d in t["keputusan"].items() if d["label"] == "salah"))
             lines.append(f"   Peluang terbesar terlewat: K{t['kandidat_id']} {t['symbol']} {t['arah']} → {t['hasil']} {t['net']:+.4f} (SKIP oleh {siapa})")
+    for r in s.get("ide_dinilai") or []:
+        lines.append(f"🧭 Ide {r['id']} {r['symbol']} {r['sisi']} → {r['hasil']}" + (f" {r['net']:+.2f} per $100" if r.get("net") is not None else ""))
+    if s.get("ide_dinilai") and s.get("rapor"):
+        lines.append(f"   Rapor asisten: {s['rapor']['tahap_nama']} ({s['rapor']['n_lolos']} dari {s['rapor']['n_syarat']} syarat)")
     if s["pelajaran_berubah"]:
         lines.append("Pelajaran: " + "; ".join(s["pelajaran_berubah"]))
     if s["usulan_uji"]:

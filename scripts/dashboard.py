@@ -19,6 +19,7 @@ from typing import Any, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import analisis as A  # noqa: E402
+import asisten as AS  # noqa: E402
 import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
@@ -423,6 +424,20 @@ class Data:
         out["ada"] = True
         return out
 
+    def rapor(self) -> dict:
+        """Rapor kematangan asisten dari pasar/konsultasi*.jsonl + bukti lain. Baca saja."""
+        p = self.root / "pasar"
+        now = self.clock()
+        out = AS.rapor(H.load_jsonl(p / "konsultasi.jsonl"), H.load_jsonl(p / "konsultasi-hasil.jsonl"), now)
+        out["pengetahuan"] = AS.pengetahuan(H.load_jsonl(p / "skip-hasil.jsonl"), H.load_jsonl(p / "hipotesis-hasil.jsonl"), H.load_jsonl(p / "pelajaran.jsonl"), now)
+        b = self._ro(self.budget_p)
+        if b is not None:
+            try:
+                out["biaya_ai_total"] = float(b.execute("SELECT COALESCE(SUM(cost_usd),0) FROM api_calls").fetchone()[0])
+            finally:
+                b.close()
+        return out
+
     def teks(self, jenis: str, hari: Optional[str]) -> dict:
         day = hari or C.day_wib(self.clock())
         if jenis == "hipotesis":
@@ -510,6 +525,7 @@ def make_app(data: Optional[Data] = None, static_dir: Path = STATIC_DIR):
         Route("/api/kandidat", guard(lambda r: d.kandidat())),
         Route("/api/kejadian", guard(lambda r: d.kejadian(int(qp(r, "limit", 40))))),
         Route("/api/ringkas", guard(lambda r: d.ringkas(int(qp(r, "n", 5))))),
+        Route("/api/rapor", guard(lambda r: d.rapor())),
         Route("/api/keputusan", guard(lambda r: d.keputusan(qp(r, "hari")))),
         Route("/api/teks", guard(lambda r: d.teks(qp(r, "jenis", "jurnal"), qp(r, "hari")))),
     ]

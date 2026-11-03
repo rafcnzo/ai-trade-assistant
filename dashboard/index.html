@@ -25,10 +25,35 @@
 </header>
 
 <nav class="jump" aria-label="Bagian">
-  <a href="#sekarang" class="on">Sekarang</a><a href="#pasar">Pasar</a><a href="#ringkasan">Ringkasan</a><a href="#peringkat">Peringkat</a><a href="#riwayat">Riwayat</a><a href="#konteks">Konteks</a><a href="#catatan">Catatan AI</a>
+  <a href="#rapor" class="on">Rapor</a><a href="#sekarang">Sekarang</a><a href="#pasar">Pasar</a><a href="#ringkasan">Ringkasan</a><a href="#peringkat">Peringkat</a><a href="#riwayat">Riwayat</a><a href="#konteks">Konteks</a><a href="#catatan">Catatan AI</a>
 </nav>
 
 <main>
+  <!-- RAPOR -->
+  <section id="rapor" class="bag">
+    <div class="head">
+      <h2><span class="tip" tabindex="0" data-tip="Apakah bot sudah pantas ditanya soal trade? Setiap ide yang Anda bawa lewat /periksa dicatat bersama saran bot, lalu skrip menilainya dari harga sesudahnya. Syaratnya dikunci sejak 3 Nov 2026 sebelum ada hasil, dan dihitung ulang tiap kali, jadi tahapnya bisa turun lagi.">Rapor asisten</span></h2>
+      <span class="dim" id="rapor-info"></span>
+    </div>
+    <div class="rapor">
+      <div class="kaca">
+        <ol class="tahap" id="rapor-tahap"></ol>
+        <p class="rapor-kata" id="rapor-kata"></p>
+        <ul class="syarat maju" id="rapor-syarat"></ul>
+      </div>
+      <div class="kaca">
+        <h3><span class="tip" tabindex="0" data-tip="Ide yang sudah terisi dan dinilai, rata-rata per $100 nilai posisi setelah fee dan slippage, tanpa funding. Arah acak = rata-rata ide dan kebalikannya, seperti melempar koin.">Siapa lebih baik</span></h3>
+        <div class="tablewrap"><table id="tbl-banding"></table></div>
+        <h3 class="sub-h"><span class="tip" tabindex="0" data-tip="Bukti lain yang dibaca bot sebelum menjawab. Belum ikut menentukan tahap. Temuan radar memakai order bayangan mekanis 30 hari terakhir.">Yang sudah dipelajari</span></h3>
+        <ul class="list" id="rapor-tahu"></ul>
+      </div>
+      <div class="kaca lebar">
+        <h3><span class="tip" tabindex="0" data-tip="Dua belas ide terakhir. Arahkan ke saran untuk melihat alasannya. Hasil muncul setelah batas waktu ide lewat.">Ide terakhir</span> <small id="rapor-ide-info"></small></h3>
+        <div class="tablewrap"><table id="tbl-ide"></table></div>
+      </div>
+    </div>
+  </section>
+
   <!-- SEKARANG -->
   <section id="sekarang" class="bag">
     <div class="head">

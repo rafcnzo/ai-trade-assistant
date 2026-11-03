@@ -34,7 +34,7 @@ kuning umpan anglerfish #f3c969; warna persona sebagai cahaya di puncak tangki m
 (desainer Jakarta), angka tabular. Raises: sel bergaris padat (japanese-high-density-web), order batal/kedaluwarsa dicap dan tetap
 terlihat (jet-age ticket wallet), tangki analis pensiun pudar abu-abu (character goods catalog).
 
-STORY: "Siapa pegang apa, berapa jauh dari target/hangus, apa yang baru terjadi" → "harga koin yang dipegang (grafik besar)" →
+STORY (sejak 3 Nov 2026 Rapor asisten di urutan pertama, keputusan pemilik: "apakah bot sudah pantas ditanya?"): "Siapa pegang apa, berapa jauh dari target/hangus, apa yang baru terjadi" → "harga koin yang dipegang (grafik besar)" →
 "pasar sekilas & kebiasaan analis" → "siapa unggul vs acaknya" → riwayat → konteks → catatan AI.
 
 FIRST VIEWPORT (1440): header tipis di atas air (nama, jam WIB, titik kesehatan); bar lompat-bagian kaca berbentuk pil yang menempel.

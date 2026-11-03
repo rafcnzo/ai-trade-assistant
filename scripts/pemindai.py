@@ -567,7 +567,7 @@ def build(cfg: PemindaiConfig, clock: Optional[Callable[[], int]] = None, log: O
     market = SqliteMarket(pasar)
     engine = PaperEngine(C.connect(C.PAPER_DB), market, clock=clock, log=log)
     p = Pemindai(pasar, C.connect(KANDIDAT_DB), engine, cfg, clock, log)
-    p.tanpa_ai_path = RADAR_TANPA_AI
+    p.tanpa_ai_path = C.DATA_DIR / RADAR_TANPA_AI.name   # dari DATA_DIR saat ini, bukan nilai saat impor, supaya tes tidak membaca berkas laptop
     return p
 
 

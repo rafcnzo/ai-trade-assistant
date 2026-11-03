@@ -362,7 +362,7 @@ Di tempat lain jam WIB.
 
 ## Layout
 
-Single-page scroll, tujuh `section.bag` berurutan **Sekarang, Pasar, Ringkasan, Peringkat, Riwayat, Konteks, Catatan AI**
+Single-page scroll, delapan `section.bag` berurutan **Rapor, Sekarang, Pasar, Ringkasan, Peringkat, Riwayat, Konteks, Catatan AI**
 (Pasar naik ke posisi 2 agar grafik besar tepat di bawah tangki). Header tipis `.top` di atas air (brand + subjudul
 bertooltip, jam WIB 15px 650, titik kesehatan rata kanan), lalu bar lompat-bagian kaca berbentuk pil yang menempel
 (`sticky`, top 10 px, z 20); pil aktif mengikuti bagian terlihat (`IntersectionObserver`, rootMargin -40 %/-55 %) dan di

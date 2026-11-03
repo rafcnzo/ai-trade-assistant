@@ -101,6 +101,41 @@ function pulseChanged(root) {
   });
 }
 
+// ---------------------------------------------------------------- RAPOR: kematangan asisten
+const per100 = (x) => x === null || x === undefined ? "—" : `<span class="${x > 0 ? "up" : x < 0 ? "down" : ""}">${x > 0 ? "+" : x < 0 ? "−" : ""}$${nf(2).format(Math.abs(x))}</span>`;
+const KELOMPOK = { "tanda SUDAH_LARI": "harga sudah lari", "tanda MELAWAN_TREN_15M": "melawan tren 15 menit", "tanda KOMPRESI": "harga menyempit", "tanda WICK": "ada wick", "tanda WICK_LAMA": "wick lama", "tanda VOL": "lonjakan volume", "tanda BREAKOUT_GAGAL": "tembus gagal", "tanda BREAKOUT_GAGAL_LAMA": "tembus gagal lama", "lolos P-19": "lolos aturan P-19", "gagal P-19": "gagal aturan P-19", "arah LONG": "arah beli", "arah SHORT": "arah jual" };
+const SARAN = { lanjut: ["lanjut", "ok"], hindari: ["hindari", "belum"] };
+const HASIL_IDE = { TP: "kena target", STOP: "kena stop", HANGUS: "likuidasi", EOD: "batas waktu", TIDAK_TERISI: "tidak terisi", ambigu: "data kurang" };
+const KATA_TAHAP = [
+  (r) => r.n_ide ? "Belum cukup pengalaman. Sampai syarat di bawah terpenuhi, anggap saran bot sebagai pemeriksaan data, bukan bukti." : "Belum ada ide yang diperiksa. Rapor mulai terisi saat Anda bertanya lewat /periksa di Telegram.",
+  () => "Pengalaman sudah cukup, tapi saran bot belum terbukti lebih baik dari acak.",
+  () => "Semua syarat terpenuhi di paper. Ini bukan jaminan untung, dan bisa turun lagi kalau hasilnya memburuk.",
+];
+async function loadRapor() {
+  const r = await api("/api/rapor");
+  if (r.ok === false) { $("#rapor-kata").innerHTML = `<span class="err">Rapor tidak terbaca: ${esc(r.error)}</span>`; return; }
+  $("#rapor-info").textContent = `${r.n_lolos} dari ${r.n_syarat} syarat lolos`;
+  setHTML("#rapor-tahap", ["Mengumpulkan pengalaman", "Berpengalaman, belum terbukti", "Terbukti di paper"].map((t, i) => `<li class="${i < r.tahap ? "lewat" : i === r.tahap ? "ini" : ""}"${i === r.tahap ? ' aria-current="step"' : ""}>${t}</li>`).join(""));
+  $("#rapor-kata").textContent = KATA_TAHAP[r.tahap](r);
+  setHTML("#rapor-syarat", r.syarat.map(s => `<li class="${s.lolos ? "lolos" : ""}">${tip(esc(s.nama), s.arti)}<span class="tag ${s.lolos ? "ok" : "belum"}">${s.lolos ? "lolos" : "belum"}</span><span class="nilai">${esc(s.nilai)}</span><span class="bar"><i style="width:${s.kemajuan * 100}%"></i></span></li>`).join(""));
+  const b = r.banding;
+  const bar = (nm, g, t) => `<tr><td>${tip(nm, t)}</td><td class="num">${g.n}</td><td class="num">${g.menang === null ? "—" : nf(0).format(g.menang * 100) + " %"}</td><td class="num">${per100(g.rata)}</td></tr>`;
+  setHTML("#tbl-banding", `<thead><tr><th>Siapa</th><th>Ide</th><th>Menang</th><th>Per $100</th></tr></thead><tbody>${bar("Ide Anda", b.ide, "Semua ide Anda yang terisi, apa pun saran bot.") + bar("Saran lanjut", b.lanjut, "Kalau Anda hanya mengambil ide yang disarankan lanjut oleh bot.") + bar("Saran hindari", b.hindari, "Ide yang disarankan dihindari. Bot berguna kalau kelompok ini lebih buruk dari saran lanjut.") + bar("Arah acak", b.acak, "Rata-rata ide dan kebalikannya, seperti melempar koin.")}</tbody>`);
+  const t = r.pengetahuan || {}, li = [];
+  li.push(`<li>${t.pelajaran_aktif ? `<b>${t.pelajaran_aktif}</b> pelajaran terbukti` : "Pelajaran terbukti: <b>0</b>"}</li>`);
+  if (t.radar) li.push(`<li>Koin radar: menang ${nf(0).format(t.radar.win * 100)} %${t.radar.impas ? `, perlu ${nf(0).format(t.radar.impas * 100)} % untuk balik modal` : ""} <span class="dim">(${t.radar.n} order bayangan)</span></li>`);
+  if (t.hipotesis) li.push(`<li>Tebakan AI: benar ${nf(0).format(t.hipotesis.benar * 100)} %, acak ${nf(0).format(t.hipotesis.acak * 100)} % <span class="dim">(${t.hipotesis.n} tebakan)</span></li>`);
+  (t.hindari || []).slice(0, 3).forEach(h => li.push(`<li>Sementara buruk: ${esc(KELOMPOK[h.kelompok] || h.kelompok.replace(/^tanda /, ""))}, menang ${nf(0).format(h.win * 100)} % <span class="dim">(${h.n} kejadian)</span></li>`));
+  if (r.biaya_ai_total !== undefined) li.push(`<li>Biaya AI sejauh ini: ${usd(r.biaya_ai_total)}</li>`);
+  setHTML("#rapor-tahu", li.join(""));
+  $("#rapor-ide-info").textContent = r.n_menunggu ? `${r.n_menunggu} menunggu dinilai` : "";
+  setHTML("#tbl-ide", r.terakhir.length ? `<thead><tr><th>Waktu</th><th>Ide</th><th>Saran</th><th>Hasil</th><th>Per $100</th><th>Arah sebaliknya</th></tr></thead><tbody>${r.terakhir.map(i => {
+    const s = SARAN[i.saran], alasan = [...i.poin_lanjut.map(p => "Lanjut: " + p), ...i.poin_hindari.map(p => "Hindari: " + p)].join("\n");
+    const sel = s ? (alasan ? `<span class="tag ${s[1]} tip" tabindex="0" data-tip="${esc(alasan)}">${s[0]}</span>` : `<span class="tag ${s[1]}">${s[0]}</span>`) : '<span class="dim">tanpa saran</span>';
+    return `<tr><td>${wib(i.dibuat_ms)}</td><td><b>${esc(koin(i.symbol))}</b> ${arah(i.sisi)}</td><td>${sel}</td><td>${i.hasil ? esc(HASIL_IDE[i.hasil] || i.hasil) : `<span class="dim">dinilai ${hariWib(i.eod_ms)}</span>`}</td><td class="num">${per100(i.net)}</td><td class="num">${per100(i.cermin_net)}</td></tr>`;
+  }).join("")}</tbody>` : '<tbody><tr><td class="empty">Belum ada ide. Contoh di Telegram: /periksa SOL long tp 190 sl 170</td></tr></tbody>');
+}
+
 // ---------------------------------------------------------------- SEKARANG: meja analis
 function setAkunList(list) {
   if (!list || !list.length || JSON.stringify(list.map(a => a.name)) === JSON.stringify(akunList.map(a => a.name))) return;
@@ -600,11 +635,11 @@ $("#j-jenis").onchange = loadJurnal; $("#j-hari").onchange = loadJurnal;
   await loadKeputusanHariIni();
   await loadRingkasan();
   await loadChart(true);
-  loadRingkas(); loadArena(); loadRiwayat(); loadPsikologi(); loadKandidat(); loadJurnal();
+  loadRapor(); loadRingkas(); loadArena(); loadRiwayat(); loadPsikologi(); loadKandidat(); loadJurnal();
   setInterval(loadRingkasan, 5000);
   setInterval(() => loadChart(false), 15000);
   setInterval(loadSymbols, 60000);
-  setInterval(() => { loadRingkas(); loadArena(); loadEkuitas(); loadKandidat(); }, 60000);
+  setInterval(() => { loadRapor(); loadRingkas(); loadArena(); loadEkuitas(); loadKandidat(); }, 60000);
   setInterval(async () => { await loadKeputusanHariIni(); if ($("#j-jenis").value === "jurnal" && !$("#j-hari").value) loadJurnal(); }, 30000);
   setInterval(loadPsikologi, 300000);
 })();

@@ -289,7 +289,7 @@ def simulasi(tp_: dict, pairs: list, slip: float, cfg: Optional[EngineConfig] = 
             px = b.open * (1 - slip) if long else b.open * (1 + slip)
             hasil = tutup(px, "EOD", False, ot)
             break
-        if not pos["be"]:
+        if not pos["be"] and not tp_.get("tanpa_be"):   # tanpa_be: rencana pemilik dinilai apa adanya, tanpa pengaman P-18
             jarak = abs(tp - pos["entry"])
             tempuh = (pos["best"] - pos["entry"]) * sign
             if jarak > 0 and tempuh / jarak >= BREAKEVEN_MFE:

@@ -62,5 +62,8 @@ mcp_servers:
         - tambah_jatah_radar
         - pasang_rencana_swing
         - tambah_leg_swing
+        - periksa_ide
+        - catat_saran
+        - rapor_asisten
     timeout: 60
     connect_timeout: 30

@@ -3,6 +3,16 @@
 Format: entri terbaru di atas. Setiap entri: tanggal WIB, perangkat, apa yang berubah, kenapa, file terdampak.
 Perubahan kode dan entri changelog masuk dalam commit yang sama.
 
+## 2026-11-03 (siang, 13:00) — laptop Windows — asisten konsultasi dan rapor kematangan di dashboard
+
+**Apa:** modul `scripts/asisten.py`, skill `periksa`, tool `periksa_ide`, `catat_saran`, `rapor_asisten` (34 tool), penilaian ide di `uji_hipotesis.py`, bagian Rapor di dashboard (`/api/rapor`), opsi `tanpa_be` di `kontrafaktual.simulasi`. Cron `evaluasi-harian` dan `evaluasi-susulan` dijeda atas persetujuan pemilik. `pemindai.build` kini membaca `RADAR_TANPA_AI` dari `C.DATA_DIR` saat dipanggil, karena tes S10 ikut membaca berkas di laptop dan gagal sejak mode tanpa AI dinyalakan.
+
+**Kenapa:** trading tiket $1 dihentikan (entri 12:00) dan pemilik ingin bot jadi asisten yang kematangannya bisa dipantau. Syarat tahap ditulis sebelum ada hasil supaya tidak bisa disesuaikan belakangan; detail di rencana v1.16. Saran dihitung skrip dari poin dan ditolak setelah 60 menit, supaya tidak bisa ditulis setelah harga terlihat bergerak.
+
+**Batas:** sampai ada ide dinilai, rapor kosong. Kondisi pasar berasal dari BTC 20 hari; bila data kurang ditulis "tidak tersedia" dan tidak dihitung. Kasus radar di jawaban bot memakai templat mekanis tanpa stop, hanya gambaran kasar. Funding belum masuk hasil.
+
+**File:** `scripts/{asisten,mcp_server,uji_hipotesis,kontrafaktual,dashboard,pemindai}.py`, `hermes/{SOUL.md,config.snippet.yaml,skills/periksa/SKILL.md}`, `dashboard/*`, `DESIGN.md`, `.impeccable/surfaces/dashboard-index-html.md`, `tests/test_{asisten,mcp_server}.py`, CLAUDE.md, docs.
+
 ## 2026-11-03 (siang, 12:00) — laptop Windows — hasil uji cara masuk: tidak ada yang lolos; trading tiket $1 dihentikan
 
 **Hasil:** 0 dari 234 variasi lolos saringan yang dikunci di entri 11:30. Positif di kedua paruh hanya 1 (10× · TP 1,5 · SL 1 · searah tren: +$0,000 / +$0,006, n=96), praktis nol. Per $100 nilai posisi: limit di level −$0,165, searah tren −$0,132, kebalikan −$0,173, konfirmasi −$0,244, konfirmasi + WICK −$0,331. Kebalikan tidak positif sekali pun di paruh akhir.

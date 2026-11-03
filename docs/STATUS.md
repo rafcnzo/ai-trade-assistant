@@ -3,7 +3,7 @@
 > Baca file ini dulu saat memulai sesi di perangkat mana pun. Perbarui setiap kali ada perubahan.
 > Riwayat perubahan: `docs/CHANGELOG.md`. Spesifikasi: `docs/rencana-asisten-crypto.md`. Operasi: `docs/OPERASI.md`.
 
-Diperbarui: 2026-11-03 12:00 WIB (perangkat: laptop Windows "laptop-l5i0361r")
+Diperbarui: 2026-11-03 13:00 WIB (perangkat: laptop Windows "laptop-l5i0361r")
 
 ## Arsitektur (sejak 11 Okt siang)
 
@@ -14,7 +14,7 @@ Folder Startup user (login, tanpa jendela)
  ├─ crypto-analyst_proxy.vbs     → run_budget_proxy.cmd  127.0.0.1:8585 → Anthropic, cap $10/hari (JALAN, key_set)
  ├─ crypto-analyst_dashboard.vbs → run_dashboard.cmd     http://127.0.0.1:8586 dashboard baca-saja (chart + riwayat) (JALAN)
  └─ Hermes_Gateway.vbs           → Hermes gateway        Telegram + cron
-      ├─ MCP "paper"               scripts/mcp_server.py, 31 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi, autopsi_posisi, papan_arena, tambah_jatah_radar, pasang_rencana_swing, tambah_leg_swing)
+      ├─ MCP "paper"               scripts/mcp_server.py, 34 tool  (+statistik_lulus, panel_psikologi, cari/baca_referensi, autopsi_posisi, papan_arena, tambah_jatah_radar, pasang_rencana_swing, tambah_leg_swing)
       ├─ cron pemindai-tiket       1-59/5 * * * * → pemindai_cron.py → scripts/pemindai.py --cron (tanpa LLM) → skill ARENA (4 persona);
       │                            agent (Opus 5.5, low) hanya dibangunkan bila baris terakhir {"wakeAgent": true}
       ├─ cron evaluasi-harian      23:55 WIB → skill evaluasi-harian → Telegram
@@ -41,6 +41,7 @@ Pemindai menulis `data/kandidat.sqlite` (penulis tunggal); collector kini juga m
 | 3a | Baseline acak (akun `acak`), statistik kelulusan (`evaluasi.py` + tool `statistik_lulus`), hipotesis terstruktur dinilai skrip (`hipotesis.py`, `uji_hipotesis.py`, cron 23:40) | **Selesai & terpasang** (109 tes; cron `uji-hipotesis` f497508f3dd4 aktif, MCP 23 tool, collector skema v2) |
 | 3b | Panel psikologi pasar (§16.2): `psikologi.py` + `psikologi.sqlite`, tool `panel_psikologi`, skill `/psikologi`, frontmatter catatan harian, cron tiap jam; pemindai `top_n=30`, `top_k=5` | **Selesai & terpasang** (116 tes; cron `psikologi` 85f32aac4251 aktif, MCP 24 tool, menu `/psikologi`) |
 | AR | Arena: 4 persona di akun terpisah (`account.kind=tiket`, status aktif/pensiun), skill `arena` satu sesi untuk semua persona, `papan_arena` (28 tool), `evaluasi.py --arena/--nilai-arena`, cron `nilai-arena` mingguan, dashboard tab Arena, `/arena-papan` | **Selesai & terpasang** (138 tes; cron pemindai → skill arena, nilai-arena mingguan, 28 tool, dashboard tab Arena) |
+| AS | Asisten konsultasi: pemilik membawa ide lewat `/periksa`, bot memeriksa tanpa order, skrip menilai; dashboard bagian **Rapor** menunjukkan tahap dan 6 syarat yang dikunci. Cron `evaluasi-harian` dan `evaluasi-susulan` **dijeda** sejak 3 Nov; radar tetap tanpa AI. Tahap sekarang: Mengumpulkan pengalaman, 0 ide | **Selesai; menunggu ide pemilik** |
 | RE | Uji cara masuk pra-registrasi: **0 dari 234 lolos**, sesuai aturan yang dikunci trading tiket $1 dihentikan dan uji maju 17 Nov dibatalkan. Radar berjalan **tanpa AI** (`data/RADAR_TANPA_AI`, berkas lokal, tidak ikut git), retensi 1m 60 hari. Akun tidak dipensiunkan; langkah berikutnya menunggu pemilik | **Selesai** |
 | UV | `scripts/uji_variasi.py`: 96 variasi leverage/TP/SL diuji, **0 lolos**; satu-satunya yang positif di kedua paruh ≈ $0 (+$0,000 / +$0,007). **Cron `pemindai-tiket` 6841faf27e63 DIJEDA sejak 3 Nov** menunggu keputusan pemilik (`hermes cron resume 6841faf27e63` untuk menyalakan); selama dijeda kandidat baru tidak tercatat | **Selesai; radar dijeda** |
 | LB | Lingkar belajar: "Temuan sementara" di `pasar/pelajaran.md` (termasuk negatif), arena/tiket membacanya sebelum menimbang, saringan `GAGAL_P19` sebelum wake (riwayat: 102 dari 183 wake hilang), `uji-hipotesis` tiap jam; K6, S14, S15 (172 tes). Temuan: kandidat radar belum punya keunggulan (290 terisi, menang 46 %, −$0,31/order, impas 70 %) | **Selesai & terpasang** |

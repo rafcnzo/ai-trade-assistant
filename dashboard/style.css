@@ -107,6 +107,21 @@ option,optgroup{background:var(--glass-solid);color:var(--ink)}
 .kaca>h3,.panel-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:0 0 10px;margin-bottom:4px;border-bottom:1px solid var(--line)}
 .kaca>h3 small,.panel-h small{color:var(--dim);font-weight:500;font-size:12px}
 
+/* ---- RAPOR: tahap, syarat yang dikunci, perbandingan */
+.rapor{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+.rapor>*{min-width:0}.rapor .lebar{grid-column:1/-1}
+.tahap{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tahap li{padding-top:10px;border-top:3px solid var(--line2);font-size:13px;line-height:1.3;color:var(--dim)}
+.tahap li.lewat{border-top-color:color-mix(in srgb,var(--glow) 55%,transparent);color:var(--muted)}
+.tahap li.ini{border-top-color:var(--glow);color:var(--ink);font-weight:700}
+.rapor-kata{margin:14px 0 8px;font-size:15px;line-height:1.5;max-width:62ch}
+.syarat.maju li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px}
+.syarat.maju .nilai{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.syarat.maju .bar{grid-column:1/-1;height:4px;background:rgba(150,235,240,.08);border-radius:999px;overflow:hidden}
+.syarat.maju .bar i{display:block;height:100%;border-radius:999px;background:var(--glow)}
+.syarat.maju li.lolos .bar i{background:var(--up)}
+.sub-h{margin-top:18px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+
 /* ---- SEKARANG: empat tangki analis + panel kejadian */
 .sekarang>*,.pasar>*,.peringkat>*,.riwayat>*,.konteks>*,.ringkasan>*{min-width:0}
 .sekarang{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
@@ -268,7 +283,7 @@ details summary:hover{color:var(--ink)}
 
 /* ---- tablet */
 @media(max-width:1100px){
-  .sekarang,.pasar,.peringkat,.riwayat,.ringkasan{grid-template-columns:minmax(0,1fr)}
+  .rapor,.sekarang,.pasar,.peringkat,.riwayat,.ringkasan{grid-template-columns:minmax(0,1fr)}
   .feed ol{max-height:340px}
   #kejadian{max-height:300px}
   #chart{height:460px}

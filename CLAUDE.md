@@ -42,14 +42,15 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
   - `data/psikologi.sqlite` ← hanya `scripts/psikologi.py` (panel psikologi pasar, cron tiap jam)
   - `data/susulan_gate.json` ← hanya `hermes/scripts/susulan_cron.py` (kapan agent terakhir dibangunkan untuk evaluasi susulan)
   - `data/radar_jatah.json` ← hanya `scripts/mcp_server.py` (tool `tambah_jatah_radar`, hanya atas perintah pemilik `/radar N`); `pemindai.py` membacanya
-  - `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.jsonl` (append), `pasar/pelajaran-usulan.md` ← hanya `scripts/mcp_server.py`
-  - `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/skip-hasil.jsonl`, `pasar/skip.md`, `pasar/pelajaran.jsonl`, `pasar/pelajaran.md`
+  - `jurnal/agent/`, `pasar/harian/`, `pasar/hipotesis.jsonl` (append), `pasar/konsultasi.jsonl` (append), `pasar/pelajaran-usulan.md` ← hanya `scripts/mcp_server.py`
+  - `pasar/hipotesis-hasil.jsonl`, `pasar/hipotesis.md`, `pasar/konsultasi-hasil.jsonl`, `pasar/skip-hasil.jsonl`, `pasar/skip.md`, `pasar/pelajaran.jsonl`, `pasar/pelajaran.md`
     ← hanya `scripts/uji_hipotesis.py` (penilaian SKIP lewat modul murni `scripts/kontrafaktual.py`)
     (skrip yang menilai; agent dan manusia tidak mengedit view ini — pemilik memutuskan usulan di `pelajaran-usulan.md`)
   Jangan menulis SQL ke DB ini dari tempat lain. Agent hanya memakai tool MCP (`place_order`/`cancel_order`/…).
 - Agent (Hermes) tidak diberi toolset terminal/file/browser; integritas mesin bergantung pada itu. Jangan melonggarkan
   `platform_toolsets`/`disabled_toolsets` di `hermes/config.snippet.yaml` tanpa alasan tertulis di CHANGELOG.
 - Hasil trade paper hanya ditulis mesin. Tidak ada koreksi manual pada `positions`/`fills`.
+- Syarat rapor asisten (`scripts/asisten.py`) dikunci 3 Nov 2026 sebelum ada hasil. Jangan melonggarkannya setelah melihat hasil; perubahan apa pun wajib beralasan di CHANGELOG.
 - API key Anthropic hanya di env var user (dibaca `budget_proxy.py`); token Telegram hanya di `HERMES_HOME\.env`.
   Keduanya tidak pernah masuk repo, CLAUDE.md, docs, atau chat.
 - `scripts/mcp_server.py` tidak boleh `print()` (stdout = kanal MCP); log ke `logs/mcp_server.log`.
@@ -65,7 +66,7 @@ berpindah adalah folder `docs/`, bukan memori lokal agent.
 ```
 scripts/   common.py, collector.py, paper_engine.py, budget_guard.py, budget_proxy.py, analisis.py,
            mcp_server.py, pemindai.py, notifikasi.py, evaluasi.py, hipotesis.py, uji_hipotesis.py, psikologi.py,
-           referensi.py, konversi_buku.py, kontrafaktual.py, keputusan.py, uji_variasi.py (baca saja), dashboard.py (baca saja, 127.0.0.1:8586),
+           referensi.py, konversi_buku.py, kontrafaktual.py, keputusan.py, asisten.py (konsultasi + rapor, modul murni), uji_variasi.py (baca saja), dashboard.py (baca saja, 127.0.0.1:8586),
            schema_{pasar,paper,budget,kandidat,psikologi}.sql
 hermes/    SOUL.md, skills/<nama>/SKILL.md, scripts/{pemindai_cron,notif_cron,uji_cron,psikologi_cron,susulan_cron,arena_cron}.py, config.snippet.yaml, cron.cmd, sync.py
 tests/     unittest, tanpa jaringan (FixtureMarket, upstream palsu untuk proxy)

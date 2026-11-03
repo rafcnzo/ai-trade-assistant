@@ -6,7 +6,7 @@ Stdout adalah kanal protokol MCP: TIDAK ADA print(). Log hanya ke logs/mcp_serve
 Tool hanya membungkus API publik: PaperEngine (order/posisi/laporan), SqliteMarket (data pasar, baca saja),
 analisis.py (indikator/level/jejak/tabel leverage), BudgetGuard.status (biaya API).
 File yang ditulis server ini hanya catatan agent: jurnal/agent/, pasar/harian/, pasar/hipotesis.jsonl (append; dinilai
-uji_hipotesis.py), pasar/pelajaran-usulan.md. Nama file berasal dari jam, bukan dari input agent.
+uji_hipotesis.py), pasar/pelajaran-usulan.md, pasar/konsultasi.jsonl (append; dinilai uji_hipotesis.py). Nama file berasal dari jam, bukan dari input agent.
 """
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ from typing import Any, Callable, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import analisis as A  # noqa: E402
+import asisten as AS  # noqa: E402
 import common as C  # noqa: E402
 import evaluasi as E  # noqa: E402
 import hipotesis as H  # noqa: E402
@@ -49,6 +50,7 @@ TOOL_NAMES = (
     "waktu_sekarang", "harga", "simbol_info", "top_volume", "tabel_tiket", "ohlcv", "kandidat_terbaru", "status_sistem",
     "pasang_order", "batal_order", "tutup_posisi", "posisi", "order_menunggu", "riwayat", "budget_tiket", "laporan_paper",
     "biaya_api", "tulis_jurnal", "baca_memori", "tulis_catatan_harian", "tulis_hipotesis", "usul_pelajaran", "statistik_lulus", "panel_psikologi", "cari_referensi", "baca_referensi", "autopsi_posisi", "papan_arena", "tambah_jatah_radar", "pasang_rencana_swing", "tambah_leg_swing",
+    "periksa_ide", "catat_saran", "rapor_asisten",
 )
 RADAR_JATAH_MAKS = 24   # tambahan maksimal per hari lewat /radar
 
@@ -695,6 +697,99 @@ class Tools:
                     "sisa_hari_ini": MAX_HIPOTESIS_PER_HARI - len(today) - 1,
                     "catatan": "dinilai skrip (uji_hipotesis.py) setelah batas; hasil terlihat lewat baca_memori('hipotesis')"}
         return self._call("tulis_hipotesis", run)
+
+    # ---- konsultasi pemilik (dinilai uji_hipotesis.py, diringkas di dashboard bagian Rapor)
+    def _konsultasi(self) -> tuple[list[dict], list[dict]]:
+        p = self.ctx.root / "pasar"
+        return H.load_jsonl(p / "konsultasi.jsonl"), H.load_jsonl(p / "konsultasi-hasil.jsonl")
+
+    def _rezim(self, now: int) -> str:
+        bars = A.load_bars_1h(self.ctx.market, "BTCUSDT", AS.REZIM_HARI, now)
+        if len(bars) < AS.REZIM_HARI * 24 * 0.9:
+            return "tidak tersedia"
+        return AS.rezim_dari((bars[-1].close / bars[0].close - 1) * 100)
+
+    def periksa_ide(self, symbol: str, sisi: str, tp: float, sl: float, entry: Optional[float] = None, leverage: int = AS.LEV_BAWAAN,
+                    batas_hari: int = AS.BATAS_HARI_BAWAAN, catatan: str = "") -> dict:
+        """Periksa ide trade PEMILIK tanpa memasang order. Mencatat ide ke pasar/konsultasi.jsonl (maks 10/hari) untuk dinilai skrip setelah batas_hari (1–7), lalu mengembalikan id, fakta pasar, angka rencana per $100 (untung di target, rugi di stop, peluang menang minimum, likuidasi), dan kasus serupa dari catatan. sisi=LONG|SHORT; entry kosong = harga pasar; tp dan sl wajib dari pemilik. Lanjutkan dengan catat_saran."""
+        def run():
+            sym, side = symbol.strip().upper(), sisi.strip().upper()
+            if not sym.endswith("USDT"):
+                sym += "USDT"
+            f = self.ctx.market.filters(sym)
+            if f is None:
+                return {"ok": False, "symbol": sym, "status": "tidak tersedia", "alasan": "simbol tidak ada di symbol_info"}
+            _, _, status = self._tick()
+            lm = self.ctx.market.last_mark(sym)
+            if status != "OK" or not lm:
+                return {"ok": False, "symbol": sym, "status": "BASI" if status == "BASI" else "tidak tersedia", "alasan": "data pasar basi atau harga tidak ada; ide tidak dicatat"}
+            now = self.ctx.clock()
+            day = C.day_wib(now)
+            path = self.ctx.root / "pasar" / "konsultasi.jsonl"
+            records, hasil = self._konsultasi()
+            ide, _ = AS.pisah(records)
+            hari_ini = [r for r in ide.values() if r["hari"] == day]
+            en = float(entry) if entry else None
+            tp_, sl_ = float(tp), float(sl)
+            lama = next((r for r in hari_ini if r["symbol"] == sym and r["sisi"] == side and r["entry"] == en and r["tp"] == tp_ and r["sl"] == sl_
+                         and now - int(r["dibuat_ms"]) <= AS.DUPLIKAT_MENIT * C.MINUTE_MS), None)
+            atr_map, bars = self._atr_map(sym, now)
+            rb15 = A.resample(bars, A.TF_MS["15m"], now)
+            tren15 = A.tren(rb15)
+            if lama:
+                rec = lama
+            else:
+                if len(hari_ini) >= AS.MAKS_IDE_PER_HARI:
+                    return {"ok": False, "error": f"sudah {AS.MAKS_IDE_PER_HARI} ide hari ini; ide baru besok"}
+                rec = AS.new_ide(f"Q-{len(ide) + 1:04d}", now, sym, side, tp_, sl_, en, int(leverage), int(batas_hari), float(lm[0]), tren15, self._rezim(now), catatan)
+                H.append_jsonl(path, rec)
+            acuan = en if en is not None else float(lm[0])
+            snap = self.ctx.pasar.execute("SELECT last_funding_rate FROM mark_snapshot WHERE symbol=? ORDER BY ts DESC LIMIT 1", (sym,)).fetchone()
+            atr15 = atr_map.get("15m")
+            h1 = A.load_bars_1h(self.ctx.market, sym, 30, now)
+            r = AS.rapor(records, hasil, now)
+            return {"ok": True, "id": rec["id"], "sudah_tercatat": bool(lama), "symbol": sym, "sisi": side, "mark": float(lm[0]), "masuk": acuan, "jenis_masuk": "limit" if en else "harga pasar",
+                    "tren_15m": tren15, "tren_1h": A.tren(h1) if len(h1) >= 50 else "tidak tersedia", "melawan_tren_15m": rec["melawan_tren"], "kondisi_pasar": rec["rezim"],
+                    "funding_terakhir": snap["last_funding_rate"] if snap else "tidak tersedia", "atr_15m": atr15,
+                    "jarak_target_atr": round(abs(tp_ - acuan) / atr15, 2) if atr15 else "tidak tersedia", "jarak_stop_atr": round(abs(acuan - sl_) / atr15, 2) if atr15 else "tidak tersedia",
+                    "rencana": AS.hitung_rencana(side, acuan, tp_, sl_, rec["leverage"], self.ctx.market.brackets(sym), en is not None, self.ctx.engine.cfg),
+                    "kasus_serupa": AS.mirip(H.load_jsonl(self.ctx.root / "pasar" / "skip-hasil.jsonl"), records, hasil, sym, side, rec["melawan_tren"]),
+                    "batas_nilai": C.fmt_wib(rec["eod_ms"]), "tahap_nama": r["tahap_nama"], "n_lolos": r["n_lolos"], "n_syarat": r["n_syarat"],
+                    "catatan": "ide tercatat, belum ada order; kasus radar memakai templat mekanis tanpa stop, hanya gambaran kasar"}
+        return self._call("periksa_ide", run)
+
+    def catat_saran(self, ide_id: str, poin_lanjut: Optional[list[str]] = None, poin_hindari: Optional[list[str]] = None) -> dict:
+        """Catat alasan agent untuk ide dari periksa_ide (maks 5 poin per sisi, satu fakta per poin; aturan keras di poin_hindari diawali "VETO: "). Saran dihitung di sini: lanjut hanya bila poin lanjut lebih banyak dan tanpa VETO, selain itu hindari. Satu kali per ide, paling lambat 60 menit setelah ide dicatat. Tidak memasang order."""
+        def run():
+            now = self.ctx.clock()
+            records, _ = self._konsultasi()
+            ide, saran = AS.pisah(records)
+            i = ide.get(str(ide_id).strip())
+            if i is None:
+                raise ValueError(f"ide {ide_id} tidak ada; panggil periksa_ide dulu")
+            if i["id"] in saran:
+                raise ValueError(f"ide {i['id']} sudah punya saran {saran[i['id']]['saran']}; tidak bisa diubah")
+            if now - int(i["dibuat_ms"]) > AS.SARAN_MAKS_MENIT * C.MINUTE_MS:
+                raise ValueError(f"lewat {AS.SARAN_MAKS_MENIT} menit sejak ide dicatat; saran tidak bisa ditambahkan setelah harga bergerak")
+            pl = [K.poin_bersih(p) for p in (poin_lanjut or []) if K.poin_bersih(p)]
+            ph = [K.poin_bersih(p) for p in (poin_hindari or []) if K.poin_bersih(p)]
+            if len(pl) > K.POIN_MAKS or len(ph) > K.POIN_MAKS:
+                raise ValueError(f"maksimal {K.POIN_MAKS} poin per sisi; gabungkan poin yang mirip")
+            if not pl and not ph:
+                raise ValueError("isi poin_lanjut dan poin_hindari")
+            tb = K.timbang(ph, pl, None)
+            s = "lanjut" if tb["hitungan"] == "ORDER" else "hindari"
+            H.append_jsonl(self.ctx.root / "pasar" / "konsultasi.jsonl", {"jenis": "saran", "id": i["id"], "ts": now, "saran": s, "poin_lanjut": pl, "poin_hindari": ph,
+                                                                         "veto": tb["veto"], "versi": AS.VERSI})
+            return {"ok": True, "id": i["id"], "saran": s, "lanjut": len(pl), "hindari": len(ph), "veto": tb["veto"], "batas_nilai": C.fmt_wib(i["eod_ms"])}
+        return self._call("catat_saran", run)
+
+    def rapor_asisten(self) -> dict:
+        """Rapor kematangan asisten: tahap, syarat yang dikunci beserta kemajuannya, dan perbandingan ide pemilik vs saran agent vs arah acak. Dihitung skrip dari ide yang sudah dinilai; laporkan apa adanya."""
+        def run():
+            records, hasil = self._konsultasi()
+            return AS.rapor(records, hasil, self.ctx.clock())
+        return self._call("rapor_asisten", run)
 
     def usul_pelajaran(self, pola: str, ringkasan: str, bukti: str, sampel: int = 0) -> dict:
         """Usulkan pelajaran/aturan baru ke pasar/pelajaran-usulan.md dengan status `uji`. Tidak aktif sebelum disetujui user dan lolos penilaian skrip."""

@@ -3,6 +3,10 @@
 > Versi 1.3 · 11 Oktober 2026
 > Status: Profil lengkap. Siap Fase 0 dan pembangunan mesin paper trading (§19).
 
+### Perubahan v1.16 (3 Nov 2026, asisten konsultasi)
+
+Peran bot berubah dari pencari trade menjadi pemeriksa ide pemilik: skill `periksa`, tool `periksa_ide`, `catat_saran`, `rapor_asisten`. Ide dinilai skrip dengan bar 1 menit per $100 nilai posisi, sampai batas 1–7 hari, tanpa pengaman P-18. Saran dihitung dari poin (lanjut hanya bila poin lanjut lebih banyak dan tanpa VETO), paling lambat 60 menit setelah ide dicatat. Tahap kematangan dikunci sebelum ada hasil: ≥ 100 saran terisi, rentang ≥ 90 hari dari ≥ 30 hari berbeda, ≥ 2 kondisi pasar masing-masing ≥ 20 saran, saran lanjut untung dengan batas bawah selang 90 % > 0, mengalahkan arah acak dengan peluang kebetulan < 5 %, dan untung di kedua paruh. Rapor dihitung ulang tiap kali dan bisa turun.
+
 ### Perubahan v1.15 (3 Nov 2026, lingkar belajar)
 - §16.6: `pasar/pelajaran.md` memuat "Temuan sementara" dari skrip (termasuk temuan negatif; indikasi, bukan aturan). Skill arena/tiket
   membacanya sebelum menimbang dan memakainya sebagai poin biasa, bukan VETO. Syarat pelajaran aktif tidak dilonggarkan.

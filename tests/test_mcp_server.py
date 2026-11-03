@@ -286,7 +286,7 @@ class TestHipotesisStatistik(Base):
         self.assertTrue(str(s["akun"]["tiket"]["expectancy"]).startswith("tidak tersedia"))
         self.assertIn("# Statistik kelulusan", s["markdown"])
         self.assertIn("statistik_lulus", TOOL_NAMES)
-        self.assertEqual(len(TOOL_NAMES), 31)
+        self.assertEqual(len(TOOL_NAMES), 34)
 
 
 class TestPanelPsikologi(Base):
@@ -415,7 +415,7 @@ class TestRegistration(unittest.TestCase):
         from mcp.server.fastmcp import FastMCP
         mcp = FastMCP("paper-uji")
         names = register(mcp, Tools(ctx_factory=lambda: (_ for _ in ()).throw(RuntimeError("tidak dipanggil"))))
-        self.assertEqual(len(names), 31)
+        self.assertEqual(len(names), 34)
         listed = asyncio.run(mcp.list_tools())
         self.assertEqual(sorted(x.name for x in listed), sorted(TOOL_NAMES))
         po = [x for x in listed if x.name == "pasang_order"][0]
